@@ -831,7 +831,7 @@ describe('ClaudeCodeServer Unit Tests', () => {
       // Verify spawn was called with resolved model name
       expect(mockSpawn).toHaveBeenCalledWith(
         expect.any(String),
-        expect.arrayContaining(['--model', 'claude-3-5-haiku-20241022']),
+        expect.arrayContaining(['--model', 'haiku']),
         expect.any(Object)
       );
       

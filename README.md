@@ -20,7 +20,7 @@ This MCP server provides tools that can be used by LLMs to interact with AI CLI 
 - Run Claude CLI with all permissions bypassed (using `--dangerously-skip-permissions`)
 - Execute Codex CLI with automatic approval mode (using `--full-auto`)
 - Execute Gemini CLI with automatic approval mode (using `-y`)
-- Support multiple AI models: Claude (sonnet, opus, haiku), Codex (gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, gpt-5.2, gpt-5.1, gpt-5.1-codex, gpt-5-codex, gpt-5-codex-mini, gpt-5), and Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3-pro-preview, gemini-3-flash-preview)
+- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, haiku), Codex (gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, gpt-5.2, gpt-5.1, gpt-5.1-codex, gpt-5-codex, gpt-5-codex-mini, gpt-5), and Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3-pro-preview, gemini-3-flash-preview)
 - Manage background processes with PID tracking
 - Parse and return structured outputs from both tools
 
@@ -133,10 +133,10 @@ Executes a prompt using Claude CLI, Codex CLI, or Gemini CLI. The appropriate CL
 - `workFolder` (string, required): The working directory for the CLI execution. Must be an absolute path.
 **Models:**
 - **Ultra Aliases:** `claude-ultra`, `codex-ultra` (defaults to high-reasoning), `gemini-ultra`
-- Claude: `sonnet`, `opus`, `haiku`
-- Codex: `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
+- Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
+- Codex: `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
 - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
-- `reasoning_effort` (string, optional): Codex only. Sets `model_reasoning_effort` (allowed: "low", "medium", "high").
+- `reasoning_effort` (string, optional): Codex only. Sets `model_reasoning_effort` (allowed: "low", "medium", "high", "xhigh").
 - `session_id` (string, optional): Optional session ID to resume a previous session. Supported for: haiku, sonnet, opus, gemini-2.5-pro, gemini-2.5-flash, gemini-3-pro-preview, gemini-3-flash-preview.
 
 ### `wait`
@@ -165,77 +165,6 @@ Terminates a running AI agent process by PID.
 **Arguments:**
 - `pid` (number, required): The process ID to terminate.
 
-### Examples
-
-Here are some visual examples of the server in action:
-
-<img src="assets/claude_tool_git_example.png" alt="Claude Tool Git Example" width="50%">
-
-<img src="assets/additional_claude_screenshot.png" alt="Additional Claude Screenshot" width="50%">
-
-<img src="assets/cursor-screenshot.png" alt="Cursor Screenshot" width="50%">
-
-### Fixing ESLint Setup
-
-Here's an example of using the Claude Code MCP tool to interactively fix an ESLint setup by deleting old configuration files and creating a new one:
-
-<img src="assets/eslint_example.png" alt="ESLint file operations example" width="50%">
-
-### Listing Files Example
-
-Here's an example of the Claude Code tool listing files in a directory:
-
-<img src="assets/file_list_example.png" alt="File listing example" width="50%">
-
-## Key Use Cases
-
-This server, through its unified `run` tool, unlocks a wide range of powerful capabilities by giving your AI direct access to both Claude and Codex CLI tools. Here are some examples of what you can achieve:
-
-1.  **Code Generation, Analysis & Refactoring:**
-    -   `"Generate a Python script to parse CSV data and output JSON."`
-    -   `"Analyze my_script.py for potential bugs and suggest improvements."`
-
-2.  **File System Operations (Create, Read, Edit, Manage):**
-    -   **Creating Files:** `"Your work folder is /Users/steipete/my_project\n\nCreate a new file named 'config.yml' in the 'app/settings' directory with the following content:\nport: 8080\ndatabase: main_db"`
-    -   **Editing Files:** `"Your work folder is /Users/steipete/my_project\n\nEdit file 'public/css/style.css': Add a new CSS rule at the end to make all 'h2' elements have a 'color: navy'."`
-    -   **Moving/Copying/Deleting:** `"Your work folder is /Users/steipete/my_project\n\nMove the file 'report.docx' from the 'drafts' folder to the 'final_reports' folder and rename it to 'Q1_Report_Final.docx'."`
-
-3.  **Version Control (Git):**
-    -   `"Your work folder is /Users/steipete/my_project\n\n1. Stage the file 'src/main.java'.\n2. Commit the changes with the message 'feat: Implement user authentication'.\n3. Push the commit to the 'develop' branch on origin."`
-
-4.  **Running Terminal Commands:**
-    -   `"Your work folder is /Users/steipete/my_project/frontend\n\nRun the command 'npm run build'."`
-    -   `"Open the URL https://developer.mozilla.org in my default web browser."`
-
-5.  **Web Search & Summarization:**
-    -   `"Search the web for 'benefits of server-side rendering' and provide a concise summary."`
-
-6.  **Complex Multi-Step Workflows:**
-    -   Automate version bumps, update changelogs, and tag releases: `"Your work folder is /Users/steipete/my_project\n\nFollow these steps: 1. Update the version in package.json to 2.5.0. 2. Add a new section to CHANGELOG.md for version 2.5.0 with the heading '### Added' and list 'New feature X'. 3. Stage package.json and CHANGELOG.md. 4. Commit with message 'release: version 2.5.0'. 5. Push the commit. 6. Create and push a git tag v2.5.0."`
-
-    <img src="assets/multistep_example.png" alt="Complex multi-step operation example" width="50%">
-
-7.  **Repairing Files with Syntax Errors:**
-    -   `"Your work folder is /path/to/project\n\nThe file 'src/utils/parser.js' has syntax errors after a recent complex edit that broke its structure. Please analyze it, identify the syntax errors, and correct the file to make it valid JavaScript again, ensuring the original logic is preserved as much as possible."`
-
-8.  **Interacting with GitHub (e.g., Creating a Pull Request):**
-    -   `"Your work folder is /Users/steipete/my_project\n\nCreate a GitHub Pull Request in the repository 'owner/repo' from the 'feature-branch' to the 'main' branch. Title: 'feat: Implement new login flow'. Body: 'This PR adds a new and improved login experience for users.'"`
-
-9.  **Interacting with GitHub (e.g., Checking PR CI Status):**
-    -   `"Your work folder is /Users/steipete/my_project\n\nCheck the status of CI checks for Pull Request #42 in the GitHub repository 'owner/repo'. Report if they have passed, failed, or are still running."`
-
-### Correcting GitHub Actions Workflow
-
-<img src="assets/github_actions_fix_example.png" alt="GitHub Actions workflow fix example" width="50%">
-
-### Complex Multi-Step Operations
-
-This example illustrates the AI agent handling a more complex, multi-step task, such as preparing a release by creating a branch, updating multiple files (`package.json`, `CHANGELOG.md`), committing changes, and initiating a pull request, all within a single, coherent operation.
-
-<img src="assets/claude_code_multistep_example.png" alt="AI agent multi-step example" width="50%">
-
-**CRITICAL: Remember to provide Current Working Directory (CWD) context in your prompts for file system or git operations (e.g., `"Your work folder is /path/to/project\n\n...your command..."`).**
-
 ## Troubleshooting
 
 - **"Command not found" (claude-code-mcp):** If installed globally, ensure the npm global bin directory is in your system's PATH. If using `npx`, ensure `npx` itself is working.
@@ -244,76 +173,9 @@ This example illustrates the AI agent handling a more complex, multi-step task, 
 - **JSON Errors from Server:** If `MCP_CLAUDE_DEBUG` is `true`, error messages or logs might interfere with MCP's JSON parsing. Set to `false` for normal operation.
 - **ESM/Import Errors:** Ensure you are using Node.js v20 or later.
 
-**For Developers: Local Setup & Contribution**
-
-If you want to develop or contribute to this server, or run it from a cloned repository for testing, please see our [Local Installation & Development Setup Guide](./docs/local_install.md).
-
-## Testing
-
-The project includes comprehensive test suites:
-
-```bash
-# Run all tests
-npm test
-
-# Run unit tests only
-npm run test:unit
-
-# Run e2e tests (with mocks)
-npm run test:e2e
-
-# Run e2e tests locally (requires Claude CLI)
-npm run test:e2e:local
-
-# Watch mode for development
-npm run test:watch
-
-# Coverage report
-npm run test:coverage
-```
-
-For detailed testing documentation, see our [E2E Testing Guide](./docs/e2e-testing.md).
-
-## Manual Testing with MCP Inspector
-
-You can manually test the MCP server using the Model Context Protocol Inspector:
-
-```bash
-# Build the project first
-npm run build
-
-# Start the MCP Inspector with the server
-npx @modelcontextprotocol/inspector node dist/server.js
-```
-
-This will open a web interface where you can:
-1. View all available tools (`run`, `list_processes`, `get_result`, `kill_process`)
-2. Test each tool with different parameters
-3. Test different AI models including:
-   - Claude models: `sonnet`, `opus`, `haiku`
-   - Codex models: `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5.1-codex`, `gpt-5-codex`, `gpt-5-codex-mini`, `gpt-5`
-   - Gemini models: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
-
-Example test: Select the `run` tool and provide:
-- `prompt`: "What is 2+2?"
-- `workFolder`: "/tmp"
-- `model`: "gemini-2.5-flash"
-
-## Configuration via Environment Variables
-
-The server's behavior can be customized using these environment variables:
-
-- `CLAUDE_CLI_PATH`: Absolute path to the Claude CLI executable.
-  - Default: Checks `~/.claude/local/claude`, then falls back to `claude` (expecting it in PATH).
-- `MCP_CLAUDE_DEBUG`: Set to `true` for verbose debug logging from this MCP server. Default: `false`.
-
-These can be set in your shell environment or within the `env` block of your `mcp.json` server configuration (though the `env` block in `mcp.json` examples was removed for simplicity, it's still a valid way to set them for the server process if needed).
-
 ## Contributing
 
-Contributions are welcome! Please refer to the [Local Installation & Development Setup Guide](./docs/local_install.md) for details on setting up your environment.
-
-Submit issues and pull requests to the [GitHub repository](https://github.com/mkXultra/claude-code-mcp).
+For development setup, testing, and contribution guidelines, see the [Development Guide](./docs/development.md).
 
 ## Advanced Configuration (Optional)
 
