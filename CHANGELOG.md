@@ -1,3 +1,10 @@
+# [2.6.0](https://github.com/mkXultra/claude-code-mcp/compare/v2.5.0...v2.6.0) (2026-02-09)
+
+
+### Features
+
+* update model support (gpt-5.3-codex, sonnet[1m], opusplan) and refactor README ([eb6574d](https://github.com/mkXultra/claude-code-mcp/commit/eb6574d3760269d4be96cd934bc03d94ccb3801f))
+
 # [2.5.0](https://github.com/mkXultra/claude-code-mcp/compare/v2.4.0...v2.5.0) (2026-01-24)
 
 
