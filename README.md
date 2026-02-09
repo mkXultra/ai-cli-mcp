@@ -11,8 +11,6 @@ An MCP (Model Context Protocol) server that allows running AI CLI tools (Claude,
 
 Did you notice that Cursor sometimes struggles with complex, multi-step edits or operations? This server, with its powerful unified `run` tool, enables multiple AI agents to handle your coding tasks more effectively.
 
-<img src="assets/screenshot.png" width="300" alt="Screenshot">
-
 ## Overview
 
 This MCP server provides tools that can be used by LLMs to interact with AI CLI tools. When integrated with MCP clients, it allows LLMs to:
