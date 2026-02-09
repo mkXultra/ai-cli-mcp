@@ -20,13 +20,12 @@ const SERVER_VERSION = "2.2.0";
 
 // Model alias mappings for user-friendly model names
 const MODEL_ALIASES: Record<string, string> = {
-  'haiku': 'claude-3-5-haiku-20241022',
   'claude-ultra': 'opus',
-  'codex-ultra': 'gpt-5.2-codex',
+  'codex-ultra': 'gpt-5.3-codex',
   'gemini-ultra': 'gemini-3-pro-preview'
 };
 
-const ALLOWED_REASONING_EFFORTS = new Set(['low', 'medium', 'high']);
+const ALLOWED_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
 
 function getReasoningEffort(model: string, rawValue: unknown): string {
   if (typeof rawValue !== 'string') {
@@ -40,7 +39,7 @@ function getReasoningEffort(model: string, rawValue: unknown): string {
   if (!ALLOWED_REASONING_EFFORTS.has(normalized)) {
     throw new McpError(
       ErrorCode.InvalidParams,
-      `Invalid reasoning_effort: ${rawValue}. Allowed values: low, medium, high.`
+      `Invalid reasoning_effort: ${rawValue}. Allowed values: low, medium, high, xhigh.`
     );
   }
   if (!model.startsWith('gpt-')) {
@@ -369,7 +368,7 @@ export class ClaudeCodeServer {
 **IMPORTANT**: This tool now returns immediately with a PID. Use other tools to check status and get results.
 
 **Supported models**:
-"claude-ultra", "codex-ultra", "gemini-ultra", "sonnet", "opus", "haiku", "gpt-5.2-codex", "gpt-5.1-codex-mini", "gpt-5.1-codex-max", "gpt-5.2", "gpt-5.1", "gpt-5.1-codex", "gpt-5-codex", "gpt-5-codex-mini", "gpt-5", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-3-pro-preview", "gemini-3-flash-preview"
+"claude-ultra", "codex-ultra", "gemini-ultra", "sonnet", "sonnet[1m]", "opus", "opusplan", "haiku", "gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.1-codex-mini", "gpt-5.1-codex-max", "gpt-5.2", "gpt-5.1", "gpt-5.1-codex", "gpt-5-codex", "gpt-5-codex-mini", "gpt-5", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-3-pro-preview", "gemini-3-flash-preview"
 
 **Prompt input**: You must provide EITHER prompt (string) OR prompt_file (file path), but not both.
 
@@ -397,11 +396,11 @@ export class ClaudeCodeServer {
               },
               model: {
                 type: 'string',
-                description: 'The model to use. Aliases: "claude-ultra", "codex-ultra" (auto high-reasoning), "gemini-ultra". Standard: "sonnet", "opus", "haiku", "gpt-5.2-codex", "gpt-5.1-codex-mini", "gpt-5.1", "gemini-2.5-pro", "gemini-3-pro-preview", "gemini-3-flash-preview", etc.',
+                description: 'The model to use. Aliases: "claude-ultra", "codex-ultra" (auto high-reasoning), "gemini-ultra". Standard: "sonnet", "sonnet[1m]", "opus", "opusplan", "haiku", "gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.1-codex-mini", "gpt-5.1", "gemini-2.5-pro", "gemini-3-pro-preview", "gemini-3-flash-preview", etc.',
               },
               reasoning_effort: {
                 type: 'string',
-                description: 'Codex only. Sets model_reasoning_effort. Allowed: "low", "medium", "high".',
+                description: 'Codex only. Sets model_reasoning_effort. Allowed: "low", "medium", "high", "xhigh".',
               },
               session_id: {
                 type: 'string',
@@ -571,7 +570,7 @@ export class ClaudeCodeServer {
     // Special handling for codex-ultra: default to high reasoning effort if not specified
     let reasoningEffortArg = toolArguments.reasoning_effort;
     if (rawModel === 'codex-ultra' && !reasoningEffortArg) {
-      reasoningEffortArg = 'high';
+      reasoningEffortArg = 'xhigh';
     }
 
     const reasoningEffort = getReasoningEffort(resolvedModel, reasoningEffortArg);

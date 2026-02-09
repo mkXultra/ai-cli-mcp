@@ -9,8 +9,6 @@ AI CLIツール（Claude, Codex, Gemini）をバックグラウンドプロセ�
 
 Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦戦していることに気づいたことはありませんか？このサーバーは、強力な統合 `run` ツールを提供し、複数のAIエージェントを活用してコーディングタスクをより効果的に処理できるようにします。
 
-<img src="assets/screenshot.png" width="300" alt="Screenshot">
-
 ## 概要
 
 このMCPサーバーは、LLMがAI CLIツールと対話するためのツールを提供します。MCPクライアントと統合することで、LLMは以下のことが可能になります：
@@ -19,8 +17,8 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 - 自動承認モードでCodex CLIを実行（`--full-auto` を使用）
 - 自動承認モードでGemini CLIを実行（`-y` を使用）
 - 複数のAIモデルのサポート：
-    - Claude (sonnet, opus, haiku)
-    - Codex (gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, など)
+    - Claude (sonnet, sonnet[1m], opus, opusplan, haiku)
+    - Codex (gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, など)
     - Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3-pro-preview, gemini-3-flash-preview)
 - PID追跡によるバックグラウンドプロセスの管理
 - ツールからの構造化された出力の解析と返却
@@ -134,10 +132,10 @@ Claude CLI、Codex CLI、またはGemini CLIを使用してプロンプトを実
 - `workFolder` (string, 必須): CLIを実行する作業ディレクトリ。絶対パスである必要があります。
 - **モデル (Models):**
     - **Ultra エイリアス:** `claude-ultra`, `codex-ultra` (自動的に high-reasoning に設定), `gemini-ultra`
-    - Claude: `sonnet`, `opus`, `haiku`
-    - Codex: `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
+    - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
+    - Codex: `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
     - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
-- `reasoning_effort` (string, 任意): Codex専用。`model_reasoning_effort` を設定します（許容値: "low", "medium", "high"）。
+- `reasoning_effort` (string, 任意): Codex専用。`model_reasoning_effort` を設定します（許容値: "low", "medium", "high", "xhigh"）。
 - `session_id` (string, 任意): 以前のセッションを再開するためのセッションID。対応モデル: haiku, sonnet, opus, gemini-2.5-pro, gemini-2.5-flash, gemini-3-pro-preview, gemini-3-flash-preview。
 
 ### `wait`
