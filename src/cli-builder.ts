@@ -5,7 +5,7 @@ import { resolve as pathResolve, isAbsolute } from 'node:path';
 export const MODEL_ALIASES: Record<string, string> = {
   'claude-ultra': 'opus',
   'codex-ultra': 'gpt-5.3-codex',
-  'gemini-ultra': 'gemini-3-pro-preview'
+  'gemini-ultra': 'gemini-3.1-pro-preview'
 };
 
 export const ALLOWED_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
