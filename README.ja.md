@@ -19,7 +19,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 - 複数のAIモデルのサポート：
     - Claude (sonnet, sonnet[1m], opus, opusplan, haiku)
     - Codex (gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, など)
-    - Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3-pro-preview, gemini-3-flash-preview)
+    - Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview)
 - PID追跡によるバックグラウンドプロセスの管理
 - ツールからの構造化された出力の解析と返却
 
@@ -134,9 +134,9 @@ Claude CLI、Codex CLI、またはGemini CLIを使用してプロンプトを実
     - **Ultra エイリアス:** `claude-ultra`, `codex-ultra` (自動的に high-reasoning に設定), `gemini-ultra`
     - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
     - Codex: `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
-    - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
+    - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
 - `reasoning_effort` (string, 任意): Codex専用。`model_reasoning_effort` を設定します（許容値: "low", "medium", "high", "xhigh"）。
-- `session_id` (string, 任意): 以前のセッションを再開するためのセッションID。対応モデル: haiku, sonnet, opus, gemini-2.5-pro, gemini-2.5-flash, gemini-3-pro-preview, gemini-3-flash-preview。
+- `session_id` (string, 任意): 以前のセッションを再開するためのセッションID。対応モデル: haiku, sonnet, opus, gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview。
 
 ### `wait`
 

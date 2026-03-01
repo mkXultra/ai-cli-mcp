@@ -1,4 +1,4 @@
-import { debugLog } from './server.js';
+import { debugLog } from './cli-utils.js';
 
 /**
  * Parse Codex NDJSON output to extract the last agent message and token count

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
 import { buildCliCommand } from './cli-builder.js';
-import { findClaudeCli, findCodexCli, findGeminiCli } from './server.js';
+import { findClaudeCli, findCodexCli, findGeminiCli } from './cli-utils.js';
 
 /**
  * Minimal argv parser. No external dependencies.

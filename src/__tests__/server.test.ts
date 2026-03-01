@@ -624,7 +624,7 @@ describe('ClaudeCodeServer Unit Tests', () => {
       // Verify spawn was called with -r flag
       expect(mockSpawn).toHaveBeenCalledWith(
         expect.any(String),
-        expect.arrayContaining(['-r', 'test-session-123', '-p', 'test prompt']),
+        expect.arrayContaining(['-r', 'test-session-123', '--fork-session', '-p', 'test prompt']),
         expect.any(Object)
       );
     });

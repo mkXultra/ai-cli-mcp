@@ -40,8 +40,8 @@ describe('cli-builder', () => {
       expect(resolveModelAlias('codex-ultra')).toBe('gpt-5.3-codex');
     });
 
-    it('should resolve gemini-ultra to gemini-3-pro-preview', () => {
-      expect(resolveModelAlias('gemini-ultra')).toBe('gemini-3-pro-preview');
+    it('should resolve gemini-ultra to gemini-3.1-pro-preview', () => {
+      expect(resolveModelAlias('gemini-ultra')).toBe('gemini-3.1-pro-preview');
     });
 
     it('should pass through non-alias model names', () => {
@@ -209,6 +209,7 @@ describe('cli-builder', () => {
 
         expect(cmd.args).toContain('-r');
         expect(cmd.args).toContain('ses-123');
+        expect(cmd.args).toContain('--fork-session');
       });
 
       it('should resolve claude-ultra alias to opus', () => {
@@ -338,7 +339,7 @@ describe('cli-builder', () => {
         });
 
         expect(cmd.agent).toBe('gemini');
-        expect(cmd.resolvedModel).toBe('gemini-3-pro-preview');
+        expect(cmd.resolvedModel).toBe('gemini-3.1-pro-preview');
       });
     });
   });
