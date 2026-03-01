@@ -1,3 +1,10 @@
+# [2.7.0](https://github.com/mkXultra/claude-code-mcp/compare/v2.6.0...v2.7.0) (2026-03-01)
+
+
+### Features
+
+* CLIラッパーとパーサーの追加（cli.run, cli.run.parse） ([330eacf](https://github.com/mkXultra/claude-code-mcp/commit/330eacf26e03484b389438522886448882f58289))
+
 # [2.6.0](https://github.com/mkXultra/claude-code-mcp/compare/v2.5.0...v2.6.0) (2026-02-09)
 
 
