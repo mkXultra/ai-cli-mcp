@@ -1,3 +1,15 @@
+# [2.8.0](https://github.com/mkXultra/claude-code-mcp/compare/v2.7.0...v2.8.0) (2026-03-01)
+
+
+### Bug Fixes
+
+* セッション再開時に--fork-sessionフラグを追加 ([44b359a](https://github.com/mkXultra/claude-code-mcp/commit/44b359a3acf6112339424efc703c1693df1ce1e9))
+
+
+### Features
+
+* Gemini 3.1 Pro Previewモデルを追加 ([1c314bb](https://github.com/mkXultra/claude-code-mcp/commit/1c314bba3019aea791117a974bfc5ee809e15eee))
+
 # [2.7.0](https://github.com/mkXultra/claude-code-mcp/compare/v2.6.0...v2.7.0) (2026-03-01)
 
 
