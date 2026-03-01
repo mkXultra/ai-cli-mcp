@@ -177,7 +177,7 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
     args = ['--dangerously-skip-permissions', '--output-format', 'stream-json', '--verbose'];
 
     if (options.session_id && typeof options.session_id === 'string') {
-      args.push('-r', options.session_id);
+      args.push('-r', options.session_id, '--fork-session');
     }
 
     args.push('-p', prompt);
