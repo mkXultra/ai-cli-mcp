@@ -38,6 +38,16 @@ npm run build
 npx @modelcontextprotocol/inspector node dist/server.js
 ```
 
+## CLI Direct Execution
+
+Run AI CLI tools directly from the terminal (foreground, no MCP server):
+
+```bash
+npm run -s cli.run -- --model sonnet --workFolder /tmp --prompt "hello"
+```
+
+See [docs/development.md](docs/development.md#cli-direct-execution-clirun) for full options.
+
 ## Local Development with npm link
 
 ```bash

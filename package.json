@@ -17,7 +17,9 @@
     "test:e2e": "npm run build && vitest run --config vitest.config.e2e.ts",
     "test:e2e:local": "npm run build && vitest run --config vitest.config.e2e.ts",
     "test:coverage": "npm run build && vitest --coverage --config vitest.config.unit.ts",
-    "test:watch": "vitest --watch"
+    "test:watch": "vitest --watch",
+    "cli.run": "tsx src/cli.ts",
+    "cli.run.parse": "tsx src/cli-parse.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.11.2",

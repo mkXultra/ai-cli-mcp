@@ -9,47 +9,15 @@ import {
   type ServerResult,
 } from '@modelcontextprotocol/sdk/types.js';
 import { spawn, ChildProcess } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, resolve as pathResolve } from 'node:path';
+import { join } from 'node:path';
 import * as path from 'path';
 import { parseCodexOutput, parseClaudeOutput, parseGeminiOutput } from './parsers.js';
+import { buildCliCommand } from './cli-builder.js';
 
 // Server version - update this when releasing new versions
 const SERVER_VERSION = "2.2.0";
-
-// Model alias mappings for user-friendly model names
-const MODEL_ALIASES: Record<string, string> = {
-  'claude-ultra': 'opus',
-  'codex-ultra': 'gpt-5.3-codex',
-  'gemini-ultra': 'gemini-3-pro-preview'
-};
-
-const ALLOWED_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
-
-function getReasoningEffort(model: string, rawValue: unknown): string {
-  if (typeof rawValue !== 'string') {
-    return '';
-  }
-  const trimmed = rawValue.trim();
-  if (!trimmed) {
-    return '';
-  }
-  const normalized = trimmed.toLowerCase();
-  if (!ALLOWED_REASONING_EFFORTS.has(normalized)) {
-    throw new McpError(
-      ErrorCode.InvalidParams,
-      `Invalid reasoning_effort: ${rawValue}. Allowed values: low, medium, high, xhigh.`
-    );
-  }
-  if (!model.startsWith('gpt-')) {
-    throw new McpError(
-      ErrorCode.InvalidParams,
-      'reasoning_effort is only supported for Codex models (gpt-*).'
-    );
-  }
-  return normalized;
-}
 
 // Define debugMode globally using const
 const debugMode = process.env.MCP_CLAUDE_DEBUG === 'true';
@@ -226,36 +194,8 @@ export function findClaudeCli(): string {
   return cliName;
 }
 
-/**
- * Interface for Claude Code tool arguments
- */
-interface ClaudeCodeArgs {
-  prompt?: string;
-  prompt_file?: string;
-  workFolder: string;
-  model?: string;
-  session_id?: string;
-}
-
-/**
- * Interface for Codex tool arguments
- */
-interface CodexArgs {
-  prompt?: string;
-  prompt_file?: string;
-  workFolder: string;
-  model?: string;  // Codex model id (e.g., gpt-5.2-codex)
-  reasoning_effort?: string;
-}
-
-/**
- * Resolves model aliases to their full model names
- * @param model - The model name or alias to resolve
- * @returns The full model name, or the original value if no alias exists
- */
-export function resolveModelAlias(model: string): string {
-  return MODEL_ALIASES[model] || model;
-}
+// Re-export resolveModelAlias for backward compatibility
+export { resolveModelAlias } from './cli-builder.js';
 
 // Ensure spawnAsync is defined correctly *before* the class
 export async function spawnAsync(command: string, args: string[], options?: { timeout?: number, cwd?: string }): Promise<{ stdout: string; stderr: string }> {
@@ -512,135 +452,33 @@ export class ClaudeCodeServer {
    * Handle run tool - starts Claude or Codex process and returns PID immediately
    */
   private async handleRun(toolArguments: any): Promise<ServerResult> {
-    // Validate workFolder is required
-    if (!toolArguments.workFolder || typeof toolArguments.workFolder !== 'string') {
-      throw new McpError(ErrorCode.InvalidParams, 'Missing or invalid required parameter: workFolder');
-    }
-
-    // Validate that either prompt or prompt_file is provided
-    const hasPrompt = toolArguments.prompt && typeof toolArguments.prompt === 'string' && toolArguments.prompt.trim() !== '';
-    const hasPromptFile = toolArguments.prompt_file && typeof toolArguments.prompt_file === 'string' && toolArguments.prompt_file.trim() !== '';
-
-    if (!hasPrompt && !hasPromptFile) {
-      throw new McpError(ErrorCode.InvalidParams, 'Either prompt or prompt_file must be provided');
-    }
-
-    if (hasPrompt && hasPromptFile) {
-      throw new McpError(ErrorCode.InvalidParams, 'Cannot specify both prompt and prompt_file. Please use only one.');
-    }
-
-    // Determine the prompt to use
-    let prompt: string;
-    if (hasPrompt) {
-      prompt = toolArguments.prompt;
-    } else {
-      // Read prompt from file
-      const promptFilePath = path.isAbsolute(toolArguments.prompt_file) 
-        ? toolArguments.prompt_file 
-        : pathResolve(toolArguments.workFolder, toolArguments.prompt_file);
-      
-      if (!existsSync(promptFilePath)) {
-        throw new McpError(ErrorCode.InvalidParams, `Prompt file does not exist: ${promptFilePath}`);
-      }
-      
-      try {
-        prompt = readFileSync(promptFilePath, 'utf-8');
-      } catch (error: any) {
-        throw new McpError(ErrorCode.InvalidParams, `Failed to read prompt file: ${error.message}`);
-      }
-    }
-    
-    // Determine working directory
-    const resolvedCwd = pathResolve(toolArguments.workFolder);
-    if (!existsSync(resolvedCwd)) {
-      throw new McpError(ErrorCode.InvalidParams, `Working folder does not exist: ${toolArguments.workFolder}`);
-    }
-    const effectiveCwd = resolvedCwd;
-
     // Print version on first use
     if (isFirstToolUse) {
       console.error(`ai_cli_mcp v${SERVER_VERSION} started at ${serverStartupTime}`);
       isFirstToolUse = false;
     }
 
-    // Determine which agent to use based on model name
-    const rawModel = toolArguments.model || '';
-    const resolvedModel = resolveModelAlias(rawModel);
-
-    // Special handling for codex-ultra: default to high reasoning effort if not specified
-    let reasoningEffortArg = toolArguments.reasoning_effort;
-    if (rawModel === 'codex-ultra' && !reasoningEffortArg) {
-      reasoningEffortArg = 'xhigh';
+    // Build CLI command (validation + args assembly)
+    let cmd;
+    try {
+      cmd = buildCliCommand({
+        prompt: toolArguments.prompt,
+        prompt_file: toolArguments.prompt_file,
+        workFolder: toolArguments.workFolder,
+        model: toolArguments.model,
+        session_id: toolArguments.session_id,
+        reasoning_effort: toolArguments.reasoning_effort,
+        cliPaths: {
+          claude: this.claudeCliPath,
+          codex: this.codexCliPath,
+          gemini: this.geminiCliPath,
+        },
+      });
+    } catch (error: any) {
+      throw new McpError(ErrorCode.InvalidParams, error.message);
     }
 
-    const reasoningEffort = getReasoningEffort(resolvedModel, reasoningEffortArg);
-    let agent: 'codex' | 'claude' | 'gemini';
-
-    if (resolvedModel.startsWith('gpt-')) {
-      agent = 'codex';
-    } else if (resolvedModel.startsWith('gemini')) {
-      agent = 'gemini';
-    } else {
-      agent = 'claude';
-    }
-
-    let cliPath: string;
-    let processArgs: string[];
-
-    if (agent === 'codex') {
-      // Handle Codex
-      cliPath = this.codexCliPath;
-
-      // Use 'exec resume' if session_id is provided, otherwise use 'exec'
-      if (toolArguments.session_id && typeof toolArguments.session_id === 'string') {
-        processArgs = ['exec', 'resume', toolArguments.session_id];
-      } else {
-        processArgs = ['exec'];
-      }
-
-      // Handle Codex models.
-      if (reasoningEffort) {
-        processArgs.push('-c', `model_reasoning_effort=${reasoningEffort}`);
-      }
-      if (resolvedModel) {
-        processArgs.push('--model', resolvedModel);
-      }
-
-      processArgs.push('--full-auto', '--json', prompt);
-
-    } else if (agent === 'gemini') {
-      // Handle Gemini
-      cliPath = this.geminiCliPath;
-      processArgs = ['-y', '--output-format', 'json'];
-
-      // Add session_id if provided
-      if (toolArguments.session_id && typeof toolArguments.session_id === 'string') {
-        processArgs.push('-r', toolArguments.session_id);
-      }
-
-      // Add model if specified
-      if (resolvedModel) {
-        processArgs.push('--model', resolvedModel);
-      }
-
-      // Add prompt as positional argument
-      processArgs.push(prompt);
-
-    } else {
-      // Handle Claude (default)
-      cliPath = this.claudeCliPath;
-      processArgs = ['--dangerously-skip-permissions', '--output-format', 'stream-json', '--verbose'];
-
-      // Add session_id if provided (Claude only)
-      if (toolArguments.session_id && typeof toolArguments.session_id === 'string') {
-        processArgs.push('-r', toolArguments.session_id);
-      }
-
-      processArgs.push('-p', prompt);
-      if (resolvedModel) {
-        processArgs.push('--model', resolvedModel);
-      }
-    }
+    const { cliPath, args: processArgs, cwd: effectiveCwd, agent, prompt } = cmd;
 
     // Spawn process without waiting
     const childProcess = spawn(cliPath, processArgs, {
