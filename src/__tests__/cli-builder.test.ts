@@ -209,6 +209,7 @@ describe('cli-builder', () => {
 
         expect(cmd.args).toContain('-r');
         expect(cmd.args).toContain('ses-123');
+        expect(cmd.args).toContain('--fork-session');
       });
 
       it('should resolve claude-ultra alias to opus', () => {
