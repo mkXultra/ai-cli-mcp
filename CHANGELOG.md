@@ -1,3 +1,10 @@
+## [2.8.2](https://github.com/mkXultra/ai-cli-mcp/compare/v2.8.1...v2.8.2) (2026-03-02)
+
+
+### Bug Fixes
+
+* MCP Registry公開用のmcpNameとserver.jsonを追加 ([cc45e0b](https://github.com/mkXultra/ai-cli-mcp/commit/cc45e0bf80632b1e94247cb82492c45f6a9489dd))
+
 ## [2.8.1](https://github.com/mkXultra/ai-cli-mcp/compare/v2.8.0...v2.8.1) (2026-03-02)
 
 
