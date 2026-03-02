@@ -61,5 +61,5 @@ This project uses OIDC trusted publishing (no npm token required).
 
 Configuration on npmjs.com:
 - Organization/user: `mkXultra`
-- Repository: `claude-code-mcp`
+- Repository: `ai-cli-mcp`
 - Workflow filename: `publish.yml`

@@ -3,8 +3,8 @@
 ## Development Setup
 
 ```bash
-git clone https://github.com/mkXultra/claude-code-mcp.git
-cd claude-code-mcp
+git clone https://github.com/mkXultra/ai-cli-mcp.git
+cd ai-cli-mcp
 npm install
 npm run build
 ```

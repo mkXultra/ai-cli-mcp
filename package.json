@@ -39,7 +39,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mkXultra/claude-code-mcp.git"
+    "url": "git+https://github.com/mkXultra/ai-cli-mcp.git"
   },
   "keywords": [
     "mcp",
@@ -52,7 +52,7 @@
     "gpt5"
   ],
   "bugs": {
-    "url": "https://github.com/mkXultra/claude-code-mcp/issues"
+    "url": "https://github.com/mkXultra/ai-cli-mcp/issues"
   },
-  "homepage": "https://github.com/mkXultra/claude-code-mcp#readme"
+  "homepage": "https://github.com/mkXultra/ai-cli-mcp#readme"
 }

@@ -4,8 +4,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/mkXultra/claude-code-mcp.git
-cd claude-code-mcp
+git clone https://github.com/mkXultra/ai-cli-mcp.git
+cd ai-cli-mcp
 
 # Install dependencies
 npm install
@@ -153,4 +153,4 @@ These can be set in your shell environment or within the `env` block of your `mc
 
 Contributions are welcome!
 
-Submit issues and pull requests to the [GitHub repository](https://github.com/mkXultra/claude-code-mcp).
+Submit issues and pull requests to the [GitHub repository](https://github.com/mkXultra/ai-cli-mcp).
