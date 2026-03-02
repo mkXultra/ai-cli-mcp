@@ -1,3 +1,11 @@
+## [2.8.1](https://github.com/mkXultra/ai-cli-mcp/compare/v2.8.0...v2.8.1) (2026-03-02)
+
+
+### Bug Fixes
+
+* リポジトリ名変更に伴うURL・参照の更新 ([909cab7](https://github.com/mkXultra/ai-cli-mcp/commit/909cab77cc1e03f5880bd699ed680c32d990adb5))
+* リポジトリ名変更に伴う再リリース ([c6a165b](https://github.com/mkXultra/ai-cli-mcp/commit/c6a165b101eae5cbc1b9d139227dfd074172a070))
+
 # [2.8.0](https://github.com/mkXultra/claude-code-mcp/compare/v2.7.0...v2.8.0) (2026-03-01)
 
 
