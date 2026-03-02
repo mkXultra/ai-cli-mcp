@@ -6,12 +6,12 @@
     "url": "https://github.com/mkXultra/ai-cli-mcp",
     "source": "github"
   },
-  "version": "2.8.1",
+  "version": "2.8.2",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "ai-cli-mcp",
-      "version": "2.8.1",
+      "version": "2.8.2",
       "transport": {
         "type": "stdio"
       }
