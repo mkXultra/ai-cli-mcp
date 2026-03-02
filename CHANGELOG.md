@@ -1,3 +1,10 @@
+# [2.9.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.8.2...v2.9.0) (2026-03-02)
+
+
+### Features
+
+* MCP Registry公開をCI/CDに統合 ([366d4db](https://github.com/mkXultra/ai-cli-mcp/commit/366d4db1ab63dcf6290c0f72f16fe875f9846464))
+
 ## [2.8.2](https://github.com/mkXultra/ai-cli-mcp/compare/v2.8.1...v2.8.2) (2026-03-02)
 
 
