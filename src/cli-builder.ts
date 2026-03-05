@@ -156,7 +156,7 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
       args.push('--model', resolvedModel);
     }
 
-    args.push('--full-auto', '--json', prompt);
+    args.push('--skip-git-repo-check', '--full-auto', '--json', prompt);
 
   } else if (agent === 'gemini') {
     cliPath = options.cliPaths.gemini;
