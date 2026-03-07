@@ -1,0 +1,98 @@
+name: Watch Codex Fork PR
+
+on:
+  schedule:
+    - cron: '17 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check upstream PR and notify issue
+        uses: actions/github-script@v7
+        env:
+          UPSTREAM_OWNER: openai
+          UPSTREAM_REPO: codex
+          UPSTREAM_PR_NUMBER: '13537'
+          TARGET_ISSUE_NUMBER: '7'
+          COMMENT_MARKER: '<!-- codex-fork-pr-13537-merged -->'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const upstreamOwner = process.env.UPSTREAM_OWNER;
+            const upstreamRepo = process.env.UPSTREAM_REPO;
+            const pull_number = Number(process.env.UPSTREAM_PR_NUMBER);
+            const issue_number = Number(process.env.TARGET_ISSUE_NUMBER);
+            const marker = process.env.COMMENT_MARKER;
+
+            const { data: pr } = await github.rest.pulls.get({
+              owner: upstreamOwner,
+              repo: upstreamRepo,
+              pull_number,
+            });
+
+            core.summary
+              .addHeading('Upstream PR status')
+              .addTable([
+                [
+                  { data: 'Field', header: true },
+                  { data: 'Value', header: true },
+                ],
+                ['PR', `${upstreamOwner}/${upstreamRepo}#${pr.number}`],
+                ['Title', pr.title],
+                ['State', pr.state],
+                ['Merged', String(Boolean(pr.merged_at))],
+                ['Merged at', pr.merged_at ?? 'not merged'],
+                ['Updated at', pr.updated_at],
+                ['URL', pr.html_url],
+              ]);
+
+            if (!pr.merged_at) {
+              core.info(`PR #${pr.number} is not merged yet. No issue comment posted.`);
+              await core.summary.write();
+              return;
+            }
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+              per_page: 100,
+            });
+
+            const existingComment = comments.find((comment) => comment.body?.includes(marker));
+            if (existingComment) {
+              core.info(`Issue #${issue_number} already has a merged notification comment.`);
+              await core.summary.addRaw(`Merged notification already exists: ${existingComment.html_url}\n`).write();
+              return;
+            }
+
+            const body = [
+              marker,
+              'upstream PR `openai/codex#13537` has been merged.',
+              '',
+              `- PR: ${pr.html_url}`,
+              `- Merged at: ${pr.merged_at}`,
+              '',
+              'This is the PR that adds non-interactive forking via `codex exec --fork <SESSION_ID> [PROMPT]`.',
+              'That means a new session ID can be issued when forking an existing session headlessly.',
+              '`resume` itself still continues the same session and does not issue a new session ID.',
+            ].join('\n');
+
+            const { data: comment } = await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+              body,
+            });
+
+            core.info(`Posted merged notification to issue #${issue_number}: ${comment.html_url}`);
+            await core.summary
+              .addHeading('Issue notification')
+              .addRaw(`Posted merged notification: ${comment.html_url}\n`)
+              .write();
