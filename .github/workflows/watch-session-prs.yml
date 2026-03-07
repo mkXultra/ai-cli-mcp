@@ -1,0 +1,202 @@
+name: Watch Session PRs
+
+on:
+  schedule:
+    - cron: '17 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch-codex-fork:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Codex fork PR and update issue
+        uses: actions/github-script@v7
+        env:
+          UPSTREAM_OWNER: openai
+          UPSTREAM_REPO: codex
+          UPSTREAM_PR_NUMBER: '13537'
+          TARGET_ISSUE_NUMBER: '7'
+          COMMENT_MARKER: '<!-- codex-fork-pr-13537-status -->'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = process.env.UPSTREAM_OWNER;
+            const repo = process.env.UPSTREAM_REPO;
+            const pull_number = Number(process.env.UPSTREAM_PR_NUMBER);
+            const issue_number = Number(process.env.TARGET_ISSUE_NUMBER);
+            const marker = process.env.COMMENT_MARKER;
+
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number });
+
+            core.summary
+              .addHeading('Codex PR status')
+              .addTable([
+                [
+                  { data: 'Field', header: true },
+                  { data: 'Value', header: true },
+                ],
+                ['PR', `${owner}/${repo}#${pr.number}`],
+                ['Title', pr.title],
+                ['State', pr.state],
+                ['Merged', pr.merged_at ? 'yes' : 'no'],
+                ['Merged at', pr.merged_at ?? 'not merged'],
+                ['Updated at', pr.updated_at],
+                ['URL', pr.html_url],
+              ]);
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+              per_page: 100,
+            });
+
+            const existingComment = comments.find((comment) => comment.body?.includes(marker));
+            const body = [
+              marker,
+              'upstream PR `openai/codex#13537` status watcher',
+              '',
+              `- PR: ${pr.html_url}`,
+              `- State: ${pr.state}`,
+              `- Merged: ${pr.merged_at ? 'yes' : 'no'}`,
+              `- Merged at: ${pr.merged_at ?? 'not merged'}`,
+              `- Updated at: ${pr.updated_at}`,
+              '',
+              pr.merged_at
+                ? 'This PR has been merged. `codex exec --fork <SESSION_ID> [PROMPT]` should become available once the change lands in the installed Codex version.'
+                : 'This PR is not merged yet. Non-interactive forking is still not available in released Codex builds.',
+              'A new session ID is expected when using `--fork`; `resume` itself continues the same session.',
+            ].join('\n');
+
+            if (existingComment?.body === body) {
+              core.info(`Issue #${issue_number} status comment is already up to date.`);
+              await core.summary.addRaw(`No update needed: ${existingComment.html_url}\n`).write();
+              return;
+            }
+
+            if (existingComment) {
+              const { data: comment } = await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body,
+              });
+              core.info(`Updated issue #${issue_number}: ${comment.html_url}`);
+              await core.summary.addRaw(`Updated status comment: ${comment.html_url}\n`).write();
+              return;
+            }
+
+            const { data: comment } = await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+              body,
+            });
+            core.info(`Created issue #${issue_number} status comment: ${comment.html_url}`);
+            await core.summary.addRaw(`Created status comment: ${comment.html_url}\n`).write();
+
+  watch-gemini-session-work:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Gemini session PRs and update issue
+        uses: actions/github-script@v7
+        env:
+          UPSTREAM_OWNER: google-gemini
+          UPSTREAM_REPO: gemini-cli
+          TARGET_ISSUE_NUMBER: '16'
+          COMMENT_MARKER: '<!-- gemini-session-pr-status -->'
+          WATCH_PR_NUMBERS: '17921,19629,19994'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = process.env.UPSTREAM_OWNER;
+            const repo = process.env.UPSTREAM_REPO;
+            const issue_number = Number(process.env.TARGET_ISSUE_NUMBER);
+            const marker = process.env.COMMENT_MARKER;
+            const pullNumbers = process.env.WATCH_PR_NUMBERS.split(',').map((value) => Number(value.trim()));
+
+            const pulls = await Promise.all(
+              pullNumbers.map(async (pull_number) => {
+                const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number });
+                return pr;
+              }),
+            );
+
+            const lines = pulls.flatMap((pr) => [
+              `- \`${owner}/${repo}#${pr.number}\` ${pr.title}`,
+              `  - State: ${pr.state}`,
+              `  - Merged: ${pr.merged_at ? 'yes' : 'no'}`,
+              `  - Merged at: ${pr.merged_at ?? 'not merged'}`,
+              `  - Updated at: ${pr.updated_at}`,
+              `  - URL: ${pr.html_url}`,
+            ]);
+
+            core.summary
+              .addHeading('Gemini PR status')
+              .addTable([
+                [
+                  { data: 'PR', header: true },
+                  { data: 'State', header: true },
+                  { data: 'Merged', header: true },
+                  { data: 'Updated at', header: true },
+                ],
+                ...pulls.map((pr) => [
+                  `${owner}/${repo}#${pr.number}`,
+                  pr.state,
+                  pr.merged_at ? 'yes' : 'no',
+                  pr.updated_at,
+                ]),
+              ]);
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+              per_page: 100,
+            });
+
+            const existingComment = comments.find((comment) => comment.body?.includes(marker));
+            const body = [
+              marker,
+              'upstream Gemini CLI session-related PR status watcher',
+              '',
+              'Tracked PRs:',
+              ...lines,
+              '',
+              'Interpretation:',
+              '- `#19994` is a fix for resumed session ID stats mismatch, not a fork/new-session feature.',
+              '- `#17921` is the `/new` command proposal for starting a fresh session while preserving the previous one.',
+              '- `#19629` is the `--session-id` proposal for explicit session UUID control.',
+              '- Even if these land, that still does not automatically imply Codex-style headless fork semantics from `--resume` alone.',
+            ].join('\n');
+
+            if (existingComment?.body === body) {
+              core.info(`Issue #${issue_number} Gemini status comment is already up to date.`);
+              await core.summary.addRaw(`No update needed: ${existingComment.html_url}\n`).write();
+              return;
+            }
+
+            if (existingComment) {
+              const { data: comment } = await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body,
+              });
+              core.info(`Updated issue #${issue_number}: ${comment.html_url}`);
+              await core.summary.addRaw(`Updated status comment: ${comment.html_url}\n`).write();
+              return;
+            }
+
+            const { data: comment } = await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+              body,
+            });
+            core.info(`Created issue #${issue_number} status comment: ${comment.html_url}`);
+            await core.summary.addRaw(`Created status comment: ${comment.html_url}\n`).write();
