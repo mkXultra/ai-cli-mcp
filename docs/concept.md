@@ -117,7 +117,7 @@ src/
 
 ```
 claude-ultra  → opus
-codex-ultra   → gpt-5.3-codex (+ reasoning_effort: high)
+codex-ultra   → gpt-5.4 (+ reasoning_effort: high)
 gemini-ultra  → gemini-3.1-pro-preview
 ```
 
