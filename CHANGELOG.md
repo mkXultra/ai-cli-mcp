@@ -1,3 +1,10 @@
+# [2.10.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.9.1...v2.10.0) (2026-03-07)
+
+
+### Features
+
+* gpt-5.4モデルを追加しcodex-ultraエイリアスを更新 ([0fb15a6](https://github.com/mkXultra/ai-cli-mcp/commit/0fb15a635ab9d5450da16cb3b15132054c8c0dbe))
+
 ## [2.9.1](https://github.com/mkXultra/ai-cli-mcp/compare/v2.9.0...v2.9.1) (2026-03-07)
 
 
