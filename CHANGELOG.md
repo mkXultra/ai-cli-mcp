@@ -1,3 +1,17 @@
+## [2.9.1](https://github.com/mkXultra/ai-cli-mcp/compare/v2.9.0...v2.9.1) (2026-03-07)
+
+
+### Bug Fixes
+
+* add --skip-git-repo-check flag for Codex CLI ([ca185a1](https://github.com/mkXultra/ai-cli-mcp/commit/ca185a17dc90e25eca206248832d47ad5232d391)), closes [mkXultra/ai-cli-mcp#12](https://github.com/mkXultra/ai-cli-mcp/issues/12)
+
+# [2.9.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.8.2...v2.9.0) (2026-03-02)
+
+
+### Features
+
+* MCP Registry公開をCI/CDに統合 ([366d4db](https://github.com/mkXultra/ai-cli-mcp/commit/366d4db1ab63dcf6290c0f72f16fe875f9846464))
+
 ## [2.8.2](https://github.com/mkXultra/ai-cli-mcp/compare/v2.8.1...v2.8.2) (2026-03-02)
 
 

@@ -1,6 +1,6 @@
 {
   "name": "ai-cli-mcp",
-  "version": "2.8.2",
+  "version": "2.9.1",
   "mcpName": "io.github.mkXultra/ai-cli-mcp",
   "description": "MCP server for AI CLI tools (Claude, Codex, and Gemini) with background process management",
   "author": "mkXultra",
