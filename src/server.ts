@@ -162,7 +162,7 @@ export class ClaudeCodeServer {
 **IMPORTANT**: This tool now returns immediately with a PID. Use other tools to check status and get results.
 
 **Supported models**:
-"claude-ultra", "codex-ultra", "gemini-ultra", "sonnet", "sonnet[1m]", "opus", "opusplan", "haiku", "gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.1-codex-mini", "gpt-5.1-codex-max", "gpt-5.2", "gpt-5.1", "gpt-5.1-codex", "gpt-5-codex", "gpt-5-codex-mini", "gpt-5", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-3.1-pro-preview", "gemini-3-pro-preview", "gemini-3-flash-preview"
+"claude-ultra", "codex-ultra", "gemini-ultra", "sonnet", "sonnet[1m]", "opus", "opusplan", "haiku", "gpt-5.4", "gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.1-codex-mini", "gpt-5.1-codex-max", "gpt-5.2", "gpt-5.1", "gpt-5.1-codex", "gpt-5-codex", "gpt-5-codex-mini", "gpt-5", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-3.1-pro-preview", "gemini-3-pro-preview", "gemini-3-flash-preview"
 
 **Prompt input**: You must provide EITHER prompt (string) OR prompt_file (file path), but not both.
 
@@ -190,7 +190,7 @@ export class ClaudeCodeServer {
               },
               model: {
                 type: 'string',
-                description: 'The model to use. Aliases: "claude-ultra", "codex-ultra" (auto high-reasoning), "gemini-ultra". Standard: "sonnet", "sonnet[1m]", "opus", "opusplan", "haiku", "gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.1-codex-mini", "gpt-5.1", "gemini-2.5-pro", "gemini-3.1-pro-preview", "gemini-3-pro-preview", "gemini-3-flash-preview", etc.',
+                description: 'The model to use. Aliases: "claude-ultra", "codex-ultra" (auto high-reasoning), "gemini-ultra". Standard: "sonnet", "sonnet[1m]", "opus", "opusplan", "haiku", "gpt-5.4", "gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.1-codex-mini", "gpt-5.1", "gemini-2.5-pro", "gemini-3.1-pro-preview", "gemini-3-pro-preview", "gemini-3-flash-preview", etc.',
               },
               reasoning_effort: {
                 type: 'string',

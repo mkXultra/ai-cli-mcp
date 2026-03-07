@@ -36,8 +36,8 @@ describe('cli-builder', () => {
       expect(resolveModelAlias('claude-ultra')).toBe('opus');
     });
 
-    it('should resolve codex-ultra to gpt-5.3-codex', () => {
-      expect(resolveModelAlias('codex-ultra')).toBe('gpt-5.3-codex');
+    it('should resolve codex-ultra to gpt-5.4', () => {
+      expect(resolveModelAlias('codex-ultra')).toBe('gpt-5.4');
     });
 
     it('should resolve gemini-ultra to gemini-3.1-pro-preview', () => {
@@ -280,7 +280,7 @@ describe('cli-builder', () => {
         });
 
         expect(cmd.agent).toBe('codex');
-        expect(cmd.resolvedModel).toBe('gpt-5.3-codex');
+        expect(cmd.resolvedModel).toBe('gpt-5.4');
         expect(cmd.args).toContain('-c');
         expect(cmd.args).toContain('model_reasoning_effort=xhigh');
       });
