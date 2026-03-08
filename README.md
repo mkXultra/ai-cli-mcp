@@ -13,7 +13,7 @@ Did you notice that Cursor sometimes struggles with complex, multi-step edits or
 
 ## Demo
 
-[![Demo](docs/assets/demo.gif)](docs/assets/demo.mp4?raw=true)
+[![Demo](docs/assets/demo.gif)](https://github.com/mkXultra/ai-cli-mcp/releases/download/v2.11.0/demo.mp4)
 
 ## Overview
 
@@ -48,7 +48,7 @@ You can reuse heavy context (like large codebases) using session IDs to save cos
 >    - Add architecture documentation to `README.md` using `gpt-5.2-codex`
 > 4. Finally, `wait` again to combine both results.
 
-[![Session Resume Demo](docs/assets/demo-resume.gif)](docs/assets/demo-resume.mp4?raw=true)
+[![Session Resume Demo](docs/assets/demo-resume.gif)](https://github.com/mkXultra/ai-cli-mcp/releases/download/v2.11.0/demo-resume.mp4)
 
 ## Benefits
 
