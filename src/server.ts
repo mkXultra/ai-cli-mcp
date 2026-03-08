@@ -190,11 +190,11 @@ export class ClaudeCodeServer {
               },
               model: {
                 type: 'string',
-                description: 'The model to use. Aliases: "claude-ultra", "codex-ultra" (auto high-reasoning), "gemini-ultra". Standard: "sonnet", "sonnet[1m]", "opus", "opusplan", "haiku", "gpt-5.4", "gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.1-codex-mini", "gpt-5.1", "gemini-2.5-pro", "gemini-3.1-pro-preview", "gemini-3-pro-preview", "gemini-3-flash-preview", etc.',
+                description: 'The model to use. Aliases: "claude-ultra" (auto high effort), "codex-ultra" (auto xhigh reasoning), "gemini-ultra". Standard: "sonnet", "sonnet[1m]", "opus", "opusplan", "haiku", "gpt-5.4", "gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.1-codex-mini", "gpt-5.1", "gemini-2.5-pro", "gemini-3.1-pro-preview", "gemini-3-pro-preview", "gemini-3-flash-preview", etc.',
               },
               reasoning_effort: {
                 type: 'string',
-                description: 'Codex only. Sets model_reasoning_effort. Allowed: "low", "medium", "high", "xhigh".',
+                description: 'Reasoning control for Claude and Codex. Claude uses --effort with "low", "medium", "high". Codex uses model_reasoning_effort with "low", "medium", "high", "xhigh".',
               },
               session_id: {
                 type: 'string',

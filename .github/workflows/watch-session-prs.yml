@@ -21,6 +21,8 @@ jobs:
           UPSTREAM_PR_NUMBER: '13537'
           TARGET_ISSUE_NUMBER: '7'
           COMMENT_MARKER: '<!-- codex-fork-pr-13537-status -->'
+          READY_LABEL: '[ready]'
+          STOP_LABEL: '[stop]'
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -29,8 +31,41 @@ jobs:
             const pull_number = Number(process.env.UPSTREAM_PR_NUMBER);
             const issue_number = Number(process.env.TARGET_ISSUE_NUMBER);
             const marker = process.env.COMMENT_MARKER;
+            const readyLabel = process.env.READY_LABEL;
+            const stopLabel = process.env.STOP_LABEL;
 
             const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number });
+            const desiredLabel = pr.merged_at ? readyLabel : stopLabel;
+            const staleLabel = pr.merged_at ? stopLabel : readyLabel;
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+            });
+
+            if (!issue.labels.some((label) => label.name === desiredLabel)) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number,
+                labels: [desiredLabel],
+              });
+              core.info(`Added label ${desiredLabel} to issue #${issue_number}.`);
+            }
+
+            if (issue.labels.some((label) => label.name === staleLabel)) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number,
+                  name: staleLabel,
+                });
+                core.info(`Removed label ${staleLabel} from issue #${issue_number}.`);
+              } catch (error) {
+                core.warning(`Failed to remove label ${staleLabel}: ${error.message}`);
+              }
+            }
 
             core.summary
               .addHeading('Codex PR status')
@@ -110,6 +145,9 @@ jobs:
           TARGET_ISSUE_NUMBER: '16'
           COMMENT_MARKER: '<!-- gemini-session-pr-status -->'
           WATCH_PR_NUMBERS: '17921,19629,19994'
+          READY_PR_NUMBERS: '17921,19629'
+          READY_LABEL: '[ready]'
+          STOP_LABEL: '[stop]'
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -118,6 +156,9 @@ jobs:
             const issue_number = Number(process.env.TARGET_ISSUE_NUMBER);
             const marker = process.env.COMMENT_MARKER;
             const pullNumbers = process.env.WATCH_PR_NUMBERS.split(',').map((value) => Number(value.trim()));
+            const readyPullNumbers = process.env.READY_PR_NUMBERS.split(',').map((value) => Number(value.trim()));
+            const readyLabel = process.env.READY_LABEL;
+            const stopLabel = process.env.STOP_LABEL;
 
             const pulls = await Promise.all(
               pullNumbers.map(async (pull_number) => {
@@ -125,6 +166,39 @@ jobs:
                 return pr;
               }),
             );
+            const isReady = pulls.some((pr) => readyPullNumbers.includes(pr.number) && Boolean(pr.merged_at));
+            const desiredLabel = isReady ? readyLabel : stopLabel;
+            const staleLabel = isReady ? stopLabel : readyLabel;
+
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+            });
+
+            if (!issue.labels.some((label) => label.name === desiredLabel)) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number,
+                labels: [desiredLabel],
+              });
+              core.info(`Added label ${desiredLabel} to issue #${issue_number}.`);
+            }
+
+            if (issue.labels.some((label) => label.name === staleLabel)) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number,
+                  name: staleLabel,
+                });
+                core.info(`Removed label ${staleLabel} from issue #${issue_number}.`);
+              } catch (error) {
+                core.warning(`Failed to remove label ${staleLabel}: ${error.message}`);
+              }
+            }
 
             const lines = pulls.flatMap((pr) => [
               `- \`${owner}/${repo}#${pr.number}\` ${pr.title}`,

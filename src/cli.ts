@@ -40,7 +40,7 @@ Options:
   --prompt             Prompt string (mutually exclusive with --prompt_file)
   --prompt_file        Path to a file containing the prompt
   --session_id         Session ID to resume
-  --reasoning_effort   Codex only: low, medium, high, xhigh
+  --reasoning_effort   Claude/Codex: Claude=low|medium|high, Codex=low|medium|high|xhigh
   --help               Show this help message
 
 Raw CLI output goes to stdout. Use cli.run.parse to parse the output:
