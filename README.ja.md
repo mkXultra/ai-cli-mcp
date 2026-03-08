@@ -11,7 +11,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 
 ## デモ
 
-<video src="docs/assets/demo-jp.mp4" controls width="100%"></video>
+[![デモ](docs/assets/demo-jp.gif)](docs/assets/demo-jp.mp4)
 
 ## 概要
 
@@ -49,7 +49,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 >    - `gpt-5.2-codex` で `README.md` にアーキテクチャの解説を追記
 > 4. 最後に再び `wait` して、両方の結果をまとめてください。
 
-<video src="docs/assets/demo-resume-jp.mp4" controls width="100%"></video>
+[![セッション再開デモ](docs/assets/demo-resume-jp.gif)](docs/assets/demo-resume-jp.mp4)
 
 ## メリット
 
