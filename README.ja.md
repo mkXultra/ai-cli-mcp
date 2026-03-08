@@ -9,6 +9,10 @@ AI CLIツール（Claude, Codex, Gemini）をバックグラウンドプロセ�
 
 Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦戦していることに気づいたことはありませんか？このサーバーは、強力な統合 `run` ツールを提供し、複数のAIエージェントを活用してコーディングタスクをより効果的に処理できるようにします。
 
+## デモ
+
+[![デモ](docs/assets/demo-jp.gif)](https://github.com/mkXultra/ai-cli-mcp/releases/download/v2.11.0/demo-jp.mp4)
+
 ## 概要
 
 このMCPサーバーは、LLMがAI CLIツールと対話するためのツールを提供します。MCPクライアントと統合することで、LLMは以下のことが可能になります：
@@ -44,6 +48,8 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 >    - `sonnet` で `src/utils` のリファクタリング案を作成
 >    - `gpt-5.2-codex` で `README.md` にアーキテクチャの解説を追記
 > 4. 最後に再び `wait` して、両方の結果をまとめてください。
+
+[![セッション再開デモ](docs/assets/demo-resume-jp.gif)](https://github.com/mkXultra/ai-cli-mcp/releases/download/v2.11.0/demo-resume-jp.mp4)
 
 ## メリット
 

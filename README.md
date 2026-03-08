@@ -11,6 +11,10 @@ An MCP (Model Context Protocol) server that allows running AI CLI tools (Claude,
 
 Did you notice that Cursor sometimes struggles with complex, multi-step edits or operations? This server, with its powerful unified `run` tool, enables multiple AI agents to handle your coding tasks more effectively.
 
+## Demo
+
+[![Demo](docs/assets/demo.gif)](https://github.com/mkXultra/ai-cli-mcp/releases/download/v2.11.0/demo.mp4)
+
 ## Overview
 
 This MCP server provides tools that can be used by LLMs to interact with AI CLI tools. When integrated with MCP clients, it allows LLMs to:
@@ -43,6 +47,8 @@ You can reuse heavy context (like large codebases) using session IDs to save cos
 >    - Create refactoring proposals for `src/utils` using `sonnet`
 >    - Add architecture documentation to `README.md` using `gpt-5.2-codex`
 > 4. Finally, `wait` again to combine both results.
+
+[![Session Resume Demo](docs/assets/demo-resume.gif)](https://github.com/mkXultra/ai-cli-mcp/releases/download/v2.11.0/demo-resume.mp4)
 
 ## Benefits
 
