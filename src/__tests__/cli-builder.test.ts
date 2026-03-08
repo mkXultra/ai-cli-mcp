@@ -76,6 +76,8 @@ describe('cli-builder', () => {
       expect(getReasoningEffort('gpt-5.2', 'medium')).toBe('medium');
       expect(getReasoningEffort('gpt-5.2', 'high')).toBe('high');
       expect(getReasoningEffort('gpt-5.2', 'xhigh')).toBe('xhigh');
+      expect(getReasoningEffort('sonnet', 'high')).toBe('high');
+      expect(getReasoningEffort('', 'low')).toBe('low');
     });
 
     it('should throw for invalid reasoning effort value', () => {
@@ -84,9 +86,15 @@ describe('cli-builder', () => {
       );
     });
 
-    it('should throw for non-codex models', () => {
-      expect(() => getReasoningEffort('sonnet', 'high')).toThrow(
-        'reasoning_effort is only supported for Codex models (gpt-*).'
+    it('should reject xhigh for claude models', () => {
+      expect(() => getReasoningEffort('sonnet', 'xhigh')).toThrow(
+        'Claude reasoning_effort supports only low, medium, high.'
+      );
+    });
+
+    it('should throw for unsupported model families', () => {
+      expect(() => getReasoningEffort('gemini-2.5-pro', 'high')).toThrow(
+        'reasoning_effort is only supported for Claude and Codex models.'
       );
     });
   });
@@ -223,6 +231,57 @@ describe('cli-builder', () => {
         expect(cmd.agent).toBe('claude');
         expect(cmd.resolvedModel).toBe('opus');
         expect(cmd.args).toContain('opus');
+      });
+
+      it('should resolve claude-ultra and default to high effort', () => {
+        const cmd = buildCliCommand({
+          prompt: 'test',
+          workFolder: '/tmp',
+          model: 'claude-ultra',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.args).toContain('--effort');
+        expect(cmd.args).toContain('high');
+      });
+
+      it('should build claude command with reasoning_effort using --effort', () => {
+        const cmd = buildCliCommand({
+          prompt: 'test',
+          workFolder: '/tmp',
+          model: 'sonnet',
+          reasoning_effort: 'medium',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.args).toContain('--effort');
+        expect(cmd.args).toContain('medium');
+      });
+
+      it('should reject xhigh reasoning_effort for claude', () => {
+        expect(() =>
+          buildCliCommand({
+            prompt: 'test',
+            workFolder: '/tmp',
+            model: 'sonnet',
+            reasoning_effort: 'xhigh',
+            cliPaths: DEFAULT_CLI_PATHS,
+          })
+        ).toThrow('Claude reasoning_effort supports only low, medium, high.');
+      });
+
+      it('should allow overriding reasoning_effort for claude-ultra', () => {
+        const cmd = buildCliCommand({
+          prompt: 'test',
+          workFolder: '/tmp',
+          model: 'claude-ultra',
+          reasoning_effort: 'low',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.args).toContain('--effort');
+        expect(cmd.args).toContain('low');
+        expect(cmd.args).not.toContain('high');
       });
     });
 

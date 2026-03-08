@@ -9,6 +9,17 @@ export const MODEL_ALIASES: Record<string, string> = {
 };
 
 export const ALLOWED_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
+const CLAUDE_REASONING_EFFORTS = new Set(['low', 'medium', 'high']);
+
+function getAgentForModel(model: string): 'codex' | 'claude' | 'gemini' {
+  if (model.startsWith('gpt-')) {
+    return 'codex';
+  }
+  if (model.startsWith('gemini')) {
+    return 'gemini';
+  }
+  return 'claude';
+}
 
 /**
  * Resolves model aliases to their full model names
@@ -38,9 +49,15 @@ export function getReasoningEffort(model: string, rawValue: unknown): string {
       `Invalid reasoning_effort: ${rawValue}. Allowed values: low, medium, high, xhigh.`
     );
   }
-  if (!model.startsWith('gpt-')) {
+  const agent = getAgentForModel(model);
+  if (agent === 'gemini') {
     throw new Error(
-      'reasoning_effort is only supported for Codex models (gpt-*).'
+      'reasoning_effort is only supported for Claude and Codex models.'
+    );
+  }
+  if (agent === 'claude' && !CLAUDE_REASONING_EFFORTS.has(normalized)) {
+    throw new Error(
+      'Claude reasoning_effort supports only low, medium, high.'
     );
   }
   return normalized;
@@ -117,24 +134,19 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
   // Resolve model
   const rawModel = options.model || '';
   const resolvedModel = resolveModelAlias(rawModel);
+  const agent = getAgentForModel(resolvedModel);
 
-  // Special handling for codex-ultra: default to high reasoning effort if not specified
+  // Special handling for ultra aliases: default to higher reasoning if not specified
   let reasoningEffortArg: string | undefined = options.reasoning_effort;
-  if (rawModel === 'codex-ultra' && !reasoningEffortArg) {
-    reasoningEffortArg = 'xhigh';
+  if (!reasoningEffortArg) {
+    if (rawModel === 'codex-ultra') {
+      reasoningEffortArg = 'xhigh';
+    } else if (rawModel === 'claude-ultra') {
+      reasoningEffortArg = 'high';
+    }
   }
 
   const reasoningEffort = getReasoningEffort(resolvedModel, reasoningEffortArg);
-
-  // Determine agent
-  let agent: 'codex' | 'claude' | 'gemini';
-  if (resolvedModel.startsWith('gpt-')) {
-    agent = 'codex';
-  } else if (resolvedModel.startsWith('gemini')) {
-    agent = 'gemini';
-  } else {
-    agent = 'claude';
-  }
 
   // Build CLI path and args
   let cliPath: string;
@@ -178,6 +190,10 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
 
     if (options.session_id && typeof options.session_id === 'string') {
       args.push('-r', options.session_id, '--fork-session');
+    }
+
+    if (reasoningEffort) {
+      args.push('--effort', reasoningEffort);
     }
 
     args.push('-p', prompt);
