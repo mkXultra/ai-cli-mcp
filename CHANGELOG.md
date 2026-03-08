@@ -1,3 +1,10 @@
+# [2.11.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.10.0...v2.11.0) (2026-03-08)
+
+
+### Features
+
+* ClaudeモデルへのReasoning Effort（--effort）サポートを追加 ([ac6b8cc](https://github.com/mkXultra/ai-cli-mcp/commit/ac6b8cc47a06a2d207258e85cc21b1d4ce83e5b2))
+
 # [2.10.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.9.1...v2.10.0) (2026-03-07)
 
 
