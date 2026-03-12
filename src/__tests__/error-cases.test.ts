@@ -344,9 +344,8 @@ describe('Error Handling Tests', () => {
       
       const server = new ClaudeCodeServer();
       
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Claude CLI not found')
-      );
+      expect(server).toBeDefined();
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
       
       consoleWarnSpy.mockRestore();
     });

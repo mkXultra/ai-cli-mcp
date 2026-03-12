@@ -329,15 +329,21 @@ Unicodeテスト: 🎌 🗾 ✨
       mockSpawn.mockReturnValue(mockProcess);
       
       const callToolHandler = handlers.get('callTool')!;
-      await expect(callToolHandler!({
-        params: {
-          name: 'run',
-          arguments: {
-            prompt: 'test prompt',
-            workFolder: '/tmp/test'
+      try {
+        await callToolHandler!({
+          params: {
+            name: 'run',
+            arguments: {
+              prompt: 'test prompt',
+              workFolder: '/tmp/test'
+            }
           }
-        }
-      })).rejects.toThrow('Failed to start claude CLI process');
+        });
+        expect.fail('Should have thrown');
+      } catch (error: any) {
+        expect(error.message).toContain('Failed to start claude CLI process');
+        expect(error.code).toBe('InternalError');
+      }
     });
   });
 
