@@ -109,6 +109,8 @@ This exposes both commands:
 Examples:
 
 ```bash
+ai-cli doctor
+ai-cli models
 ai-cli run --cwd "$PWD" --model sonnet --prompt "summarize this repository"
 ai-cli ps
 ai-cli result 12345
@@ -167,11 +169,15 @@ macOS might ask for folder permissions the first time any of these tools run. If
 - `wait`
 - `kill`
 - `cleanup`
+- `doctor`
+- `models`
 - `mcp`
 
 Example flow:
 
 ```bash
+ai-cli doctor
+ai-cli models
 ai-cli run --cwd "$PWD" --model codex-ultra --prompt "fix failing tests"
 ai-cli ps
 ai-cli wait 12345
@@ -180,6 +186,8 @@ ai-cli cleanup
 ```
 
 `run` accepts `--cwd` as the primary working-directory flag and also accepts the older aliases `--workFolder` / `--work-folder` for compatibility.
+
+`doctor` checks only binary existence and path resolution. It does not verify login state or terms acceptance.
 
 ## CLI State Storage
 

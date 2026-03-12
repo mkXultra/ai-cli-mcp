@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { CLI_HELP_TEXT, RUN_HELP_TEXT, WAIT_HELP_TEXT, runCli } from '../app/cli.js';
+import {
+  CLI_HELP_TEXT,
+  DOCTOR_HELP_TEXT,
+  MODELS_HELP_TEXT,
+  RUN_HELP_TEXT,
+  WAIT_HELP_TEXT,
+  runCli,
+} from '../app/cli.js';
 
 describe('ai-cli app', () => {
   it('prints help and exits successfully when no subcommand is provided', async () => {
@@ -205,6 +212,52 @@ describe('ai-cli app', () => {
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"removed": 2'));
   });
 
+  it('prints models as structured json', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+
+    const exitCode = await runCli(['models'], { stdout, stderr });
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"aliases"'));
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"claude-ultra"'));
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"gpt-5.4"'));
+    expect(stderr).not.toHaveBeenCalled();
+  });
+
+  it('prints doctor status as structured json', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+    const getDoctorStatus = vi.fn().mockReturnValue({
+      claude: {
+        configuredCommand: 'claude',
+        resolvedPath: '/tmp/bin/claude',
+        available: true,
+        lookup: 'path',
+      },
+      codex: {
+        configuredCommand: 'codex',
+        resolvedPath: null,
+        available: false,
+        lookup: 'path',
+      },
+      gemini: {
+        configuredCommand: 'gemini',
+        resolvedPath: '/tmp/bin/gemini',
+        available: true,
+        lookup: 'path',
+      },
+    });
+
+    const exitCode = await runCli(['doctor'], { stdout, stderr, getDoctorStatus });
+
+    expect(exitCode).toBe(0);
+    expect(getDoctorStatus).toHaveBeenCalledTimes(1);
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"configuredCommand": "claude"'));
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"available": false'));
+    expect(stderr).not.toHaveBeenCalled();
+  });
+
   it('passes verbose through to result', async () => {
     const stdout = vi.fn();
     const stderr = vi.fn();
@@ -238,6 +291,39 @@ describe('ai-cli app', () => {
 
     expect(exitCode).toBe(0);
     expect(stdout).toHaveBeenCalledWith(WAIT_HELP_TEXT);
+    expect(stderr).not.toHaveBeenCalled();
+  });
+
+  it('prints detailed help for models --help', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+
+    const exitCode = await runCli(['models', '--help'], { stdout, stderr });
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toHaveBeenCalledWith(MODELS_HELP_TEXT);
+    expect(stderr).not.toHaveBeenCalled();
+  });
+
+  it('prints detailed help for doctor --help', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+
+    const exitCode = await runCli(['doctor', '--help'], { stdout, stderr });
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toHaveBeenCalledWith(DOCTOR_HELP_TEXT);
+    expect(stderr).not.toHaveBeenCalled();
+  });
+
+  it('prints detailed help for doctor -h', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+
+    const exitCode = await runCli(['doctor', '-h'], { stdout, stderr });
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toHaveBeenCalledWith(DOCTOR_HELP_TEXT);
     expect(stderr).not.toHaveBeenCalled();
   });
 

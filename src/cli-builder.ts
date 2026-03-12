@@ -1,12 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve as pathResolve, isAbsolute } from 'node:path';
-
-// Model alias mappings for user-friendly model names
-export const MODEL_ALIASES: Record<string, string> = {
-  'claude-ultra': 'opus',
-  'codex-ultra': 'gpt-5.4',
-  'gemini-ultra': 'gemini-3.1-pro-preview'
-};
+import { MODEL_ALIASES } from './model-catalog.js';
 
 export const ALLOWED_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
 const CLAUDE_REASONING_EFFORTS = new Set(['low', 'medium', 'high']);

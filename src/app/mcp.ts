@@ -9,6 +9,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { spawn } from 'node:child_process';
 import { debugLog, findClaudeCli, findCodexCli, findGeminiCli } from '../cli-utils.js';
+import { getModelParameterDescription, getSupportedModelsDescription } from '../model-catalog.js';
 import { ProcessService } from '../process-service.js';
 
 // Server version - update this when releasing new versions
@@ -130,7 +131,7 @@ export class ClaudeCodeServer {
 **IMPORTANT**: This tool now returns immediately with a PID. Use other tools to check status and get results.
 
 **Supported models**:
-"claude-ultra", "codex-ultra", "gemini-ultra", "sonnet", "sonnet[1m]", "opus", "opusplan", "haiku", "gpt-5.4", "gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.1-codex-mini", "gpt-5.1-codex-max", "gpt-5.2", "gpt-5.1", "gpt-5.1-codex", "gpt-5-codex", "gpt-5-codex-mini", "gpt-5", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-3.1-pro-preview", "gemini-3-pro-preview", "gemini-3-flash-preview"
+${getSupportedModelsDescription()}
 
 **Prompt input**: You must provide EITHER prompt (string) OR prompt_file (file path), but not both.
 
@@ -158,7 +159,7 @@ export class ClaudeCodeServer {
               },
               model: {
                 type: 'string',
-                description: 'The model to use. Aliases: "claude-ultra" (auto high effort), "codex-ultra" (auto xhigh reasoning), "gemini-ultra". Standard: "sonnet", "sonnet[1m]", "opus", "opusplan", "haiku", "gpt-5.4", "gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.1-codex-mini", "gpt-5.1", "gemini-2.5-pro", "gemini-3.1-pro-preview", "gemini-3-pro-preview", "gemini-3-flash-preview", etc.',
+                description: getModelParameterDescription(),
               },
               reasoning_effort: {
                 type: 'string',
@@ -395,4 +396,3 @@ export async function runMcpServer(): Promise<void> {
   const server = new ClaudeCodeServer();
   await server.run();
 }
-

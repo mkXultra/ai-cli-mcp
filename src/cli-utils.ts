@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { accessSync, constants } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import * as path from 'path';
@@ -13,46 +13,199 @@ export function debugLog(message?: any, ...optionalParams: any[]): void {
   }
 }
 
+export interface CliBinaryStatus {
+  configuredCommand: string;
+  resolvedPath: string | null;
+  available: boolean;
+  lookup: 'env' | 'local' | 'path';
+  error?: string;
+}
+
+function getPathDelimiter(): string {
+  return process.platform === 'win32' ? ';' : ':';
+}
+
+function getPathExtensions(): string[] {
+  if (process.platform !== 'win32') {
+    return [''];
+  }
+
+  const rawPathext = process.env.PATHEXT || '.EXE;.CMD;.BAT;.COM';
+  return ['', ...rawPathext.split(';').filter(Boolean)];
+}
+
+function findExecutableOnPath(commandName: string): string | null {
+  const rawPath = process.env.PATH || '';
+  if (!rawPath) {
+    return null;
+  }
+
+  const pathEntries = rawPath.split(getPathDelimiter()).filter(Boolean);
+  const extensions = getPathExtensions();
+
+  for (const entry of pathEntries) {
+    for (const extension of extensions) {
+      const candidate = join(entry, `${commandName}${extension}`);
+      if (isExecutableFile(candidate)) {
+        return candidate;
+      }
+    }
+  }
+
+  return null;
+}
+
+function validateCustomCliName(envVarName: string, customCliName: string): string | null {
+  if (path.isAbsolute(customCliName)) {
+    return null;
+  }
+
+  if (
+    customCliName.startsWith('./') ||
+    customCliName.startsWith('../') ||
+    customCliName.includes('/')
+  ) {
+    return `Invalid ${envVarName}: Relative paths are not allowed. Use either a simple name (e.g., '${customCliName.split('/').pop() || 'cli'}') or an absolute path (e.g., '/tmp/${customCliName.split('/').pop() || 'cli'}-test')`;
+  }
+
+  return null;
+}
+
+function inspectCliBinary(options: {
+  envVarName: string;
+  customCliName: string | undefined;
+  defaultCliName: string;
+  localInstallPath: string;
+}): CliBinaryStatus {
+  const configuredCommand = options.customCliName || options.defaultCliName;
+
+  if (options.customCliName) {
+    const validationError = validateCustomCliName(options.envVarName, options.customCliName);
+    if (validationError) {
+      return {
+        configuredCommand,
+        resolvedPath: null,
+        available: false,
+        lookup: 'env',
+        error: validationError,
+      };
+    }
+
+    if (path.isAbsolute(options.customCliName)) {
+      return {
+        configuredCommand,
+        resolvedPath: options.customCliName,
+        available: isExecutableFile(options.customCliName),
+        lookup: 'env',
+      };
+    }
+
+    const resolvedPath = findExecutableOnPath(configuredCommand);
+    return {
+      configuredCommand,
+      resolvedPath,
+      available: resolvedPath !== null,
+      lookup: 'env',
+    };
+  }
+
+  if (isExecutableFile(options.localInstallPath)) {
+    return {
+      configuredCommand,
+      resolvedPath: options.localInstallPath,
+      available: true,
+      lookup: 'local',
+    };
+  }
+
+  const resolvedPath = findExecutableOnPath(configuredCommand);
+  return {
+    configuredCommand,
+    resolvedPath,
+    available: resolvedPath !== null,
+    lookup: 'path',
+  };
+}
+
+function getCliCommandOrThrow(status: CliBinaryStatus): string {
+  if (status.error) {
+    throw new Error(status.error);
+  }
+
+  if (status.lookup === 'env' && !path.isAbsolute(status.configuredCommand)) {
+    return status.configuredCommand;
+  }
+
+  return status.resolvedPath || status.configuredCommand;
+}
+
+function isExecutableFile(filePath: string): boolean {
+  try {
+    accessSync(filePath, constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+type CliBinaryName = 'claude' | 'codex' | 'gemini';
+
+function getCliBinaryConfig(name: CliBinaryName): {
+  envVarName: string;
+  customCliName: string | undefined;
+  defaultCliName: string;
+  localInstallPath: string;
+} {
+  if (name === 'claude') {
+    return {
+      envVarName: 'CLAUDE_CLI_NAME',
+      customCliName: process.env.CLAUDE_CLI_NAME,
+      defaultCliName: 'claude',
+      localInstallPath: join(homedir(), '.claude', 'local', 'claude'),
+    };
+  }
+
+  if (name === 'codex') {
+    return {
+      envVarName: 'CODEX_CLI_NAME',
+      customCliName: process.env.CODEX_CLI_NAME,
+      defaultCliName: 'codex',
+      localInstallPath: join(homedir(), '.codex', 'local', 'codex'),
+    };
+  }
+
+  return {
+    envVarName: 'GEMINI_CLI_NAME',
+    customCliName: process.env.GEMINI_CLI_NAME,
+    defaultCliName: 'gemini',
+    localInstallPath: join(homedir(), '.gemini', 'local', 'gemini'),
+  };
+}
+
+function getCliBinaryStatus(name: CliBinaryName): CliBinaryStatus {
+  return inspectCliBinary(getCliBinaryConfig(name));
+}
+
+export function getCliDoctorStatus(): {
+  claude: CliBinaryStatus;
+  codex: CliBinaryStatus;
+  gemini: CliBinaryStatus;
+} {
+  return {
+    claude: getCliBinaryStatus('claude'),
+    codex: getCliBinaryStatus('codex'),
+    gemini: getCliBinaryStatus('gemini'),
+  };
+}
+
 /**
  * Determine the Gemini CLI command/path.
  * Similar to findClaudeCli but for Gemini
  */
 export function findGeminiCli(): string {
   debugLog('[Debug] Attempting to find Gemini CLI...');
-
-  // Check for custom CLI name from environment variable
-  const customCliName = process.env.GEMINI_CLI_NAME;
-  if (customCliName) {
-    debugLog(`[Debug] Using custom Gemini CLI name from GEMINI_CLI_NAME: ${customCliName}`);
-
-    // If it's an absolute path, use it directly
-    if (path.isAbsolute(customCliName)) {
-      debugLog(`[Debug] GEMINI_CLI_NAME is an absolute path: ${customCliName}`);
-      return customCliName;
-    }
-
-    // If it starts with ~ or ./, reject as relative paths are not allowed
-    if (customCliName.startsWith('./') || customCliName.startsWith('../') || customCliName.includes('/')) {
-      throw new Error(`Invalid GEMINI_CLI_NAME: Relative paths are not allowed. Use either a simple name (e.g., 'gemini') or an absolute path (e.g., '/tmp/gemini-test')`);
-    }
-  }
-
-  const cliName = customCliName || 'gemini';
-
-  // Try local install path: ~/.gemini/local/gemini
-  const userPath = join(homedir(), '.gemini', 'local', 'gemini');
-  debugLog(`[Debug] Checking for Gemini CLI at local user path: ${userPath}`);
-
-  if (existsSync(userPath)) {
-    debugLog(`[Debug] Found Gemini CLI at local user path: ${userPath}. Using this path.`);
-    return userPath;
-  } else {
-    debugLog(`[Debug] Gemini CLI not found at local user path: ${userPath}.`);
-  }
-
-  // Fallback to CLI name (PATH lookup)
-  debugLog(`[Debug] Falling back to "${cliName}" command name, relying on spawn/PATH lookup.`);
-  return cliName;
+  const status = getCliBinaryStatus('gemini');
+  return getCliCommandOrThrow(status);
 }
 
 /**
@@ -61,40 +214,8 @@ export function findGeminiCli(): string {
  */
 export function findCodexCli(): string {
   debugLog('[Debug] Attempting to find Codex CLI...');
-
-  // Check for custom CLI name from environment variable
-  const customCliName = process.env.CODEX_CLI_NAME;
-  if (customCliName) {
-    debugLog(`[Debug] Using custom Codex CLI name from CODEX_CLI_NAME: ${customCliName}`);
-
-    // If it's an absolute path, use it directly
-    if (path.isAbsolute(customCliName)) {
-      debugLog(`[Debug] CODEX_CLI_NAME is an absolute path: ${customCliName}`);
-      return customCliName;
-    }
-
-    // If it starts with ~ or ./, reject as relative paths are not allowed
-    if (customCliName.startsWith('./') || customCliName.startsWith('../') || customCliName.includes('/')) {
-      throw new Error(`Invalid CODEX_CLI_NAME: Relative paths are not allowed. Use either a simple name (e.g., 'codex') or an absolute path (e.g., '/tmp/codex-test')`);
-    }
-  }
-
-  const cliName = customCliName || 'codex';
-
-  // Try local install path: ~/.codex/local/codex
-  const userPath = join(homedir(), '.codex', 'local', 'codex');
-  debugLog(`[Debug] Checking for Codex CLI at local user path: ${userPath}`);
-
-  if (existsSync(userPath)) {
-    debugLog(`[Debug] Found Codex CLI at local user path: ${userPath}. Using this path.`);
-    return userPath;
-  } else {
-    debugLog(`[Debug] Codex CLI not found at local user path: ${userPath}.`);
-  }
-
-  // Fallback to CLI name (PATH lookup)
-  debugLog(`[Debug] Falling back to "${cliName}" command name, relying on spawn/PATH lookup.`);
-  return cliName;
+  const status = getCliBinaryStatus('codex');
+  return getCliCommandOrThrow(status);
 }
 
 /**
@@ -108,38 +229,6 @@ export function findCodexCli(): string {
  */
 export function findClaudeCli(): string {
   debugLog('[Debug] Attempting to find Claude CLI...');
-
-  // Check for custom CLI name from environment variable
-  const customCliName = process.env.CLAUDE_CLI_NAME;
-  if (customCliName) {
-    debugLog(`[Debug] Using custom Claude CLI name from CLAUDE_CLI_NAME: ${customCliName}`);
-
-    // If it's an absolute path, use it directly
-    if (path.isAbsolute(customCliName)) {
-      debugLog(`[Debug] CLAUDE_CLI_NAME is an absolute path: ${customCliName}`);
-      return customCliName;
-    }
-
-    // If it starts with ~ or ./, reject as relative paths are not allowed
-    if (customCliName.startsWith('./') || customCliName.startsWith('../') || customCliName.includes('/')) {
-      throw new Error(`Invalid CLAUDE_CLI_NAME: Relative paths are not allowed. Use either a simple name (e.g., 'claude') or an absolute path (e.g., '/tmp/claude-test')`);
-    }
-  }
-
-  const cliName = customCliName || 'claude';
-
-  // Try local install path: ~/.claude/local/claude (using the original name for local installs)
-  const userPath = join(homedir(), '.claude', 'local', 'claude');
-  debugLog(`[Debug] Checking for Claude CLI at local user path: ${userPath}`);
-
-  if (existsSync(userPath)) {
-    debugLog(`[Debug] Found Claude CLI at local user path: ${userPath}. Using this path.`);
-    return userPath;
-  } else {
-    debugLog(`[Debug] Claude CLI not found at local user path: ${userPath}.`);
-  }
-
-  // 3. Fallback to CLI name (PATH lookup)
-  debugLog(`[Debug] Falling back to "${cliName}" command name, relying on spawn/PATH lookup.`);
-  return cliName;
+  const status = getCliBinaryStatus('claude');
+  return getCliCommandOrThrow(status);
 }

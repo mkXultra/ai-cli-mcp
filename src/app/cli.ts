@@ -1,5 +1,7 @@
 import { runMcpServer } from './mcp.js';
 import { CliProcessService } from '../cli-process-service.js';
+import { getCliDoctorStatus } from '../cli-utils.js';
+import { getModelsPayload } from '../model-catalog.js';
 
 export const CLI_HELP_TEXT = `Usage: ai-cli <command> [options]
 
@@ -10,6 +12,8 @@ Commands:
   result    Get the current result for a pid
   kill      Terminate a tracked pid
   cleanup   Remove completed and failed tracked processes
+  doctor    Check supported AI CLI binaries
+  models    List supported models and aliases
   mcp       Start the MCP server
   help      Show this help message
 `;
@@ -76,6 +80,22 @@ Options:
   --help, -h                   Show this help message
 `;
 
+export const MODELS_HELP_TEXT = `Usage: ai-cli models
+
+List supported models and aliases.
+
+Options:
+  --help, -h                   Show this help message
+`;
+
+export const DOCTOR_HELP_TEXT = `Usage: ai-cli doctor
+
+Check whether supported AI CLI binaries are available.
+
+Options:
+  --help, -h                   Show this help message
+`;
+
 export const MCP_HELP_TEXT = `Usage: ai-cli mcp
 
 Start the MCP server.
@@ -98,6 +118,7 @@ interface CliDeps {
   waitForProcesses: (pids: number[], timeoutSeconds?: number) => Promise<any>;
   killProcess: (pid: number) => Promise<any>;
   cleanupProcesses: () => Promise<any>;
+  getDoctorStatus: () => any;
 }
 
 let cliProcessService: CliProcessService | null = null;
@@ -119,6 +140,7 @@ const defaultDeps: CliDeps = {
   waitForProcesses: (pids, timeoutSeconds) => getCliProcessService().waitForProcesses(pids, timeoutSeconds),
   killProcess: (pid) => getCliProcessService().killProcess(pid),
   cleanupProcesses: () => getCliProcessService().cleanupProcesses(),
+  getDoctorStatus: () => getCliDoctorStatus(),
 };
 
 function parseArgs(argv: string[]): { positionals: string[]; flags: Record<string, string> } {
@@ -127,6 +149,11 @@ function parseArgs(argv: string[]): { positionals: string[]; flags: Record<strin
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
+    if (arg === '-h') {
+      flags.h = '';
+      continue;
+    }
+
     if (!arg.startsWith('--')) {
       positionals.push(arg);
       continue;
@@ -186,6 +213,7 @@ export async function runCli(argv: string[], deps: Partial<CliDeps> = {}): Promi
     waitForProcesses,
     killProcess,
     cleanupProcesses,
+    getDoctorStatus,
   } = { ...defaultDeps, ...deps };
   const [command] = argv;
 
@@ -316,6 +344,26 @@ export async function runCli(argv: string[], deps: Partial<CliDeps> = {}): Promi
       return 0;
     }
     writeJson(stdout, await cleanupProcesses());
+    return 0;
+  }
+
+  if (command === 'models') {
+    const { flags } = parseArgs(argv.slice(1));
+    if (hasHelpFlag(flags)) {
+      stdout(MODELS_HELP_TEXT);
+      return 0;
+    }
+    writeJson(stdout, getModelsPayload());
+    return 0;
+  }
+
+  if (command === 'doctor') {
+    const { flags } = parseArgs(argv.slice(1));
+    if (hasHelpFlag(flags)) {
+      stdout(DOCTOR_HELP_TEXT);
+      return 0;
+    }
+    writeJson(stdout, getDoctorStatus());
     return 0;
   }
 

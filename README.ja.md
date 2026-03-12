@@ -110,6 +110,8 @@ npm install -g ai-cli-mcp
 例:
 
 ```bash
+ai-cli doctor
+ai-cli models
 ai-cli run --cwd "$PWD" --model sonnet --prompt "summarize this repository"
 ai-cli ps
 ai-cli result 12345
@@ -168,11 +170,15 @@ macOSでは、これらのツールを初めて実行する際にフォルダへ
 - `wait`
 - `kill`
 - `cleanup`
+- `doctor`
+- `models`
 - `mcp`
 
 基本的な流れ:
 
 ```bash
+ai-cli doctor
+ai-cli models
 ai-cli run --cwd "$PWD" --model codex-ultra --prompt "fix failing tests"
 ai-cli ps
 ai-cli wait 12345
@@ -181,6 +187,8 @@ ai-cli cleanup
 ```
 
 `run` の作業ディレクトリ指定は `--cwd` が基本です。互換性のために `--workFolder` / `--work-folder` も受け付けます。
+
+`doctor` は CLI バイナリの存在確認と path 解決だけを行います。ログイン状態や利用規約同意までは確認しません。
 
 ## CLI の状態保存先
 

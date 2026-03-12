@@ -30,6 +30,7 @@ Supported commands:
 - `ai-cli ps`
 - `ai-cli result`
 - `ai-cli kill`
+- `ai-cli cleanup`
 - `ai-cli models`
 - `ai-cli doctor`
 - `ai-cli mcp`
@@ -102,6 +103,16 @@ Properties:
 
 - Public API is intentionally PID-based
 - Users may also kill processes manually outside the tool
+
+### `ai-cli cleanup`
+
+Removes tracked process state for runs that are no longer running.
+
+Properties:
+
+- Removes completed and failed PID directories
+- Keeps running processes intact
+- Removes empty per-cwd directories after cleanup
 
 ### `ai-cli doctor`
 
@@ -258,6 +269,7 @@ The following items are intentionally deferred:
 - state directory path
 - file naming scheme
 - metadata file schema
+- exit code capture for detached CLI runs
 - retention and cleanup policy
 - exact raw output access patterns
 - Windows-specific process handling details

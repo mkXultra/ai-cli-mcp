@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { accessSync, existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve as pathResolve } from 'node:path';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -50,6 +50,7 @@ vi.mock('../../package.json', () => ({
 
 // Re-import after mocks
 const mockExistsSync = vi.mocked(existsSync);
+const mockAccessSync = vi.mocked(accessSync);
 const mockSpawn = vi.mocked(spawn);
 const mockHomedir = vi.mocked(homedir);
 const mockPathResolve = vi.mocked(pathResolve);
@@ -70,6 +71,12 @@ describe('ClaudeCodeServer Unit Tests', () => {
     originalEnv = { ...process.env };
     // Reset env
     process.env = { ...originalEnv };
+    mockAccessSync.mockImplementation((filePath) => {
+      if (typeof filePath === 'string' && mockExistsSync(filePath)) {
+        return undefined;
+      }
+      throw new Error('not executable');
+    });
   });
 
   afterEach(() => {
@@ -111,6 +118,10 @@ describe('ClaudeCodeServer Unit Tests', () => {
         if (path === '/home/user/.claude/local/claude') return true;
         return false;
       });
+      mockAccessSync.mockImplementation((filePath) => {
+        if (filePath === '/home/user/.claude/local/claude') return undefined;
+        throw new Error('not executable');
+      });
       
       const module = await import('../server.js');
       // @ts-ignore
@@ -123,6 +134,9 @@ describe('ClaudeCodeServer Unit Tests', () => {
     it('should fallback to PATH when local does not exist', async () => {
       mockHomedir.mockReturnValue('/home/user');
       mockExistsSync.mockReturnValue(false);
+      mockAccessSync.mockImplementation(() => {
+        throw new Error('not executable');
+      });
       
       const module = await import('../server.js');
       // @ts-ignore
@@ -136,7 +150,12 @@ describe('ClaudeCodeServer Unit Tests', () => {
     it('should use custom name from CLAUDE_CLI_NAME', async () => {
       process.env.CLAUDE_CLI_NAME = 'my-claude';
       mockHomedir.mockReturnValue('/home/user');
-      mockExistsSync.mockReturnValue(false);
+      mockExistsSync.mockImplementation((path) => path === '/usr/bin/my-claude');
+      mockAccessSync.mockImplementation((filePath) => {
+        if (filePath === '/usr/bin/my-claude') return undefined;
+        throw new Error('not executable');
+      });
+      process.env.PATH = '/usr/bin';
       
       const module = await import('../server.js');
       // @ts-ignore
@@ -148,6 +167,10 @@ describe('ClaudeCodeServer Unit Tests', () => {
 
     it('should use absolute path from CLAUDE_CLI_NAME', async () => {
       process.env.CLAUDE_CLI_NAME = '/absolute/path/to/claude';
+      mockAccessSync.mockImplementation((filePath) => {
+        if (filePath === '/absolute/path/to/claude') return undefined;
+        throw new Error('not executable');
+      });
       
       const module = await import('../server.js');
       // @ts-ignore
