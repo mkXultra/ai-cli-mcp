@@ -36,6 +36,174 @@ describe('ai-cli app', () => {
     expect(stderr).not.toHaveBeenCalled();
   });
 
+  it('dispatches run with parsed CLI options', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+    const startMcpServer = vi.fn();
+    const runProcess = vi.fn().mockResolvedValue({
+      pid: 123,
+      status: 'started',
+      agent: 'claude',
+      message: 'claude process started successfully',
+    });
+
+    const exitCode = await runCli(
+      ['run', '--cwd', '/tmp/project', '--prompt', 'hello', '--model', 'sonnet'],
+      {
+        stdout,
+        stderr,
+        startMcpServer,
+        runProcess,
+      }
+    );
+
+    expect(exitCode).toBe(0);
+    expect(runProcess).toHaveBeenCalledWith({
+      cwd: '/tmp/project',
+      prompt: 'hello',
+      model: 'sonnet',
+    });
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"pid": 123'));
+    expect(stderr).not.toHaveBeenCalled();
+  });
+
+  it('accepts legacy run option aliases', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+    const runProcess = vi.fn().mockResolvedValue({
+      pid: 123,
+      status: 'started',
+      agent: 'claude',
+      message: 'claude process started successfully',
+    });
+
+    const exitCode = await runCli(
+      [
+        'run',
+        '--workFolder',
+        '/tmp/project',
+        '--prompt_file',
+        '/tmp/prompt.txt',
+        '--session_id',
+        'session-123',
+        '--reasoning_effort',
+        'high',
+      ],
+      {
+        stdout,
+        stderr,
+        runProcess,
+      }
+    );
+
+    expect(exitCode).toBe(0);
+    expect(runProcess).toHaveBeenCalledWith({
+      cwd: '/tmp/project',
+      prompt_file: '/tmp/prompt.txt',
+      session_id: 'session-123',
+      reasoning_effort: 'high',
+    });
+    expect(stderr).not.toHaveBeenCalled();
+  });
+
+  it('requires a prompt or prompt file for run', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+
+    const exitCode = await runCli(['run', '--cwd', '/tmp/project'], {
+      stdout,
+      stderr,
+    });
+
+    expect(exitCode).toBe(1);
+    expect(stderr).toHaveBeenCalledWith('Missing required option: --prompt or --prompt-file\n');
+    expect(stdout).toHaveBeenCalledWith(CLI_HELP_TEXT);
+  });
+
+  it('dispatches wait with pid arguments and timeout', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+    const waitForProcesses = vi.fn().mockResolvedValue([{ pid: 123, status: 'completed' }]);
+
+    const exitCode = await runCli(
+      ['wait', '123', '456', '--timeout', '5'],
+      {
+        stdout,
+        stderr,
+        waitForProcesses,
+      }
+    );
+
+    expect(exitCode).toBe(0);
+    expect(waitForProcesses).toHaveBeenCalledWith([123, 456], 5);
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"status": "completed"'));
+  });
+
+  it('rejects invalid wait timeout values', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+    const waitForProcesses = vi.fn();
+
+    const exitCode = await runCli(['wait', '123', '--timeout', 'abc'], {
+      stdout,
+      stderr,
+      waitForProcesses,
+    });
+
+    expect(exitCode).toBe(1);
+    expect(stderr).toHaveBeenCalledWith('Invalid --timeout value\n');
+    expect(stdout).toHaveBeenCalledWith(CLI_HELP_TEXT);
+    expect(waitForProcesses).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-integer pid arguments for wait', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+    const waitForProcesses = vi.fn();
+
+    const exitCode = await runCli(['wait', '123', 'abc'], {
+      stdout,
+      stderr,
+      waitForProcesses,
+    });
+
+    expect(exitCode).toBe(1);
+    expect(stderr).toHaveBeenCalledWith('All pid arguments must be positive integers\n');
+    expect(stdout).toHaveBeenCalledWith(CLI_HELP_TEXT);
+    expect(waitForProcesses).not.toHaveBeenCalled();
+  });
+
+  it('dispatches ps, result, and kill', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+    const listProcesses = vi.fn().mockResolvedValue([{ pid: 123, agent: 'claude', status: 'running' }]);
+    const getProcessResult = vi.fn().mockResolvedValue({ pid: 123, status: 'completed' });
+    const killProcess = vi.fn().mockResolvedValue({ pid: 123, status: 'terminated' });
+
+    const psExitCode = await runCli(['ps'], { stdout, stderr, listProcesses });
+    expect(psExitCode).toBe(0);
+    expect(listProcesses).toHaveBeenCalledTimes(1);
+
+    const resultExitCode = await runCli(['result', '123'], { stdout, stderr, getProcessResult });
+    expect(resultExitCode).toBe(0);
+    expect(getProcessResult).toHaveBeenCalledWith(123, false);
+
+    const killExitCode = await runCli(['kill', '123'], { stdout, stderr, killProcess });
+    expect(killExitCode).toBe(0);
+    expect(killProcess).toHaveBeenCalledWith(123);
+  });
+
+  it('passes verbose through to result', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+    const getProcessResult = vi.fn().mockResolvedValue({ pid: 123, status: 'completed' });
+
+    const exitCode = await runCli(['result', '123', '--verbose'], { stdout, stderr, getProcessResult });
+
+    expect(exitCode).toBe(0);
+    expect(getProcessResult).toHaveBeenCalledWith(123, true);
+  });
+
   it('prints help for --help', async () => {
     const stdout = vi.fn();
     const stderr = vi.fn();
