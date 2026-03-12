@@ -1,3 +1,13 @@
+# [2.12.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.11.0...v2.12.0) (2026-03-12)
+
+
+### Features
+
+* ai-cliコマンドを追加しアーキテクチャをリファクタリング ([10a1209](https://github.com/mkXultra/ai-cli-mcp/commit/10a120933d5893d47e47001a165f0abc5e4557aa))
+* CliProcessServiceとCLIサブコマンドを追加 ([0043ee4](https://github.com/mkXultra/ai-cli-mcp/commit/0043ee4a73bbf2d48f57b0b0ded8f12e29e8ebf2))
+* CLIサブコマンドhelpとcleanupを追加し状態保存先を再設計 ([63dc1a2](https://github.com/mkXultra/ai-cli-mcp/commit/63dc1a238e9883cab04e818413576ad265b600ab))
+* doctorとmodelsサブコマンドを追加しモデルカタログをモジュール化 ([15222e3](https://github.com/mkXultra/ai-cli-mcp/commit/15222e3c29c18bc16fa0bc7d6c4f3bdc621f6ff6))
+
 # [2.11.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.10.0...v2.11.0) (2026-03-08)
 
 
