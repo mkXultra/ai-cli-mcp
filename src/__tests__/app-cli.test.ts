@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { CLI_HELP_TEXT, runCli } from '../app/cli.js';
+import { CLI_HELP_TEXT, RUN_HELP_TEXT, WAIT_HELP_TEXT, runCli } from '../app/cli.js';
 
 describe('ai-cli app', () => {
   it('prints help and exits successfully when no subcommand is provided', async () => {
@@ -193,6 +193,18 @@ describe('ai-cli app', () => {
     expect(killProcess).toHaveBeenCalledWith(123);
   });
 
+  it('dispatches cleanup', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+    const cleanupProcesses = vi.fn().mockResolvedValue({ removed: 2, message: 'Removed 2 processes' });
+
+    const exitCode = await runCli(['cleanup'], { stdout, stderr, cleanupProcesses });
+
+    expect(exitCode).toBe(0);
+    expect(cleanupProcesses).toHaveBeenCalledTimes(1);
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"removed": 2'));
+  });
+
   it('passes verbose through to result', async () => {
     const stdout = vi.fn();
     const stderr = vi.fn();
@@ -202,6 +214,31 @@ describe('ai-cli app', () => {
 
     expect(exitCode).toBe(0);
     expect(getProcessResult).toHaveBeenCalledWith(123, true);
+  });
+
+  it('prints detailed help for run --help', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+
+    const exitCode = await runCli(['run', '--help'], { stdout, stderr });
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toHaveBeenCalledWith(RUN_HELP_TEXT);
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('claude-ultra'));
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('gpt-5.2-codex'));
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('gemini-2.5-pro'));
+    expect(stderr).not.toHaveBeenCalled();
+  });
+
+  it('prints detailed help for wait --help', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+
+    const exitCode = await runCli(['wait', '--help'], { stdout, stderr });
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toHaveBeenCalledWith(WAIT_HELP_TEXT);
+    expect(stderr).not.toHaveBeenCalled();
   });
 
   it('prints help for --help', async () => {

@@ -52,7 +52,6 @@ export function findGeminiCli(): string {
 
   // Fallback to CLI name (PATH lookup)
   debugLog(`[Debug] Falling back to "${cliName}" command name, relying on spawn/PATH lookup.`);
-  console.warn(`[Warning] Gemini CLI not found at ~/.gemini/local/gemini. Falling back to "${cliName}" in PATH. Ensure it is installed and accessible.`);
   return cliName;
 }
 
@@ -95,7 +94,6 @@ export function findCodexCli(): string {
 
   // Fallback to CLI name (PATH lookup)
   debugLog(`[Debug] Falling back to "${cliName}" command name, relying on spawn/PATH lookup.`);
-  console.warn(`[Warning] Codex CLI not found at ~/.codex/local/codex. Falling back to "${cliName}" in PATH. Ensure it is installed and accessible.`);
   return cliName;
 }
 
@@ -143,6 +141,5 @@ export function findClaudeCli(): string {
 
   // 3. Fallback to CLI name (PATH lookup)
   debugLog(`[Debug] Falling back to "${cliName}" command name, relying on spawn/PATH lookup.`);
-  console.warn(`[Warning] Claude CLI not found at ~/.claude/local/claude. Falling back to "${cliName}" in PATH. Ensure it is installed and accessible.`);
   return cliName;
 }

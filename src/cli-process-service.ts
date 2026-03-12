@@ -1,10 +1,22 @@
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { spawn } from 'node:child_process';
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
-import { parseClaudeOutput, parseCodexOutput, parseGeminiOutput } from './parsers.js';
 import { findClaudeCli, findCodexCli, findGeminiCli } from './cli-utils.js';
+import { parseClaudeOutput, parseCodexOutput, parseGeminiOutput } from './parsers.js';
 import type { AgentType, ProcessListItem } from './process-service.js';
 
 interface StoredProcess {
@@ -34,7 +46,7 @@ export interface CliRunOptions {
 }
 
 function resolveDefaultStateDir(): string {
-  return process.env.AI_CLI_STATE_DIR || join(tmpdir(), 'ai-cli-mcp-state');
+  return process.env.AI_CLI_STATE_DIR || join(homedir(), '.local', 'state', 'ai-cli');
 }
 
 function isProcessRunning(pid: number): boolean {
@@ -47,6 +59,13 @@ function isProcessRunning(pid: number): boolean {
     }
     return false;
   }
+}
+
+function normalizeCwdForStorage(cwd: string): string {
+  return cwd
+    .split('')
+    .map((char) => (/^[A-Za-z0-9.-]$/.test(char) ? char : `_${char.charCodeAt(0).toString(16).padStart(2, '0')}`))
+    .join('');
 }
 
 export class CliProcessService {
@@ -96,8 +115,10 @@ export class CliProcessService {
         throw new Error(`Failed to start ${cmd.agent} CLI process`);
       }
 
-      const finalStdoutPath = this.resolveStdoutPath(pid);
-      const finalStderrPath = this.resolveStderrPath(pid);
+      const processDir = this.resolveProcessDir(cmd.cwd, pid);
+      mkdirSync(processDir, { recursive: true });
+      const finalStdoutPath = this.resolveStdoutPath(processDir);
+      const finalStderrPath = this.resolveStderrPath(processDir);
       this.renamePlaceholderFile(stdoutPath, finalStdoutPath);
       this.renamePlaceholderFile(stderrPath, finalStderrPath);
 
@@ -241,22 +262,56 @@ export class CliProcessService {
     };
   }
 
+  async cleanupProcesses(): Promise<{ removed: number; message: string }> {
+    let removed = 0;
+
+    for (const process of this.readAllProcesses()) {
+      const refreshed = this.refreshStatus(process);
+      if (refreshed.status === 'running') {
+        continue;
+      }
+
+      const processDir = this.resolveProcessDir(refreshed.workFolder, refreshed.pid);
+      if (existsSync(processDir)) {
+        rmSync(processDir, { recursive: true, force: true });
+        removed++;
+      }
+    }
+
+    this.removeEmptyCwdDirs();
+
+    return {
+      removed,
+      message: `Removed ${removed} processes`,
+    };
+  }
+
   private readAllProcesses(): StoredProcess[] {
-    if (!existsSync(this.stateDir)) {
+    const cwdsDir = this.resolveCwdsDir();
+    if (!existsSync(cwdsDir)) {
       return [];
     }
 
-    return readdirSync(this.stateDir)
-      .filter((entry) => entry.endsWith('.json'))
-      .map((entry) => this.parseProcessFile(join(this.stateDir, entry)));
+    const processes: StoredProcess[] = [];
+    for (const cwdEntry of readdirSync(cwdsDir)) {
+      const cwdDir = join(cwdsDir, cwdEntry);
+      for (const pidEntry of readdirSync(cwdDir)) {
+        const metaPath = join(cwdDir, pidEntry, 'meta.json');
+        if (existsSync(metaPath)) {
+          processes.push(this.parseProcessFile(metaPath));
+        }
+      }
+    }
+
+    return processes;
   }
 
   private readProcess(pid: number): StoredProcess {
-    const metaPath = this.resolveMetaPath(pid);
-    if (!existsSync(metaPath)) {
+    const process = this.readAllProcesses().find((entry) => entry.pid === pid);
+    if (!process) {
       throw new Error(`Process with PID ${pid} not found`);
     }
-    return this.parseProcessFile(metaPath);
+    return process;
   }
 
   private parseProcessFile(metaPath: string): StoredProcess {
@@ -264,7 +319,9 @@ export class CliProcessService {
   }
 
   private writeProcess(process: StoredProcess): void {
-    writeFileSync(this.resolveMetaPath(process.pid), JSON.stringify(process, null, 2));
+    const processDir = this.resolveProcessDir(process.workFolder, process.pid);
+    mkdirSync(processDir, { recursive: true });
+    writeFileSync(this.resolveMetaPath(processDir), JSON.stringify(process, null, 2));
   }
 
   private refreshStatus(process: StoredProcess): StoredProcess {
@@ -282,16 +339,24 @@ export class CliProcessService {
     return readFileSync(filePath, 'utf-8');
   }
 
-  private resolveMetaPath(pid: number): string {
-    return join(this.stateDir, `${pid}.json`);
+  private resolveCwdsDir(): string {
+    return join(this.stateDir, 'cwds');
   }
 
-  private resolveStdoutPath(pid: number): string {
-    return join(this.stateDir, `${pid}.stdout.log`);
+  private resolveProcessDir(cwd: string, pid: number): string {
+    return join(this.resolveCwdsDir(), normalizeCwdForStorage(realpathSync(cwd)), String(pid));
   }
 
-  private resolveStderrPath(pid: number): string {
-    return join(this.stateDir, `${pid}.stderr.log`);
+  private resolveMetaPath(processDir: string): string {
+    return join(processDir, 'meta.json');
+  }
+
+  private resolveStdoutPath(processDir: string): string {
+    return join(processDir, 'stdout.log');
+  }
+
+  private resolveStderrPath(processDir: string): string {
+    return join(processDir, 'stderr.log');
   }
 
   private resolveStdoutPathForPidPlaceholder(): string {
@@ -331,6 +396,20 @@ export class CliProcessService {
     const startedAt = Date.now();
     while (isProcessRunning(pid) && Date.now() - startedAt < timeoutMs) {
       await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+  }
+
+  private removeEmptyCwdDirs(): void {
+    const cwdsDir = this.resolveCwdsDir();
+    if (!existsSync(cwdsDir)) {
+      return;
+    }
+
+    for (const cwdEntry of readdirSync(cwdsDir)) {
+      const cwdDir = join(cwdsDir, cwdEntry);
+      if (readdirSync(cwdDir).length === 0) {
+        rmSync(cwdDir, { recursive: true, force: true });
+      }
     }
   }
 }

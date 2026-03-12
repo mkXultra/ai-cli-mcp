@@ -9,8 +9,76 @@ Commands:
   ps        List tracked processes
   result    Get the current result for a pid
   kill      Terminate a tracked pid
+  cleanup   Remove completed and failed tracked processes
   mcp       Start the MCP server
   help      Show this help message
+`;
+
+export const RUN_HELP_TEXT = `Usage: ai-cli run --cwd <path> [options]
+
+Start an AI CLI process in the background.
+
+Options:
+  --cwd <path>                 Working directory
+  --prompt <text>              Prompt text
+  --prompt-file <path>         Path to a prompt file
+  --model <model>              Model name or alias (e.g. sonnet, claude-ultra, gpt-5.2-codex, codex-ultra, gemini-2.5-pro, gemini-ultra)
+  --session-id <id>            Resume a previous session
+  --reasoning-effort <level>   Reasoning level for Claude/Codex
+  --help, -h                   Show this help message
+
+Compatibility aliases:
+  --workFolder, --work-folder
+  --prompt_file
+  --session_id
+  --reasoning_effort
+`;
+
+export const WAIT_HELP_TEXT = `Usage: ai-cli wait <pid...> [options]
+
+Wait for one or more tracked processes to finish.
+
+Options:
+  --timeout <seconds>          Maximum wait time in seconds
+  --help, -h                   Show this help message
+`;
+
+export const RESULT_HELP_TEXT = `Usage: ai-cli result <pid> [options]
+
+Get the current result for a tracked process.
+
+Options:
+  --verbose                    Include verbose parsed output
+  --help, -h                   Show this help message
+`;
+
+export const KILL_HELP_TEXT = `Usage: ai-cli kill <pid>
+
+Terminate a tracked process.
+
+Options:
+  --help, -h                   Show this help message
+`;
+
+export const CLEANUP_HELP_TEXT = `Usage: ai-cli cleanup
+
+Remove completed and failed tracked processes.
+
+Options:
+  --help, -h                   Show this help message
+`;
+
+export const PS_HELP_TEXT = `Usage: ai-cli ps
+
+List tracked processes.
+
+Options:
+  --help, -h                   Show this help message
+`;
+
+export const MCP_HELP_TEXT = `Usage: ai-cli mcp
+
+Start the MCP server.
 `;
 
 interface CliDeps {
@@ -29,6 +97,7 @@ interface CliDeps {
   getProcessResult: (pid: number, verbose: boolean) => Promise<any>;
   waitForProcesses: (pids: number[], timeoutSeconds?: number) => Promise<any>;
   killProcess: (pid: number) => Promise<any>;
+  cleanupProcesses: () => Promise<any>;
 }
 
 let cliProcessService: CliProcessService | null = null;
@@ -49,6 +118,7 @@ const defaultDeps: CliDeps = {
   getProcessResult: (pid, verbose) => getCliProcessService().getProcessResult(pid, verbose),
   waitForProcesses: (pids, timeoutSeconds) => getCliProcessService().waitForProcesses(pids, timeoutSeconds),
   killProcess: (pid) => getCliProcessService().killProcess(pid),
+  cleanupProcesses: () => getCliProcessService().cleanupProcesses(),
 };
 
 function parseArgs(argv: string[]): { positionals: string[]; flags: Record<string, string> } {
@@ -101,6 +171,10 @@ function writeJson(stdout: (text: string) => void, value: unknown): void {
   stdout(`${JSON.stringify(value, null, 2)}\n`);
 }
 
+function hasHelpFlag(flags: Record<string, string>): boolean {
+  return 'help' in flags || 'h' in flags;
+}
+
 export async function runCli(argv: string[], deps: Partial<CliDeps> = {}): Promise<number> {
   const {
     stdout,
@@ -111,6 +185,7 @@ export async function runCli(argv: string[], deps: Partial<CliDeps> = {}): Promi
     getProcessResult,
     waitForProcesses,
     killProcess,
+    cleanupProcesses,
   } = { ...defaultDeps, ...deps };
   const [command] = argv;
 
@@ -120,12 +195,21 @@ export async function runCli(argv: string[], deps: Partial<CliDeps> = {}): Promi
   }
 
   if (command === 'mcp') {
+    const { flags } = parseArgs(argv.slice(1));
+    if (hasHelpFlag(flags)) {
+      stdout(MCP_HELP_TEXT);
+      return 0;
+    }
     await startMcpServer();
     return 0;
   }
 
   if (command === 'run') {
     const { flags } = parseArgs(argv.slice(1));
+    if (hasHelpFlag(flags)) {
+      stdout(RUN_HELP_TEXT);
+      return 0;
+    }
     const cwd = getFirstFlag(flags, ['cwd', 'workFolder', 'work-folder']);
     if (!cwd) {
       stderr('Missing required option: --cwd\n');
@@ -154,12 +238,21 @@ export async function runCli(argv: string[], deps: Partial<CliDeps> = {}): Promi
   }
 
   if (command === 'ps') {
+    const { flags } = parseArgs(argv.slice(1));
+    if (hasHelpFlag(flags)) {
+      stdout(PS_HELP_TEXT);
+      return 0;
+    }
     writeJson(stdout, await listProcesses());
     return 0;
   }
 
   if (command === 'result') {
     const { positionals, flags } = parseArgs(argv.slice(1));
+    if (hasHelpFlag(flags)) {
+      stdout(RESULT_HELP_TEXT);
+      return 0;
+    }
     const pid = parsePositivePid(positionals[0]);
     if (pid === null) {
       stderr('Missing required pid argument\n');
@@ -172,6 +265,10 @@ export async function runCli(argv: string[], deps: Partial<CliDeps> = {}): Promi
 
   if (command === 'wait') {
     const { positionals, flags } = parseArgs(argv.slice(1));
+    if (hasHelpFlag(flags)) {
+      stdout(WAIT_HELP_TEXT);
+      return 0;
+    }
     const pids = positionals.map((value) => parsePositivePid(value));
     if (pids.length === 0) {
       stderr('Missing required pid arguments\n');
@@ -197,7 +294,11 @@ export async function runCli(argv: string[], deps: Partial<CliDeps> = {}): Promi
   }
 
   if (command === 'kill') {
-    const { positionals } = parseArgs(argv.slice(1));
+    const { positionals, flags } = parseArgs(argv.slice(1));
+    if (hasHelpFlag(flags)) {
+      stdout(KILL_HELP_TEXT);
+      return 0;
+    }
     const pid = parsePositivePid(positionals[0]);
     if (pid === null) {
       stderr('Missing required pid argument\n');
@@ -205,6 +306,16 @@ export async function runCli(argv: string[], deps: Partial<CliDeps> = {}): Promi
       return 1;
     }
     writeJson(stdout, await killProcess(pid));
+    return 0;
+  }
+
+  if (command === 'cleanup') {
+    const { flags } = parseArgs(argv.slice(1));
+    if (hasHelpFlag(flags)) {
+      stdout(CLEANUP_HELP_TEXT);
+      return 0;
+    }
+    writeJson(stdout, await cleanupProcesses());
     return 0;
   }
 

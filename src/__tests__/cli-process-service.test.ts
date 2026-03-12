@@ -1,4 +1,4 @@
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -35,6 +35,13 @@ echo "Command executed successfully"
   return scriptPath;
 }
 
+function encodeCwd(cwd: string): string {
+  return cwd
+    .split('')
+    .map((char) => (/^[A-Za-z0-9.-]$/.test(char) ? char : `_${char.charCodeAt(0).toString(16).padStart(2, '0')}`))
+    .join('');
+}
+
 describe('CliProcessService', () => {
   const tempDirs: string[] = [];
 
@@ -44,7 +51,7 @@ describe('CliProcessService', () => {
     }
   });
 
-  it('starts a detached process and can wait/list/result from persisted state', async () => {
+  it('starts a detached process and persists state under a normalized cwd directory', async () => {
     const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
     tempDirs.push(root);
     const scriptPath = createMockCliScript(root, 'mock-claude');
@@ -67,8 +74,12 @@ describe('CliProcessService', () => {
       model: 'sonnet',
     });
 
+    const processDir = join(stateDir, 'cwds', encodeCwd(realpathSync(workFolder)), String(runResult.pid));
     expect(runResult.pid).toBeGreaterThan(0);
     expect(runResult.status).toBe('started');
+    expect(existsSync(join(processDir, 'meta.json'))).toBe(true);
+    expect(existsSync(join(processDir, 'stdout.log'))).toBe(true);
+    expect(existsSync(join(processDir, 'stderr.log'))).toBe(true);
 
     const waitResult = await service.waitForProcesses([runResult.pid], 5);
     expect(waitResult).toHaveLength(1);
@@ -86,6 +97,7 @@ describe('CliProcessService', () => {
     expect(result.pid).toBe(runResult.pid);
     expect(result.status).toBe('completed');
     expect(result.stdout).toContain('Command executed successfully');
+    expect(readFileSync(join(processDir, 'meta.json'), 'utf-8')).toContain('"status": "completed"');
   });
 
   it('can terminate a tracked process', async () => {
@@ -128,7 +140,11 @@ describe('CliProcessService', () => {
     const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
     tempDirs.push(root);
     const stateDir = join(root, 'state');
-    mkdirSync(stateDir, { recursive: true });
+    const workFolder = join(root, 'project');
+    mkdirSync(workFolder, { recursive: true });
+    const pid = 12345;
+    const processDir = join(stateDir, 'cwds', encodeCwd(realpathSync(workFolder)), String(pid));
+    mkdirSync(processDir, { recursive: true });
 
     const service = new CliProcessService({
       stateDir,
@@ -139,18 +155,17 @@ describe('CliProcessService', () => {
       },
     });
 
-    const pid = 12345;
     writeFileSync(
-      join(stateDir, `${pid}.json`),
+      join(processDir, 'meta.json'),
       JSON.stringify({
         pid,
         prompt: 'sleep please',
-        workFolder: root,
+        workFolder,
         model: 'sonnet',
         toolType: 'claude',
         startTime: new Date().toISOString(),
-        stdoutPath: join(stateDir, `${pid}.stdout.log`),
-        stderrPath: join(stateDir, `${pid}.stderr.log`),
+        stdoutPath: join(processDir, 'stdout.log'),
+        stderrPath: join(processDir, 'stderr.log'),
         status: 'running',
       })
     );
@@ -172,8 +187,92 @@ describe('CliProcessService', () => {
       message: 'Signal sent but process is still running',
     });
 
-    const stored = JSON.parse(readFileSync(join(stateDir, `${pid}.json`), 'utf-8'));
+    const stored = JSON.parse(readFileSync(join(processDir, 'meta.json'), 'utf-8'));
     expect(stored.status).toBe('running');
+    killSpy.mockRestore();
+  });
+
+  it('cleans up completed and failed process directories but preserves running ones', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
+    tempDirs.push(root);
+    const stateDir = join(root, 'state');
+    const runningCwd = join(root, 'running-project');
+    const finishedCwd = join(root, 'finished-project');
+    mkdirSync(runningCwd, { recursive: true });
+    mkdirSync(finishedCwd, { recursive: true });
+
+    const runningDir = join(stateDir, 'cwds', encodeCwd(realpathSync(runningCwd)), '111');
+    const completedDir = join(stateDir, 'cwds', encodeCwd(realpathSync(finishedCwd)), '222');
+    const failedDir = join(stateDir, 'cwds', encodeCwd(realpathSync(finishedCwd)), '333');
+    mkdirSync(runningDir, { recursive: true });
+    mkdirSync(completedDir, { recursive: true });
+    mkdirSync(failedDir, { recursive: true });
+
+    writeFileSync(
+      join(runningDir, 'meta.json'),
+      JSON.stringify({
+        pid: 111,
+        prompt: 'keep',
+        workFolder: runningCwd,
+        toolType: 'claude',
+        startTime: new Date().toISOString(),
+        stdoutPath: join(runningDir, 'stdout.log'),
+        stderrPath: join(runningDir, 'stderr.log'),
+        status: 'running',
+      })
+    );
+    writeFileSync(
+      join(completedDir, 'meta.json'),
+      JSON.stringify({
+        pid: 222,
+        prompt: 'done',
+        workFolder: finishedCwd,
+        toolType: 'claude',
+        startTime: new Date().toISOString(),
+        stdoutPath: join(completedDir, 'stdout.log'),
+        stderrPath: join(completedDir, 'stderr.log'),
+        status: 'completed',
+      })
+    );
+    writeFileSync(
+      join(failedDir, 'meta.json'),
+      JSON.stringify({
+        pid: 333,
+        prompt: 'failed',
+        workFolder: finishedCwd,
+        toolType: 'claude',
+        startTime: new Date().toISOString(),
+        stdoutPath: join(failedDir, 'stdout.log'),
+        stderrPath: join(failedDir, 'stderr.log'),
+        status: 'failed',
+      })
+    );
+
+    const service = new CliProcessService({
+      stateDir,
+      cliPaths: {
+        claude: '/bin/sh',
+        codex: '/bin/sh',
+        gemini: '/bin/sh',
+      },
+    });
+
+    const killSpy = vi.spyOn(globalThis.process, 'kill').mockImplementation((target: number, signal?: string | number) => {
+      if (signal === 0 && target === 111) {
+        return true;
+      }
+      throw Object.assign(new Error('not running'), { code: 'ESRCH' });
+    });
+
+    const result = await service.cleanupProcesses();
+
+    expect(result).toEqual({
+      removed: 2,
+      message: 'Removed 2 processes',
+    });
+    expect(existsSync(runningDir)).toBe(true);
+    expect(existsSync(completedDir)).toBe(false);
+    expect(existsSync(failedDir)).toBe(false);
     killSpy.mockRestore();
   });
 });

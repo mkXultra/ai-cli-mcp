@@ -66,9 +66,16 @@ The only prerequisite is that the AI CLI tools you want to use are locally insta
 
 ## Installation & Usage
 
-The recommended way to use this server is by installing it by using `npx`.
+There are now two primary ways to use this package:
 
-### Using npx in your MCP configuration:
+- `ai-cli-mcp`: MCP server entrypoint
+- `ai-cli`: human-facing CLI for background AI runs
+
+### MCP usage with `npx`
+
+The recommended way to use the MCP server is via `npx`.
+
+#### Using npx in your MCP configuration:
 
 ```json
     "ai-cli-mcp": {
@@ -80,10 +87,43 @@ The recommended way to use this server is by installing it by using `npx`.
     },
 ```
 
-### Using Claude CLI mcp add command:
+#### Using Claude CLI mcp add command:
 
 ```bash
 claude mcp add ai-cli '{"name":"ai-cli","command":"npx","args":["-y","ai-cli-mcp@latest"]}'
+```
+
+### Human CLI usage with global install
+
+If you want to use the production CLI directly from your shell, install the package globally:
+
+```bash
+npm install -g ai-cli-mcp
+```
+
+This exposes both commands:
+
+- `ai-cli`
+- `ai-cli-mcp`
+
+Examples:
+
+```bash
+ai-cli run --cwd "$PWD" --model sonnet --prompt "summarize this repository"
+ai-cli ps
+ai-cli result 12345
+ai-cli wait 12345 --timeout 300
+ai-cli kill 12345
+ai-cli cleanup
+ai-cli-mcp
+```
+
+### Human CLI usage with `npx`
+
+Because the published package name is still `ai-cli-mcp`, the shortest `npx` form for the CLI is:
+
+```bash
+npx -y --package ai-cli-mcp@latest ai-cli run --cwd "$PWD" --model sonnet --prompt "hello"
 ```
 
 ## Important First-Time Setup
@@ -116,6 +156,50 @@ gemini auth login
 ```
 
 macOS might ask for folder permissions the first time any of these tools run. If the first run fails, subsequent runs should work.
+
+## CLI Commands
+
+`ai-cli` currently supports:
+
+- `run`
+- `ps`
+- `result`
+- `wait`
+- `kill`
+- `cleanup`
+- `mcp`
+
+Example flow:
+
+```bash
+ai-cli run --cwd "$PWD" --model codex-ultra --prompt "fix failing tests"
+ai-cli ps
+ai-cli wait 12345
+ai-cli result 12345
+ai-cli cleanup
+```
+
+`run` accepts `--cwd` as the primary working-directory flag and also accepts the older aliases `--workFolder` / `--work-folder` for compatibility.
+
+## CLI State Storage
+
+Background CLI runs are stored under:
+
+```text
+~/.local/state/ai-cli/cwds/<normalized-cwd>/<pid>/
+```
+
+Each PID directory contains:
+
+- `meta.json`
+- `stdout.log`
+- `stderr.log`
+
+Use `ai-cli cleanup` to remove completed and failed runs. Running processes are preserved.
+
+## Known Limitation
+
+Detached `ai-cli` runs do not currently persist natural process exit codes. As a result, the CLI can report process output and running/completed state, but it does not yet guarantee `exitCode` for naturally finished background runs.
 
 ## Connecting to Your MCP Client
 
@@ -172,6 +256,7 @@ Terminates a running AI agent process by PID.
 ## Troubleshooting
 
 - **"Command not found" (claude-code-mcp):** If installed globally, ensure the npm global bin directory is in your system's PATH. If using `npx`, ensure `npx` itself is working.
+- **"Command not found" (`ai-cli`):** If installed globally, ensure your npm global bin directory is in `PATH`. If using `npx`, use `npx -y --package ai-cli-mcp@latest ai-cli ...`.
 - **"Command not found" (claude or ~/.claude/local/claude):** Ensure the Claude CLI is installed correctly. Run `claude/doctor` or check its documentation.
 - **Permissions Issues:** Make sure you've run the "Important First-Time Setup" step.
 - **JSON Errors from Server:** If `MCP_CLAUDE_DEBUG` is `true`, error messages or logs might interfere with MCP's JSON parsing. Set to `false` for normal operation.

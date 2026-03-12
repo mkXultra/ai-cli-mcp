@@ -67,9 +67,16 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 
 ## インストールと使い方
 
-推奨される使用方法は、`npx` を使用してインストールすることです。
+現在の主な使い方は 2 つあります。
 
-### MCP設定ファイルでnpxを使用する場合:
+- `ai-cli-mcp`: MCP サーバーの起動
+- `ai-cli`: 人間向け CLI
+
+### MCP 利用 (`npx`)
+
+MCP サーバーとして使う場合は、`npx` 経由が推奨です。
+
+#### MCP設定ファイルでnpxを使用する場合:
 
 ```json
     "ai-cli-mcp": {
@@ -81,10 +88,43 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
     },
 ```
 
-### Claude CLI mcp add コマンドを使用する場合:
+#### Claude CLI mcp add コマンドを使用する場合:
 
 ```bash
 claude mcp add ai-cli '{"name":"ai-cli","command":"npx","args":["-y","ai-cli-mcp@latest"]}'
+```
+
+### 人間向け CLI 利用 (グローバルインストール)
+
+シェルから `ai-cli` を直接使いたい場合は、グローバルインストールしてください。
+
+```bash
+npm install -g ai-cli-mcp
+```
+
+これで以下の 2 つのコマンドが使えるようになります。
+
+- `ai-cli`
+- `ai-cli-mcp`
+
+例:
+
+```bash
+ai-cli run --cwd "$PWD" --model sonnet --prompt "summarize this repository"
+ai-cli ps
+ai-cli result 12345
+ai-cli wait 12345 --timeout 300
+ai-cli kill 12345
+ai-cli cleanup
+ai-cli-mcp
+```
+
+### 人間向け CLI 利用 (`npx`)
+
+公開パッケージ名はまだ `ai-cli-mcp` のままなので、`npx` で `ai-cli` を使う場合は次の形になります。
+
+```bash
+npx -y --package ai-cli-mcp@latest ai-cli run --cwd "$PWD" --model sonnet --prompt "hello"
 ```
 
 ## 重要な初回セットアップ
@@ -117,6 +157,50 @@ gemini auth login
 ```
 
 macOSでは、これらのツールを初めて実行する際にフォルダへのアクセス許可を求められる場合があります。最初の実行が失敗しても、2回目以降は動作するはずです。
+
+## CLI コマンド
+
+`ai-cli` は現在以下をサポートしています。
+
+- `run`
+- `ps`
+- `result`
+- `wait`
+- `kill`
+- `cleanup`
+- `mcp`
+
+基本的な流れ:
+
+```bash
+ai-cli run --cwd "$PWD" --model codex-ultra --prompt "fix failing tests"
+ai-cli ps
+ai-cli wait 12345
+ai-cli result 12345
+ai-cli cleanup
+```
+
+`run` の作業ディレクトリ指定は `--cwd` が基本です。互換性のために `--workFolder` / `--work-folder` も受け付けます。
+
+## CLI の状態保存先
+
+バックグラウンド実行した `ai-cli` の状態は、次のディレクトリに保存されます。
+
+```text
+~/.local/state/ai-cli/cwds/<normalized-cwd>/<pid>/
+```
+
+各 PID ディレクトリには以下が入ります。
+
+- `meta.json`
+- `stdout.log`
+- `stderr.log`
+
+完了済み・失敗済みの実行は `ai-cli cleanup` で削除できます。`running` のものは保持されます。
+
+## 既知の制約
+
+detached 実行された `ai-cli` の自然終了 exit code は、まだ永続化していません。そのため、CLI は出力と running/completed 状態は返せますが、自然終了したバックグラウンド実行の `exitCode` は現時点では保証しません。
 
 ## MCPクライアントへの接続
 
@@ -173,6 +257,7 @@ PIDを指定して、実行中のAIエージェントプロセスを終了しま
 ## トラブルシューティング
 
 - **"Command not found" (claude-code-mcp):** グローバルにインストールした場合、npmのグローバルbinディレクトリがシステムのPATHに含まれているか確認してください。`npx` を使用している場合、`npx` 自体が機能しているか確認してください。
+- **"Command not found" (`ai-cli`):** グローバルインストール時は npm のグローバル bin ディレクトリが `PATH` に入っているか確認してください。`npx` の場合は `npx -y --package ai-cli-mcp@latest ai-cli ...` を使ってください。
 - **"Command not found" (claude または ~/.claude/local/claude):** Claude CLIが正しくインストールされていることを確認してください。`claude/doctor` を実行するか、公式ドキュメントを確認してください。
 - **権限の問題:** 「重要な初回セットアップ」の手順を実行したか確認してください。
 - **サーバーからのJSONエラー:** `MCP_CLAUDE_DEBUG` が `true` の場合、エラーメッセージやログがMCPのJSON解析を妨げる可能性があります。通常動作時は `false` に設定してください。

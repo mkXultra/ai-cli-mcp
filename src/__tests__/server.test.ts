@@ -130,9 +130,7 @@ describe('ClaudeCodeServer Unit Tests', () => {
       
       const result = findClaudeCli();
       expect(result).toBe('claude');
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Claude CLI not found at ~/.claude/local/claude')
-      );
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
     });
 
     it('should use custom name from CLAUDE_CLI_NAME', async () => {
