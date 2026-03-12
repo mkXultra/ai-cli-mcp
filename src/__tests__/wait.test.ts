@@ -88,6 +88,7 @@ describe('Wait Tool Tests', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
   });
 
   const createMockProcess = (pid: number) => {
@@ -214,6 +215,43 @@ describe('Wait Tool Tests', () => {
     expect(response).toHaveLength(2);
     expect(response.find((r: any) => r.pid === 101).status).toBe('completed');
     expect(response.find((r: any) => r.pid === 102).status).toBe('completed');
+  });
+
+  it('should clear timeout timers after wait resolves', async () => {
+    vi.useFakeTimers();
+
+    const callToolHandler = handlers.get('callTool')!;
+    const mockProcess = createMockProcess(12348);
+    mockSpawn.mockReturnValue(mockProcess);
+
+    await callToolHandler({
+      params: {
+        name: 'run',
+        arguments: {
+          prompt: 'test prompt',
+          workFolder: '/tmp'
+        }
+      }
+    });
+
+    const waitPromise = callToolHandler({
+      params: {
+        name: 'wait',
+        arguments: {
+          pids: [12348],
+          timeout: 180
+        }
+      }
+    });
+
+    mockProcess.emit('close', 0);
+    await vi.runAllTicks();
+
+    const result = await waitPromise;
+    const response = JSON.parse(result.content[0].text);
+
+    expect(response[0].status).toBe('completed');
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('should throw error for non-existent PID', async () => {
