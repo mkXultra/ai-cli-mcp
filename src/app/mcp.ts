@@ -25,8 +25,9 @@ const serverStartupTime = new Date().toISOString();
 export async function spawnAsync(command: string, args: string[], options?: { timeout?: number, cwd?: string }): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     debugLog(`[Spawn] Running command: ${command} ${args.join(' ')}`);
-    const process = spawn(command, args, {
-      shell: false,
+    const useShell = process.platform === 'win32';
+    const child = spawn(command, args, {
+      shell: useShell,
       timeout: options?.timeout,
       cwd: options?.cwd,
       stdio: ['ignore', 'pipe', 'pipe']
@@ -35,13 +36,13 @@ export async function spawnAsync(command: string, args: string[], options?: { ti
     let stdout = '';
     let stderr = '';
 
-    process.stdout.on('data', (data) => { stdout += data.toString(); });
-    process.stderr.on('data', (data) => {
+    child.stdout.on('data', (data) => { stdout += data.toString(); });
+    child.stderr.on('data', (data) => {
       stderr += data.toString();
       debugLog(`[Spawn Stderr Chunk] ${data.toString()}`);
     });
 
-    process.on('error', (error: NodeJS.ErrnoException) => {
+    child.on('error', (error: NodeJS.ErrnoException) => {
       debugLog(`[Spawn Error Event] Full error object:`, error);
       let errorMessage = `Spawn error: ${error.message}`;
       if (error.path) {
@@ -54,7 +55,7 @@ export async function spawnAsync(command: string, args: string[], options?: { ti
       reject(new Error(errorMessage));
     });
 
-    process.on('close', (code) => {
+    child.on('close', (code) => {
       debugLog(`[Spawn Close] Exit code: ${code}`);
       debugLog(`[Spawn Stderr Full] ${stderr.trim()}`);
       debugLog(`[Spawn Stdout Full] ${stdout.trim()}`);

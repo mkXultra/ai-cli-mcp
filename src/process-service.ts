@@ -51,10 +51,15 @@ export class ProcessService {
     });
 
     const { cliPath, args: processArgs, cwd: effectiveCwd, agent, prompt } = cmd;
-    const childProcess = spawn(cliPath, processArgs, {
+    const isWin32 = process.platform === 'win32';
+    const spawnArgs = isWin32
+      ? processArgs.map((a: string) => a.includes(' ') ? `"${a.replace(/"/g, '\\"')}"` : a)
+      : processArgs;
+    const childProcess = spawn(cliPath, spawnArgs, {
       cwd: effectiveCwd,
       stdio: ['ignore', 'pipe', 'pipe'],
       detached: false,
+      shell: isWin32,
     });
 
     const pid = childProcess.pid;
