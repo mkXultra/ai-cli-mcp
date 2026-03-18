@@ -165,6 +165,10 @@ ${getSupportedModelsDescription()}
                 type: 'string',
                 description: 'Reasoning control for Claude and Codex. Claude uses --effort with "low", "medium", "high". Codex uses model_reasoning_effort with "low", "medium", "high", "xhigh".',
               },
+              service_tier: {
+                type: 'string',
+                description: 'Codex only. Sets service_tier for speed control. Allowed: "fast", "flex". "fast" prioritizes speed.',
+              },
               session_id: {
                 type: 'string',
                 description: 'Optional session ID to resume a previous session. Supported for: haiku, sonnet, opus, gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview.',
@@ -282,6 +286,7 @@ ${getSupportedModelsDescription()}
         model: toolArguments.model,
         session_id: toolArguments.session_id,
         reasoning_effort: toolArguments.reasoning_effort,
+        service_tier: toolArguments.service_tier,
       });
       return {
         content: [{

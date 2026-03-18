@@ -3,6 +3,7 @@ import { resolve as pathResolve, isAbsolute } from 'node:path';
 import { MODEL_ALIASES } from './model-catalog.js';
 
 export const ALLOWED_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
+export const ALLOWED_SERVICE_TIERS = new Set(['fast', 'flex']);
 const CLAUDE_REASONING_EFFORTS = new Set(['low', 'medium', 'high']);
 
 function getAgentForModel(model: string): 'codex' | 'claude' | 'gemini' {
@@ -73,6 +74,7 @@ export interface BuildCliCommandOptions {
   model?: string;
   session_id?: string;
   reasoning_effort?: string;
+  service_tier?: string;
   cliPaths: { claude: string; codex: string; gemini: string };
 }
 
@@ -142,6 +144,25 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
 
   const reasoningEffort = getReasoningEffort(resolvedModel, reasoningEffortArg);
 
+  // Validate service_tier (Codex only)
+  let serviceTier = '';
+  if (options.service_tier && typeof options.service_tier === 'string') {
+    const normalized = options.service_tier.trim().toLowerCase();
+    if (normalized) {
+      if (!ALLOWED_SERVICE_TIERS.has(normalized)) {
+        throw new Error(
+          `Invalid service_tier: ${options.service_tier}. Allowed values: fast, flex.`
+        );
+      }
+      if (!resolvedModel.startsWith('gpt-')) {
+        throw new Error(
+          'service_tier is only supported for Codex models (gpt-*).'
+        );
+      }
+      serviceTier = normalized;
+    }
+  }
+
   // Build CLI path and args
   let cliPath: string;
   let args: string[];
@@ -157,6 +178,9 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
 
     if (reasoningEffort) {
       args.push('-c', `model_reasoning_effort=${reasoningEffort}`);
+    }
+    if (serviceTier) {
+      args.push('-c', `service_tier=${serviceTier}`);
     }
     if (resolvedModel) {
       args.push('--model', resolvedModel);
