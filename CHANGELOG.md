@@ -1,3 +1,16 @@
+# [2.13.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.12.0...v2.13.0) (2026-04-07)
+
+
+### Bug Fixes
+
+* **ci:** correct release version capture shell quoting ([2986b0b](https://github.com/mkXultra/ai-cli-mcp/commit/2986b0bb0452fcf4b34491c3d832cff3b271616c))
+* **ci:** skip MCP Registry publish when no release is created ([9de4c83](https://github.com/mkXultra/ai-cli-mcp/commit/9de4c836a946b4a0028a46525b4bcfa2094032cc))
+
+
+### Features
+
+* Forge CLIを新しいAIバックエンドとして追加 ([35ae860](https://github.com/mkXultra/ai-cli-mcp/commit/35ae8604ff0a663e960fc758eee2872680aec503))
+
 # [2.12.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.11.0...v2.12.0) (2026-03-12)
 
 
