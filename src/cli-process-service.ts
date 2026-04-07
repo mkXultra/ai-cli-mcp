@@ -12,7 +12,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { join, basename, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
 import { findClaudeCli, findCodexCli, findForgeCli, findGeminiCli } from './cli-utils.js';
@@ -24,6 +24,7 @@ interface StoredProcess {
   pid: number;
   prompt: string;
   workFolder: string;
+  cwdKey?: string;
   model?: string;
   toolType: AgentType;
   startTime: string;
@@ -128,6 +129,7 @@ export class CliProcessService {
         pid,
         prompt: cmd.prompt,
         workFolder: cmd.cwd,
+        cwdKey: this.resolveCwdKey(cmd.cwd),
         model: options.model,
         toolType: cmd.agent,
         startTime: new Date().toISOString(),
@@ -260,7 +262,7 @@ export class CliProcessService {
         continue;
       }
 
-      const processDir = this.resolveProcessDir(refreshed.workFolder, refreshed.pid);
+      const processDir = this.resolveStoredProcessDir(refreshed);
       if (existsSync(processDir)) {
         rmSync(processDir, { recursive: true, force: true });
         removed++;
@@ -304,11 +306,15 @@ export class CliProcessService {
   }
 
   private parseProcessFile(metaPath: string): StoredProcess {
-    return JSON.parse(readFileSync(metaPath, 'utf-8')) as StoredProcess;
+    const process = JSON.parse(readFileSync(metaPath, 'utf-8')) as StoredProcess;
+    if (!process.cwdKey) {
+      process.cwdKey = basename(dirname(dirname(metaPath)));
+    }
+    return process;
   }
 
   private writeProcess(process: StoredProcess): void {
-    const processDir = this.resolveProcessDir(process.workFolder, process.pid);
+    const processDir = this.resolveStoredProcessDir(process);
     mkdirSync(processDir, { recursive: true });
     writeFileSync(this.resolveMetaPath(processDir), JSON.stringify(process, null, 2));
   }
@@ -333,7 +339,18 @@ export class CliProcessService {
   }
 
   private resolveProcessDir(cwd: string, pid: number): string {
-    return join(this.resolveCwdsDir(), normalizeCwdForStorage(realpathSync(cwd)), String(pid));
+    return join(this.resolveCwdsDir(), this.resolveCwdKey(cwd), String(pid));
+  }
+
+  private resolveStoredProcessDir(process: StoredProcess): string {
+    if (!process.cwdKey) {
+      process.cwdKey = this.resolveCwdKey(process.workFolder);
+    }
+    return join(this.resolveCwdsDir(), process.cwdKey, String(process.pid));
+  }
+
+  private resolveCwdKey(cwd: string): string {
+    return normalizeCwdForStorage(realpathSync(cwd));
   }
 
   private resolveMetaPath(processDir: string): string {

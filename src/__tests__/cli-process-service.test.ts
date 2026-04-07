@@ -334,6 +334,111 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
     killSpy.mockRestore();
   });
 
+  it('lists processes without crashing when a tracked work folder has been deleted', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
+    tempDirs.push(root);
+    const stateDir = join(root, 'state');
+    const workFolder = join(root, 'deleted-project');
+    mkdirSync(workFolder, { recursive: true });
+
+    const pid = 45678;
+    const processDir = join(stateDir, 'cwds', encodeCwd(realpathSync(workFolder)), String(pid));
+    mkdirSync(processDir, { recursive: true });
+
+    writeFileSync(
+      join(processDir, 'meta.json'),
+      JSON.stringify({
+        pid,
+        prompt: 'deleted cwd',
+        workFolder,
+        toolType: 'claude',
+        startTime: new Date().toISOString(),
+        stdoutPath: join(processDir, 'stdout.log'),
+        stderrPath: join(processDir, 'stderr.log'),
+        status: 'running',
+      })
+    );
+
+    rmSync(workFolder, { recursive: true, force: true });
+
+    const service = new CliProcessService({
+      stateDir,
+      cliPaths: {
+        claude: '/bin/sh',
+        codex: '/bin/sh',
+        gemini: '/bin/sh',
+        forge: '/bin/sh',
+      },
+    });
+
+    const killSpy = vi.spyOn(globalThis.process, 'kill').mockImplementation((target: number, signal?: string | number) => {
+      if (signal === 0 && target === pid) {
+        throw Object.assign(new Error('not running'), { code: 'ESRCH' });
+      }
+      return true;
+    });
+
+    const listed = await service.listProcesses();
+
+    expect(listed).toEqual([
+      {
+        pid,
+        agent: 'claude',
+        status: 'completed',
+      },
+    ]);
+    expect(JSON.parse(readFileSync(join(processDir, 'meta.json'), 'utf-8')).status).toBe('completed');
+    killSpy.mockRestore();
+  });
+
+  it('cleans up finished process directories even when their work folder has been deleted', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
+    tempDirs.push(root);
+    const stateDir = join(root, 'state');
+    const workFolder = join(root, 'deleted-finished-project');
+    mkdirSync(workFolder, { recursive: true });
+
+    const pid = 56789;
+    const cwdDir = join(stateDir, 'cwds', encodeCwd(realpathSync(workFolder)));
+    const processDir = join(cwdDir, String(pid));
+    mkdirSync(processDir, { recursive: true });
+
+    writeFileSync(
+      join(processDir, 'meta.json'),
+      JSON.stringify({
+        pid,
+        prompt: 'done',
+        workFolder,
+        toolType: 'claude',
+        startTime: new Date().toISOString(),
+        stdoutPath: join(processDir, 'stdout.log'),
+        stderrPath: join(processDir, 'stderr.log'),
+        status: 'completed',
+      })
+    );
+
+    rmSync(workFolder, { recursive: true, force: true });
+
+    const service = new CliProcessService({
+      stateDir,
+      cliPaths: {
+        claude: '/bin/sh',
+        codex: '/bin/sh',
+        gemini: '/bin/sh',
+        forge: '/bin/sh',
+      },
+    });
+
+    const result = await service.cleanupProcesses();
+
+    expect(result).toEqual({
+      removed: 1,
+      message: 'Removed 1 processes',
+    });
+    expect(existsSync(processDir)).toBe(false);
+    expect(existsSync(cwdDir)).toBe(false);
+  });
+
   it('cleans up completed and failed process directories but preserves running ones', async () => {
     const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
     tempDirs.push(root);
