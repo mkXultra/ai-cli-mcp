@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
 import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput } from './parsers.js';
+import { buildProcessResult } from './process-result.js';
 
 export type AgentType = 'claude' | 'codex' | 'gemini' | 'forge';
 export type ProcessStatus = 'running' | 'completed' | 'failed';
@@ -149,7 +150,7 @@ export class ProcessService {
       }
     }
 
-    const response: any = {
+    return buildProcessResult({
       pid,
       agent: process.toolType,
       status: process.status,
@@ -158,28 +159,12 @@ export class ProcessService {
       workFolder: process.workFolder,
       prompt: process.prompt,
       model: process.model,
-    };
-
-    if (agentOutput) {
-      if (!verbose && agentOutput.tools) {
-        const { tools, ...rest } = agentOutput;
-        response.agentOutput = rest;
-      } else {
-        response.agentOutput = agentOutput;
-      }
-
-      if (agentOutput.session_id) {
-        response.session_id = agentOutput.session_id;
-      }
-    } else {
-      response.stdout = process.stdout;
-      response.stderr = process.stderr;
-    }
-
-    return response;
+      stdout: process.stdout,
+      stderr: process.stderr,
+    }, agentOutput, verbose);
   }
 
-  async waitForProcesses(pids: number[], timeoutSeconds = 180): Promise<any[]> {
+  async waitForProcesses(pids: number[], timeoutSeconds = 180, verbose = false): Promise<any[]> {
     for (const pid of pids) {
       if (!this.processManager.has(pid)) {
         throw new Error(`Process with PID ${pid} not found`);
@@ -211,7 +196,7 @@ export class ProcessService {
 
     try {
       await Promise.race([Promise.all(waitPromises), timeoutPromise]);
-      return pids.map((pid) => this.getProcessResult(pid, false));
+      return pids.map((pid) => this.getProcessResult(pid, verbose));
     } finally {
       if (timeoutHandle) {
         clearTimeout(timeoutHandle);

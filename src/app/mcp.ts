@@ -187,7 +187,7 @@ ${getSupportedModelsDescription()}
         },
         {
           name: 'get_result',
-          description: 'Get the current output and status of an AI agent process by PID. Returns the output from the agent including session_id (if applicable), along with process metadata.',
+          description: 'Get the current output and status of an AI agent process by PID. Defaults to a compact result shape; set verbose to true for full metadata and detailed parsed output.',
           inputSchema: {
             type: 'object',
             properties: {
@@ -197,7 +197,7 @@ ${getSupportedModelsDescription()}
               },
               verbose: {
                 type: 'boolean',
-                description: 'Optional: If true, returns detailed execution information including tool usage history. Defaults to false.',
+                description: 'Optional: If true, returns the full result shape including metadata fields and detailed parsed output such as tool usage history. Defaults to false.',
               }
             },
             required: ['pid'],
@@ -205,7 +205,7 @@ ${getSupportedModelsDescription()}
         },
         {
           name: 'wait',
-          description: 'Wait for multiple AI agent processes to complete and return their results. Blocks until all specified PIDs finish or timeout occurs.',
+          description: 'Wait for multiple AI agent processes to complete and return their results. Defaults to compact result items; set verbose to true for full metadata and detailed parsed output.',
           inputSchema: {
             type: 'object',
             properties: {
@@ -217,6 +217,10 @@ ${getSupportedModelsDescription()}
               timeout: {
                 type: 'number',
                 description: 'Optional: Maximum time to wait in seconds. Defaults to 180 (3 minutes).',
+              },
+              verbose: {
+                type: 'boolean',
+                description: 'Optional: If true, each result item uses the full result shape including metadata fields and detailed parsed output. Defaults to false.',
               },
             },
             required: ['pids'],
@@ -336,7 +340,8 @@ ${getSupportedModelsDescription()}
     try {
       const results = await this.processService.waitForProcesses(
         toolArguments.pids,
-        typeof toolArguments.timeout === 'number' ? toolArguments.timeout : 180
+        typeof toolArguments.timeout === 'number' ? toolArguments.timeout : 180,
+        !!toolArguments.verbose
       );
       return {
         content: [{

@@ -84,8 +84,18 @@ describe('CliProcessService', () => {
 
     const waitResult = await service.waitForProcesses([runResult.pid], 5);
     expect(waitResult).toHaveLength(1);
-    expect(waitResult[0].pid).toBe(runResult.pid);
-    expect(waitResult[0].status).toBe('completed');
+    expect(waitResult[0]).toMatchObject({
+      pid: runResult.pid,
+      agent: 'claude',
+      status: 'completed',
+      exitCode: null,
+      model: 'sonnet',
+      stdout: expect.any(String),
+      stderr: expect.any(String),
+    });
+    expect(waitResult[0]).not.toHaveProperty('startTime');
+    expect(waitResult[0]).not.toHaveProperty('workFolder');
+    expect(waitResult[0]).not.toHaveProperty('prompt');
 
     const listed = await service.listProcesses();
     expect(listed).toContainEqual({
@@ -95,10 +105,139 @@ describe('CliProcessService', () => {
     });
 
     const result = await service.getProcessResult(runResult.pid, false);
-    expect(result.pid).toBe(runResult.pid);
-    expect(result.status).toBe('completed');
-    expect(result.stdout).toContain('Command executed successfully');
+    expect(result).toMatchObject({
+      pid: runResult.pid,
+      agent: 'claude',
+      status: 'completed',
+      exitCode: null,
+      model: 'sonnet',
+      stdout: expect.stringContaining('Command executed successfully'),
+      stderr: expect.any(String),
+    });
+    expect(result).not.toHaveProperty('startTime');
+    expect(result).not.toHaveProperty('workFolder');
+    expect(result).not.toHaveProperty('prompt');
     expect(readFileSync(join(processDir, 'meta.json'), 'utf-8')).toContain('"status": "completed"');
+  });
+
+  it('returns compact results by default and full results when verbose is true', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
+    tempDirs.push(root);
+    const scriptPath = join(root, 'mock-claude-json');
+    writeFileSync(
+      scriptPath,
+      `#!/bin/bash
+printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tool-1","name":"Read","input":{"file_path":"/tmp/demo.txt"}}]}}'
+printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tool-1","content":[{"type":"text","text":"demo output"}]}]}}'
+printf '%s\n' '{"type":"result","result":"Completed cli-process-service test"}'
+printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
+`
+    );
+    chmodSync(scriptPath, 0o755);
+    const stateDir = join(root, 'state');
+    const workFolder = join(root, 'work');
+    mkdirSync(workFolder, { recursive: true });
+
+    const service = new CliProcessService({
+      stateDir,
+      cliPaths: {
+        claude: scriptPath,
+        codex: scriptPath,
+        gemini: scriptPath,
+        forge: scriptPath,
+      },
+    });
+
+    const runResult = await service.startProcess({
+      prompt: 'hello structured output',
+      cwd: workFolder,
+    });
+
+    const compactWait = await service.waitForProcesses([runResult.pid], 5);
+    expect(compactWait).toHaveLength(1);
+    expect(compactWait[0]).toMatchObject({
+      pid: runResult.pid,
+      agent: 'claude',
+      status: 'completed',
+      exitCode: null,
+      model: null,
+      session_id: 'session-cli-1',
+      agentOutput: {
+        message: 'Completed cli-process-service test',
+        session_id: 'session-cli-1',
+      },
+    });
+    expect(compactWait[0]).not.toHaveProperty('startTime');
+    expect(compactWait[0]).not.toHaveProperty('workFolder');
+    expect(compactWait[0]).not.toHaveProperty('prompt');
+    expect(compactWait[0].agentOutput).not.toHaveProperty('tools');
+
+    const compactResult = await service.getProcessResult(runResult.pid, false);
+    expect(compactResult).toMatchObject({
+      pid: runResult.pid,
+      agent: 'claude',
+      status: 'completed',
+      exitCode: null,
+      model: null,
+      session_id: 'session-cli-1',
+      agentOutput: {
+        message: 'Completed cli-process-service test',
+        session_id: 'session-cli-1',
+      },
+    });
+    expect(compactResult).not.toHaveProperty('startTime');
+    expect(compactResult).not.toHaveProperty('workFolder');
+    expect(compactResult).not.toHaveProperty('prompt');
+    expect(compactResult.agentOutput).not.toHaveProperty('tools');
+
+    const verboseWait = await service.waitForProcesses([runResult.pid], 5, true);
+    expect(verboseWait).toHaveLength(1);
+    expect(verboseWait[0]).toMatchObject({
+      pid: runResult.pid,
+      agent: 'claude',
+      status: 'completed',
+      exitCode: null,
+      model: null,
+      startTime: expect.any(String),
+      workFolder,
+      prompt: 'hello structured output',
+      session_id: 'session-cli-1',
+      agentOutput: {
+        message: 'Completed cli-process-service test',
+        session_id: 'session-cli-1',
+        tools: [
+          {
+            tool: 'Read',
+            input: { file_path: '/tmp/demo.txt' },
+            output: 'demo output',
+          },
+        ],
+      },
+    });
+
+    const verboseResult = await service.getProcessResult(runResult.pid, true);
+    expect(verboseResult).toMatchObject({
+      pid: runResult.pid,
+      agent: 'claude',
+      status: 'completed',
+      exitCode: null,
+      model: null,
+      startTime: expect.any(String),
+      workFolder,
+      prompt: 'hello structured output',
+      session_id: 'session-cli-1',
+      agentOutput: {
+        message: 'Completed cli-process-service test',
+        session_id: 'session-cli-1',
+        tools: [
+          {
+            tool: 'Read',
+            input: { file_path: '/tmp/demo.txt' },
+            output: 'demo output',
+          },
+        ],
+      },
+    });
   });
 
   it('can terminate a tracked process', async () => {

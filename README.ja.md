@@ -118,7 +118,9 @@ ai-cli models
 ai-cli run --cwd "$PWD" --model sonnet --prompt "summarize this repository"
 ai-cli ps
 ai-cli result 12345
+ai-cli result 12345 --verbose
 ai-cli wait 12345 --timeout 300
+ai-cli wait 12345 --verbose
 ai-cli kill 12345
 ai-cli cleanup
 ai-cli-mcp
@@ -185,7 +187,9 @@ ai-cli models
 ai-cli run --cwd "$PWD" --model codex-ultra --prompt "fix failing tests"
 ai-cli ps
 ai-cli wait 12345
+ai-cli wait 12345 --verbose
 ai-cli result 12345
+ai-cli result 12345 --verbose
 ai-cli cleanup
 ```
 
@@ -244,9 +248,12 @@ Claude CLI、Codex CLI、Gemini CLI、または Forge CLI を使用してプロ�
 
 複数のAIエージェントプロセスの完了を待機し、結果をまとめて返します。指定されたすべてのPIDが終了するか、タイムアウトになるまでブロックします。
 
+デフォルトでは、返される各結果項目は `get_result(verbose: false)` と同じ compact 形を使います。`pid`、`agent`、`status`、`exitCode`、`model` などの運用上必要な項目に加え、利用可能であれば `agentOutput` やトップレベルの `session_id` を含みます。`verbose: true` を指定すると、`startTime`、`workFolder`、`prompt` などの完全なメタデータや、`agentOutput.tools` のような詳細な解析結果を含む full 形を返します。
+
 **引数:**
 - `pids` (array of numbers, 必須): 待機するプロセスIDのリスト（`run` ツールから返されたもの）。
 - `timeout` (number, 任意): 最大待機時間（秒）。デフォルトは180秒（3分）です。
+- `verbose` (boolean, 任意): `true` の場合、各結果項目を full 形で返します。デフォルトは `false` です。
 
 ### `list_processes`
 
@@ -256,8 +263,11 @@ Claude CLI、Codex CLI、Gemini CLI、または Forge CLI を使用してプロ�
 
 PIDを指定して、AIエージェントプロセスの現在の出力とステータスを取得します。
 
+デフォルトでは compact 形を返します。これには `pid`、`agent`、`status`、`exitCode`、`model` などの運用上必要な項目に加え、利用可能であれば `agentOutput` やトップレベルの `session_id` を含みます。`startTime`、`workFolder`、`prompt` は含みません。`verbose: true` を指定すると、これらのメタデータや `agentOutput.tools` のような詳細な解析結果を含む full 形を返します。解析結果が得られない場合や不完全な場合は、従来どおり `stdout` / `stderr` のフォールバックを維持します。
+
 **引数:**
 - `pid` (number, 必須): `run` ツールによって返されたプロセスID。
+- `verbose` (boolean, 任意): `true` の場合、full 形で返します。デフォルトは `false` です。
 
 ### `kill_process`
 
