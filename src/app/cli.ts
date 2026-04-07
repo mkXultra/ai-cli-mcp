@@ -41,18 +41,20 @@ Compatibility aliases:
 export const WAIT_HELP_TEXT = `Usage: ai-cli wait <pid...> [options]
 
 Wait for one or more tracked processes to finish.
+By default each result uses the compact shape; set --verbose to include full metadata and detailed parsed output.
 
 Options:
   --timeout <seconds>          Maximum wait time in seconds
+  --verbose                    Return full metadata and detailed parsed output
   --help, -h                   Show this help message
 `;
 
 export const RESULT_HELP_TEXT = `Usage: ai-cli result <pid> [options]
 
-Get the current result for a tracked process.
+Get the current output and status of a tracked process. By default this returns a compact result shape; set --verbose to include full metadata and detailed parsed output.
 
 Options:
-  --verbose                    Include verbose parsed output
+  --verbose                    Return full metadata and detailed parsed output
   --help, -h                   Show this help message
 `;
 
@@ -115,7 +117,7 @@ interface CliDeps {
   }) => Promise<any>;
   listProcesses: () => Promise<any>;
   getProcessResult: (pid: number, verbose: boolean) => Promise<any>;
-  waitForProcesses: (pids: number[], timeoutSeconds?: number) => Promise<any>;
+  waitForProcesses: (pids: number[], timeoutSeconds?: number, verbose?: boolean) => Promise<any>;
   killProcess: (pid: number) => Promise<any>;
   cleanupProcesses: () => Promise<any>;
   getDoctorStatus: () => any;
@@ -137,7 +139,7 @@ const defaultDeps: CliDeps = {
   runProcess: (options) => getCliProcessService().startProcess(options),
   listProcesses: () => getCliProcessService().listProcesses(),
   getProcessResult: (pid, verbose) => getCliProcessService().getProcessResult(pid, verbose),
-  waitForProcesses: (pids, timeoutSeconds) => getCliProcessService().waitForProcesses(pids, timeoutSeconds),
+  waitForProcesses: (pids, timeoutSeconds, verbose) => getCliProcessService().waitForProcesses(pids, timeoutSeconds, verbose),
   killProcess: (pid) => getCliProcessService().killProcess(pid),
   cleanupProcesses: () => getCliProcessService().cleanupProcesses(),
   getDoctorStatus: () => getCliDoctorStatus(),
@@ -317,7 +319,7 @@ export async function runCli(argv: string[], deps: Partial<CliDeps> = {}): Promi
       return 1;
     }
 
-    writeJson(stdout, await waitForProcesses(pids as number[], timeout));
+    writeJson(stdout, await waitForProcesses(pids as number[], timeout, 'verbose' in flags));
     return 0;
   }
 

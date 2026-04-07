@@ -122,6 +122,7 @@ describe('MCP Contract Tests', () => {
     expect(Object.keys(waitTool.inputSchema.properties).sort()).toEqual([
       'pids',
       'timeout',
+      'verbose',
     ]);
   });
 
@@ -155,22 +156,32 @@ describe('MCP Contract Tests', () => {
       pid: runData.pid,
       agent: 'claude',
       status: expect.any(String),
-      startTime: expect.any(String),
-      workFolder: testDir,
-      prompt: 'create a file called contract.txt with content "hello"',
       model: 'haiku',
       stdout: expect.any(String),
       stderr: expect.any(String),
     });
+    expect(getResultData).toHaveProperty('exitCode');
+    expect(getResultData).not.toHaveProperty('startTime');
+    expect(getResultData).not.toHaveProperty('workFolder');
+    expect(getResultData).not.toHaveProperty('prompt');
 
     const waitResponse = await client.callTool('wait', { pids: [runData.pid], timeout: 5 });
     const waitData = parseToolJson(waitResponse);
 
     expect(Array.isArray(waitData)).toBe(true);
     expect(waitData).toHaveLength(1);
-    expect(waitData[0].pid).toBe(runData.pid);
-    expect(waitData[0].agent).toBe('claude');
-    expect(waitData[0].status).toBe('completed');
+    expect(waitData[0]).toMatchObject({
+      pid: runData.pid,
+      agent: 'claude',
+      status: 'completed',
+      exitCode: 0,
+      model: 'haiku',
+      stdout: expect.any(String),
+      stderr: expect.any(String),
+    });
+    expect(waitData[0]).not.toHaveProperty('startTime');
+    expect(waitData[0]).not.toHaveProperty('workFolder');
+    expect(waitData[0]).not.toHaveProperty('prompt');
 
     const cleanupResponse = await client.callTool('cleanup_processes', {});
     const cleanupData = parseToolJson(cleanupResponse);
@@ -183,13 +194,14 @@ describe('MCP Contract Tests', () => {
     expect(cleanupData.removedPids).toContain(runData.pid);
   });
 
-  it('accepts prompt_file and keeps the run response shape stable', async () => {
+  it('preserves successful prompt_file execution through the MCP process path', async () => {
     const promptFile = join(testDir, 'prompt.txt');
-    writeFileSync(promptFile, 'create a file called from-file.txt');
+    writeFileSync(promptFile, 'Create a file from prompt_file');
 
     const runResponse = await client.callTool('run', {
       prompt_file: promptFile,
       workFolder: testDir,
+      model: 'haiku',
     });
     const runData = parseToolJson(runResponse);
 
@@ -198,6 +210,138 @@ describe('MCP Contract Tests', () => {
       status: 'started',
       agent: 'claude',
       message: expect.any(String),
+    });
+
+    const waitResponse = await client.callTool('wait', { pids: [runData.pid], timeout: 5 });
+    const waitData = parseToolJson(waitResponse);
+
+    expect(waitData).toHaveLength(1);
+    expect(waitData[0]).toMatchObject({
+      pid: runData.pid,
+      agent: 'claude',
+      status: 'completed',
+      exitCode: 0,
+      model: 'haiku',
+      stdout: expect.stringContaining('Created file successfully'),
+      stderr: '',
+    });
+    expect(waitData[0]).not.toHaveProperty('prompt');
+    expect(waitData[0]).not.toHaveProperty('workFolder');
+    expect(waitData[0]).not.toHaveProperty('startTime');
+  });
+
+  it('returns compact results by default and full results when verbose is true for parsed output', async () => {
+    await client.disconnect();
+
+    const verboseMockPath = join(testDir, 'verbose-claude');
+    writeFileSync(
+      verboseMockPath,
+      `#!/bin/bash
+printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tool-1","name":"Read","input":{"file_path":"/tmp/demo.txt"}}]}}'
+printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tool-1","content":[{"type":"text","text":"demo output"}]}]}}'
+printf '%s\n' '{"type":"result","result":"Completed contract verbose test"}'
+printf '%s\n' '{"type":"system","session_id":"session-verbose-1"}'
+`
+    );
+    chmodSync(verboseMockPath, 0o755);
+
+    client = createTestClient({ claudeCliName: verboseMockPath, debug: false });
+    await client.connect();
+
+    const runResponse = await client.callTool('run', {
+      prompt: 'verbose-shape-test',
+      workFolder: testDir,
+    });
+    const runData = parseToolJson(runResponse);
+
+    const completedWait = parseToolJson(await client.callTool('wait', { pids: [runData.pid], timeout: 5 }));
+    expect(completedWait).toHaveLength(1);
+    expect(completedWait[0].status).toBe('completed');
+
+    const compactResult = parseToolJson(await client.callTool('get_result', { pid: runData.pid }));
+    expect(compactResult).toMatchObject({
+      pid: runData.pid,
+      agent: 'claude',
+      status: 'completed',
+      exitCode: 0,
+      model: null,
+      session_id: 'session-verbose-1',
+      agentOutput: {
+        message: 'Completed contract verbose test',
+        session_id: 'session-verbose-1',
+      },
+    });
+    expect(compactResult).not.toHaveProperty('startTime');
+    expect(compactResult).not.toHaveProperty('workFolder');
+    expect(compactResult).not.toHaveProperty('prompt');
+    expect(compactResult.agentOutput).not.toHaveProperty('tools');
+
+    const verboseResult = parseToolJson(await client.callTool('get_result', { pid: runData.pid, verbose: true }));
+    expect(verboseResult).toMatchObject({
+      pid: runData.pid,
+      agent: 'claude',
+      status: 'completed',
+      exitCode: 0,
+      model: null,
+      startTime: expect.any(String),
+      workFolder: testDir,
+      prompt: 'verbose-shape-test',
+      session_id: 'session-verbose-1',
+      agentOutput: {
+        message: 'Completed contract verbose test',
+        session_id: 'session-verbose-1',
+        tools: [
+          {
+            tool: 'Read',
+            input: { file_path: '/tmp/demo.txt' },
+            output: 'demo output',
+          },
+        ],
+      },
+    });
+
+    const compactWait = parseToolJson(await client.callTool('wait', { pids: [runData.pid], timeout: 5 }));
+    expect(compactWait).toHaveLength(1);
+    expect(compactWait[0]).toMatchObject({
+      pid: runData.pid,
+      agent: 'claude',
+      status: 'completed',
+      exitCode: 0,
+      model: null,
+      session_id: 'session-verbose-1',
+      agentOutput: {
+        message: 'Completed contract verbose test',
+        session_id: 'session-verbose-1',
+      },
+    });
+    expect(compactWait[0]).not.toHaveProperty('startTime');
+    expect(compactWait[0]).not.toHaveProperty('workFolder');
+    expect(compactWait[0]).not.toHaveProperty('prompt');
+    expect(compactWait[0].agentOutput).not.toHaveProperty('tools');
+
+    const verboseWait = parseToolJson(await client.callTool('wait', { pids: [runData.pid], timeout: 5, verbose: true }));
+    expect(verboseWait).toHaveLength(1);
+    expect(verboseWait[0]).toMatchObject({
+      pid: runData.pid,
+      agent: 'claude',
+      status: 'completed',
+      exitCode: 0,
+      model: null,
+      startTime: expect.any(String),
+      workFolder: testDir,
+      prompt: 'verbose-shape-test',
+      session_id: 'session-verbose-1',
+      agentOutput: {
+        message: 'Completed contract verbose test',
+        session_id: 'session-verbose-1',
+        tools: [
+          {
+            tool: 'Read',
+            input: { file_path: '/tmp/demo.txt' },
+            output: 'demo output',
+          },
+        ],
+      },
     });
   });
 

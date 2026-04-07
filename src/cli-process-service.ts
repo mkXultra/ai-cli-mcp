@@ -17,6 +17,7 @@ import { homedir } from 'node:os';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
 import { findClaudeCli, findCodexCli, findForgeCli, findGeminiCli } from './cli-utils.js';
 import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput } from './parsers.js';
+import { buildProcessResult } from './process-result.js';
 import type { AgentType, ProcessListItem } from './process-service.js';
 
 interface StoredProcess {
@@ -183,7 +184,7 @@ export class CliProcessService {
       }
     }
 
-    const response: any = {
+    return buildProcessResult({
       pid,
       agent: refreshed.toolType,
       status: refreshed.status,
@@ -192,27 +193,12 @@ export class CliProcessService {
       workFolder: refreshed.workFolder,
       prompt: refreshed.prompt,
       model: refreshed.model,
-    };
-
-    if (agentOutput) {
-      if (!verbose && agentOutput.tools) {
-        const { tools, ...rest } = agentOutput;
-        response.agentOutput = rest;
-      } else {
-        response.agentOutput = agentOutput;
-      }
-      if (agentOutput.session_id) {
-        response.session_id = agentOutput.session_id;
-      }
-    } else {
-      response.stdout = stdout;
-      response.stderr = stderr;
-    }
-
-    return response;
+      stdout,
+      stderr,
+    }, agentOutput, verbose);
   }
 
-  async waitForProcesses(pids: number[], timeoutSeconds = 180): Promise<any[]> {
+  async waitForProcesses(pids: number[], timeoutSeconds = 180, verbose = false): Promise<any[]> {
     const start = Date.now();
     for (const pid of pids) {
       this.readProcess(pid);
@@ -221,7 +207,7 @@ export class CliProcessService {
     while (true) {
       const statuses = pids.map((pid) => this.refreshStatus(this.readProcess(pid)).status);
       if (statuses.every((status) => status !== 'running')) {
-        return Promise.all(pids.map((pid) => this.getProcessResult(pid, false)));
+        return Promise.all(pids.map((pid) => this.getProcessResult(pid, verbose)));
       }
 
       if (Date.now() - start >= timeoutSeconds * 1000) {

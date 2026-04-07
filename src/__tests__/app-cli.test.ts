@@ -3,6 +3,7 @@ import {
   CLI_HELP_TEXT,
   DOCTOR_HELP_TEXT,
   MODELS_HELP_TEXT,
+  RESULT_HELP_TEXT,
   RUN_HELP_TEXT,
   WAIT_HELP_TEXT,
   runCli,
@@ -142,8 +143,26 @@ describe('ai-cli app', () => {
     );
 
     expect(exitCode).toBe(0);
-    expect(waitForProcesses).toHaveBeenCalledWith([123, 456], 5);
+    expect(waitForProcesses).toHaveBeenCalledWith([123, 456], 5, false);
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"status": "completed"'));
+  });
+
+  it('passes verbose through to wait', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+    const waitForProcesses = vi.fn().mockResolvedValue([{ pid: 123, status: 'completed' }]);
+
+    const exitCode = await runCli(
+      ['wait', '123', '--verbose'],
+      {
+        stdout,
+        stderr,
+        waitForProcesses,
+      }
+    );
+
+    expect(exitCode).toBe(0);
+    expect(waitForProcesses).toHaveBeenCalledWith([123], undefined, true);
   });
 
   it('rejects invalid wait timeout values', async () => {
@@ -291,6 +310,19 @@ describe('ai-cli app', () => {
     expect(stderr).not.toHaveBeenCalled();
   });
 
+  it('prints detailed help for result --help', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+
+    const exitCode = await runCli(['result', '--help'], { stdout, stderr });
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toHaveBeenCalledWith(RESULT_HELP_TEXT);
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('compact result shape'));
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('--verbose'));
+    expect(stderr).not.toHaveBeenCalled();
+  });
+
   it('prints detailed help for wait --help', async () => {
     const stdout = vi.fn();
     const stderr = vi.fn();
@@ -299,6 +331,8 @@ describe('ai-cli app', () => {
 
     expect(exitCode).toBe(0);
     expect(stdout).toHaveBeenCalledWith(WAIT_HELP_TEXT);
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('compact shape'));
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('--verbose'));
     expect(stderr).not.toHaveBeenCalled();
   });
 

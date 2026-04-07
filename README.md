@@ -116,7 +116,9 @@ ai-cli models
 ai-cli run --cwd "$PWD" --model sonnet --prompt "summarize this repository"
 ai-cli ps
 ai-cli result 12345
+ai-cli result 12345 --verbose
 ai-cli wait 12345 --timeout 300
+ai-cli wait 12345 --verbose
 ai-cli kill 12345
 ai-cli cleanup
 ai-cli-mcp
@@ -183,7 +185,9 @@ ai-cli models
 ai-cli run --cwd "$PWD" --model codex-ultra --prompt "fix failing tests"
 ai-cli ps
 ai-cli wait 12345
+ai-cli wait 12345 --verbose
 ai-cli result 12345
+ai-cli result 12345 --verbose
 ai-cli cleanup
 ```
 
@@ -242,9 +246,12 @@ Executes a prompt using Claude CLI, Codex CLI, Gemini CLI, or Forge CLI. The app
 
 Waits for multiple AI agent processes to complete and returns their combined results. Blocks until all specified PIDs finish or a timeout occurs.
 
+By default, each returned result item uses the compact shape shared with `get_result(verbose: false)`: operational fields such as `pid`, `agent`, `status`, `exitCode`, `model`, parsed output such as `agentOutput`, and top-level `session_id` when available. Set `verbose: true` to include full metadata like `startTime`, `workFolder`, `prompt`, and detailed parsed output such as `agentOutput.tools`.
+
 **Arguments:**
 - `pids` (array of numbers, required): List of process IDs to wait for (returned by the `run` tool).
 - `timeout` (number, optional): Maximum wait time in seconds. Defaults to 180 (3 minutes).
+- `verbose` (boolean, optional): If `true`, each result item uses the full result shape. Defaults to `false`.
 
 ### `list_processes`
 
@@ -254,8 +261,11 @@ Lists all running and completed AI agent processes with their status, PID, and b
 
 Gets the current output and status of an AI agent process by PID.
 
+By default, this returns the compact result shape: operational fields such as `pid`, `agent`, `status`, `exitCode`, `model`, parsed output such as `agentOutput`, and top-level `session_id` when available. It omits metadata fields like `startTime`, `workFolder`, and `prompt`. Set `verbose: true` to return the full result shape including those metadata fields and detailed parsed output such as `agentOutput.tools`. If parsed output is unavailable or incomplete, the raw `stdout`/`stderr` fallback is preserved.
+
 **Arguments:**
 - `pid` (number, required): The process ID returned by the `run` tool.
+- `verbose` (boolean, optional): If `true`, returns the full result shape. Defaults to `false`.
 
 ### `kill_process`
 

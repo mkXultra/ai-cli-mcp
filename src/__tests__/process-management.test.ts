@@ -191,7 +191,8 @@ describe('Process Management Tests', () => {
         params: {
           name: 'get_result',
           arguments: {
-            pid: 12360
+            pid: 12360,
+            verbose: true
           }
         }
       });
