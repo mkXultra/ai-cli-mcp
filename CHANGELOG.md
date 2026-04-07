@@ -1,3 +1,10 @@
+## [2.14.1](https://github.com/mkXultra/ai-cli-mcp/compare/v2.14.0...v2.14.1) (2026-04-07)
+
+
+### Bug Fixes
+
+* 削除済み作業フォルダでのプロセス操作クラッシュを修正 ([02d765f](https://github.com/mkXultra/ai-cli-mcp/commit/02d765ff76ebd295118e16a112ea3e7ac6fab111))
+
 # [2.14.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.13.0...v2.14.0) (2026-04-07)
 
 
