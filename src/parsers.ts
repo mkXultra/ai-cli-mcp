@@ -167,3 +167,64 @@ export function parseGeminiOutput(stdout: string): any {
     return null;
   }
 }
+
+/**
+ * Parse Forge output framed by Initialize/Continue/Finished markers.
+ */
+export function parseForgeOutput(stdout: string): any {
+  if (!stdout) return null;
+
+  const lines = stdout.split('\n');
+  const markerPattern = /^● \[[^\]]+\] (Initialize|Continue|Finished) (\S+)\s*$/;
+  let collecting = false;
+  let currentConversationId: string | null = null;
+  let currentBody: string[] = [];
+  let lastConversationId: string | null = null;
+  let lastMessage: string | null = null;
+
+  for (const line of lines) {
+    const match = line.match(markerPattern);
+    if (match) {
+      const [, action, conversationId] = match;
+      lastConversationId = conversationId;
+
+      if (action === 'Initialize' || action === 'Continue') {
+        collecting = true;
+        currentConversationId = conversationId;
+        currentBody = [];
+      } else if (collecting && currentConversationId === conversationId) {
+        const message = currentBody.join('\n').trim();
+        if (message) {
+          lastMessage = message;
+        }
+        collecting = false;
+        currentConversationId = null;
+        currentBody = [];
+      }
+      continue;
+    }
+
+    if (collecting) {
+      currentBody.push(line);
+    }
+  }
+
+  if (collecting) {
+    const message = currentBody.join('\n').trim();
+    if (message) {
+      lastMessage = message;
+    }
+    if (currentConversationId) {
+      lastConversationId = currentConversationId;
+    }
+  }
+
+  if (!lastMessage && !lastConversationId) {
+    return null;
+  }
+
+  return {
+    message: lastMessage,
+    session_id: lastConversationId,
+  };
+}

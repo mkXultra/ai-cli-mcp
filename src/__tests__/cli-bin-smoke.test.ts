@@ -30,6 +30,7 @@ describe('ai-cli entrypoint smoke', () => {
     writeExecutable(fakeBinDir, 'claude');
     writeExecutable(fakeBinDir, 'codex');
     writeExecutable(fakeBinDir, 'gemini');
+    writeExecutable(fakeBinDir, 'forge');
 
     const output = execFileSync(
       'node',
@@ -43,6 +44,7 @@ describe('ai-cli entrypoint smoke', () => {
           CLAUDE_CLI_NAME: 'claude',
           CODEX_CLI_NAME: 'codex',
           GEMINI_CLI_NAME: 'gemini',
+          FORGE_CLI_NAME: 'forge',
         },
       }
     );
@@ -50,6 +52,7 @@ describe('ai-cli entrypoint smoke', () => {
     expect(output).toContain('"claude"');
     expect(output).toContain('"codex"');
     expect(output).toContain('"gemini"');
+    expect(output).toContain('"forge"');
     expect(output).toContain('"available": true');
   });
 
@@ -67,5 +70,6 @@ describe('ai-cli entrypoint smoke', () => {
     expect(output).toContain('Usage: ai-cli run --cwd <path> [options]');
     expect(output).toContain('--model <model>');
     expect(output).toContain('claude-ultra');
+    expect(output).toContain('forge');
   });
 });

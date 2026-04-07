@@ -22,6 +22,7 @@ const DEFAULT_CLI_PATHS = {
   claude: '/usr/bin/claude',
   codex: '/usr/bin/codex',
   gemini: '/usr/bin/gemini',
+  forge: '/usr/bin/forge',
 };
 
 describe('cli-builder', () => {
@@ -95,6 +96,12 @@ describe('cli-builder', () => {
     it('should throw for unsupported model families', () => {
       expect(() => getReasoningEffort('gemini-2.5-pro', 'high')).toThrow(
         'reasoning_effort is only supported for Claude and Codex models.'
+      );
+    });
+
+    it('should reject reasoning_effort for forge explicitly', () => {
+      expect(() => getReasoningEffort('forge', 'high')).toThrow(
+        'reasoning_effort is not supported for forge.'
       );
     });
   });
@@ -399,6 +406,46 @@ describe('cli-builder', () => {
 
         expect(cmd.agent).toBe('gemini');
         expect(cmd.resolvedModel).toBe('gemini-3.1-pro-preview');
+      });
+    });
+
+    describe('forge agent', () => {
+      it('should build forge command without model flags', () => {
+        const cmd = buildCliCommand({
+          prompt: 'test',
+          workFolder: '/tmp',
+          model: 'forge',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.agent).toBe('forge');
+        expect(cmd.cliPath).toBe('/usr/bin/forge');
+        expect(cmd.resolvedModel).toBe('forge');
+        expect(cmd.args).toEqual(['-C', '/tmp', '-p', 'test']);
+      });
+
+      it('should map session_id to --conversation-id for forge', () => {
+        const cmd = buildCliCommand({
+          prompt: 'test',
+          workFolder: '/tmp',
+          model: 'forge',
+          session_id: 'forge-conv-123',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.args).toEqual(['-C', '/tmp', '--conversation-id', 'forge-conv-123', '-p', 'test']);
+      });
+
+      it('should reject reasoning_effort for forge in command building', () => {
+        expect(() =>
+          buildCliCommand({
+            prompt: 'test',
+            workFolder: '/tmp',
+            model: 'forge',
+            reasoning_effort: 'high',
+            cliPaths: DEFAULT_CLI_PATHS,
+          })
+        ).toThrow('reasoning_effort is not supported for forge.');
       });
     });
   });

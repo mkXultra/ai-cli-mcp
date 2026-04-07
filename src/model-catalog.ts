@@ -19,6 +19,7 @@ export const GEMINI_MODELS = [
   'gemini-3-pro-preview',
   'gemini-3-flash-preview',
 ] as const;
+export const FORGE_MODELS = ['forge'] as const;
 
 export const MODEL_ALIASES: Record<string, string> = {
   'claude-ultra': 'opus',
@@ -38,11 +39,12 @@ export function getSupportedModelsDescription(): string {
     ...CLAUDE_MODELS.map((model) => `"${model}"`),
     ...CODEX_MODELS.map((model) => `"${model}"`),
     ...GEMINI_MODELS.map((model) => `"${model}"`),
+    ...FORGE_MODELS.map((model) => `"${model}"`),
   ].join(', ');
 }
 
 export function getModelParameterDescription(): string {
-  return `The model to use. Aliases: "claude-ultra" (auto high effort), "codex-ultra" (auto xhigh reasoning), "gemini-ultra". Standard: ${[...CLAUDE_MODELS, ...CODEX_MODELS, ...GEMINI_MODELS].map((model) => `"${model}"`).join(', ')}.`;
+  return `The model to use. Aliases: "claude-ultra" (auto high effort), "codex-ultra" (auto xhigh reasoning), "gemini-ultra". Standard: ${[...CLAUDE_MODELS, ...CODEX_MODELS, ...GEMINI_MODELS, ...FORGE_MODELS].map((model) => `"${model}"`).join(', ')}. "forge" is a provider key, not a Forge model family selector.`;
 }
 
 export function getModelsPayload(): {
@@ -50,11 +52,13 @@ export function getModelsPayload(): {
   claude: ReadonlyArray<string>;
   codex: ReadonlyArray<string>;
   gemini: ReadonlyArray<string>;
+  forge: ReadonlyArray<string>;
 } {
   return {
     aliases: MODEL_ALIAS_DETAILS,
     claude: CLAUDE_MODELS,
     codex: CODEX_MODELS,
     gemini: GEMINI_MODELS,
+    forge: FORGE_MODELS,
   };
 }

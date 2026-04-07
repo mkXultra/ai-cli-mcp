@@ -8,7 +8,7 @@ import {
   type ServerResult,
 } from '@modelcontextprotocol/sdk/types.js';
 import { spawn } from 'node:child_process';
-import { debugLog, findClaudeCli, findCodexCli, findGeminiCli } from '../cli-utils.js';
+import { debugLog, findClaudeCli, findCodexCli, findForgeCli, findGeminiCli } from '../cli-utils.js';
 import { getModelParameterDescription, getSupportedModelsDescription } from '../model-catalog.js';
 import { ProcessService } from '../process-service.js';
 
@@ -72,6 +72,7 @@ export class ClaudeCodeServer {
   private claudeCliPath: string;
   private codexCliPath: string;
   private geminiCliPath: string;
+  private forgeCliPath: string;
   private processService: ProcessService;
   private sigintHandler?: () => Promise<void>;
   private packageVersion: string;
@@ -80,15 +81,18 @@ export class ClaudeCodeServer {
     this.claudeCliPath = findClaudeCli();
     this.codexCliPath = findCodexCli();
     this.geminiCliPath = findGeminiCli();
+    this.forgeCliPath = findForgeCli();
     console.error(`[Setup] Using Claude CLI command/path: ${this.claudeCliPath}`);
     console.error(`[Setup] Using Codex CLI command/path: ${this.codexCliPath}`);
     console.error(`[Setup] Using Gemini CLI command/path: ${this.geminiCliPath}`);
+    console.error(`[Setup] Using Forge CLI command/path: ${this.forgeCliPath}`);
     this.packageVersion = SERVER_VERSION;
     this.processService = new ProcessService({
       cliPaths: {
         claude: this.claudeCliPath,
         codex: this.codexCliPath,
         gemini: this.geminiCliPath,
+        forge: this.forgeCliPath,
       },
     });
 
@@ -119,7 +123,7 @@ export class ClaudeCodeServer {
       tools: [
         {
           name: 'run',
-          description: `AI Agent Runner: Starts a Claude, Codex, or Gemini CLI process in the background and returns a PID immediately. Use list_processes and get_result to monitor progress.
+          description: `AI Agent Runner: Starts a Claude, Codex, Gemini, or Forge CLI process in the background and returns a PID immediately. Use list_processes and get_result to monitor progress.
 
 • File ops: Create, read, (fuzzy) edit, move, copy, delete, list files, analyze/ocr images, file content analysis
 • Code: Generate / analyse / refactor / fix
@@ -163,11 +167,11 @@ ${getSupportedModelsDescription()}
               },
               reasoning_effort: {
                 type: 'string',
-                description: 'Reasoning control for Claude and Codex. Claude uses --effort with "low", "medium", "high". Codex uses model_reasoning_effort with "low", "medium", "high", "xhigh".',
+                description: 'Reasoning control for Claude and Codex. Claude uses --effort with "low", "medium", "high". Codex uses model_reasoning_effort with "low", "medium", "high", "xhigh". Forge does not support reasoning_effort in this integration.',
               },
               session_id: {
                 type: 'string',
-                description: 'Optional session ID to resume a previous session. Supported for: haiku, sonnet, opus, gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview.',
+                description: 'Optional session ID to resume a previous session. Supported for: haiku, sonnet, opus, gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview, forge.',
               },
             },
             required: ['workFolder'],

@@ -7,7 +7,7 @@
 
 > **📦 Package Migration Notice**: This package was formerly `@mkxultra/claude-code-mcp` and has been renamed to `ai-cli-mcp` to reflect its expanded support for multiple AI CLI tools.
 
-An MCP (Model Context Protocol) server that allows running AI CLI tools (Claude, Codex, and Gemini) in background processes with automatic permission handling.
+An MCP (Model Context Protocol) server that allows running AI CLI tools (Claude, Codex, Gemini, and Forge) in background processes with automatic permission handling.
 
 Did you notice that Cursor sometimes struggles with complex, multi-step edits or operations? This server, with its powerful unified `run` tool, enables multiple AI agents to handle your coding tasks more effectively.
 
@@ -22,7 +22,8 @@ This MCP server provides tools that can be used by LLMs to interact with AI CLI 
 - Run Claude CLI with all permissions bypassed (using `--dangerously-skip-permissions`)
 - Execute Codex CLI with automatic approval mode (using `--full-auto`)
 - Execute Gemini CLI with automatic approval mode (using `-y`)
-- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, haiku), Codex (gpt-5.4, gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, gpt-5.2, gpt-5.1, gpt-5.1-codex, gpt-5-codex, gpt-5-codex-mini, gpt-5), and Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview)
+- Execute Forge CLI in non-interactive mode (using `forge -C <workFolder> -p <prompt>`)
+- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, haiku), Codex (gpt-5.4, gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, gpt-5.2, gpt-5.1, gpt-5.1-codex, gpt-5-codex, gpt-5-codex-mini, gpt-5), Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview), and Forge (`forge`)
 - Manage background processes with PID tracking
 - Parse and return structured outputs from both tools
 
@@ -54,7 +55,7 @@ You can reuse heavy context (like large codebases) using session IDs to save cos
 
 - **True Async Multitasking**: Agent execution happens in the background, returning control immediately. The calling AI can proceed with the next task or invoke another agent without waiting for completion.
 - **CLI in CLI (Agent in Agent)**: Directly invoke powerful CLI tools like Claude Code or Codex from any MCP-supported IDE or CLI. This enables broader, more complex system operations and automation beyond host environment limitations.
-- **Freedom from Model/Provider Constraints**: Freely select and combine the "strongest" or "most cost-effective" models from Claude, Codex (GPT), and Gemini without being tied to a specific ecosystem.
+- **Freedom from Model/Provider Constraints**: Freely select and combine the "strongest" or "most cost-effective" models from Claude, Codex (GPT), Gemini, and Forge without being tied to a specific ecosystem.
 
 ## Prerequisites
 
@@ -63,6 +64,7 @@ The only prerequisite is that the AI CLI tools you want to use are locally insta
 - **Claude Code**: `claude doctor` passes, and execution with `--dangerously-skip-permissions` is approved (you must run it manually once to login and accept terms).
 - **Codex CLI** (Optional): Installed and initial setup (login etc.) completed.
 - **Gemini CLI** (Optional): Installed and initial setup (login etc.) completed.
+- **Forge CLI** (Optional): Installed and initial setup completed.
 
 ## Installation & Usage
 
@@ -221,7 +223,7 @@ This server exposes the following tools:
 
 ### `run`
 
-Executes a prompt using Claude CLI, Codex CLI, or Gemini CLI. The appropriate CLI is automatically selected based on the model name.
+Executes a prompt using Claude CLI, Codex CLI, Gemini CLI, or Forge CLI. The appropriate CLI is automatically selected based on the model name.
 
 **Arguments:**
 - `prompt` (string, optional): The prompt to send to the AI agent. Either `prompt` or `prompt_file` is required.
@@ -232,8 +234,9 @@ Executes a prompt using Claude CLI, Codex CLI, or Gemini CLI. The appropriate CL
 - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
 - Codex: `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
 - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
-- `reasoning_effort` (string, optional): Reasoning control for Claude and Codex. Claude uses `--effort` (allowed: "low", "medium", "high"). Codex uses `model_reasoning_effort` (allowed: "low", "medium", "high", "xhigh").
-- `session_id` (string, optional): Optional session ID to resume a previous session. Supported for: haiku, sonnet, opus, gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview.
+- Forge: `forge`
+- `reasoning_effort` (string, optional): Reasoning control for Claude and Codex. Claude uses `--effort` (allowed: "low", "medium", "high"). Codex uses `model_reasoning_effort` (allowed: "low", "medium", "high", "xhigh"). Forge does not support `reasoning_effort`.
+- `session_id` (string, optional): Optional session ID to resume a previous session. Supported for: haiku, sonnet, opus, gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview, forge.
 
 ### `wait`
 
@@ -281,6 +284,7 @@ Normally not required, but useful for customizing CLI paths or debugging.
 - `CLAUDE_CLI_NAME`: Override the Claude CLI binary name or provide an absolute path (default: `claude`)
 - `CODEX_CLI_NAME`: Override the Codex CLI binary name or provide an absolute path (default: `codex`)
 - `GEMINI_CLI_NAME`: Override the Gemini CLI binary name or provide an absolute path (default: `gemini`)
+- `FORGE_CLI_NAME`: Override the Forge CLI binary name or provide an absolute path (default: `forge`)
 - `MCP_CLAUDE_DEBUG`: Enable debug logging (set to `true` for verbose output)
 
 **CLI Name Specification:**

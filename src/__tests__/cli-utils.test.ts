@@ -19,6 +19,7 @@ describe('cli-utils doctor status', () => {
     delete process.env.CLAUDE_CLI_NAME;
     delete process.env.CODEX_CLI_NAME;
     delete process.env.GEMINI_CLI_NAME;
+    delete process.env.FORGE_CLI_NAME;
     process.env.PATH = '/mock/bin:/usr/bin';
   });
 
@@ -44,6 +45,12 @@ describe('cli-utils doctor status', () => {
       available: true,
       lookup: 'path',
     });
+    expect(status.forge).toEqual({
+      configuredCommand: 'forge',
+      resolvedPath: null,
+      available: false,
+      lookup: 'path',
+    });
   });
 
   it('does not mark non-executable PATH entries as available', async () => {
@@ -56,6 +63,12 @@ describe('cli-utils doctor status', () => {
 
     expect(status.claude).toEqual({
       configuredCommand: 'claude',
+      resolvedPath: null,
+      available: false,
+      lookup: 'path',
+    });
+    expect(status.forge).toEqual({
+      configuredCommand: 'forge',
       resolvedPath: null,
       available: false,
       lookup: 'path',
@@ -128,5 +141,26 @@ describe('cli-utils doctor status', () => {
       available: true,
       lookup: 'env',
     });
+  });
+
+  it('supports forge lookup via FORGE_CLI_NAME', async () => {
+    process.env.FORGE_CLI_NAME = 'forge-custom';
+    mockAccessSync.mockImplementation((filePath) => {
+      if (filePath === '/mock/bin/forge-custom') {
+        return undefined;
+      }
+      throw new Error('not executable');
+    });
+
+    const { getCliDoctorStatus, findForgeCli } = await import('../cli-utils.js');
+    const status = getCliDoctorStatus();
+
+    expect(status.forge).toEqual({
+      configuredCommand: 'forge-custom',
+      resolvedPath: '/mock/bin/forge-custom',
+      available: true,
+      lookup: 'env',
+    });
+    expect(findForgeCli()).toBe('forge-custom');
   });
 });
