@@ -45,7 +45,9 @@ jobs:
 
       - name: Capture version before release
         id: release_before
-        run: echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+        run: |
+          VERSION=$(node -p 'require("./package.json").version')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Release
         env:
@@ -54,7 +56,9 @@ jobs:
 
       - name: Capture version after release
         id: release_after
-        run: echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+        run: |
+          VERSION=$(node -p 'require("./package.json").version')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Detect whether a release was published
         id: release_status
