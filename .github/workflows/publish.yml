@@ -43,22 +43,43 @@ jobs:
       - name: Verify provenance attestations
         run: npm audit signatures
 
+      - name: Capture version before release
+        id: release_before
+        run: echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx semantic-release
 
+      - name: Capture version after release
+        id: release_after
+        run: echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+
+      - name: Detect whether a release was published
+        id: release_status
+        run: |
+          if [ "${{ steps.release_before.outputs.version }}" != "${{ steps.release_after.outputs.version }}" ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install mcp-publisher
+        if: steps.release_status.outputs.published == 'true'
         run: |
           curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
 
       - name: Authenticate to MCP Registry
+        if: steps.release_status.outputs.published == 'true'
         run: ./mcp-publisher login github-oidc
 
       - name: Set version in server.json
+        if: steps.release_status.outputs.published == 'true'
         run: |
           VERSION=$(node -p "require('./package.json').version")
           jq --arg v "$VERSION" '.version = $v | .packages[0].version = $v' server.json > server.tmp && mv server.tmp server.json
 
       - name: Publish to MCP Registry
+        if: steps.release_status.outputs.published == 'true'
         run: ./mcp-publisher publish
