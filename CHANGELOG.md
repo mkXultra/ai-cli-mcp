@@ -1,3 +1,10 @@
+# [2.14.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.13.0...v2.14.0) (2026-04-07)
+
+
+### Features
+
+* get_result・waitにcompact/verbose出力形式を追加 ([21fdff3](https://github.com/mkXultra/ai-cli-mcp/commit/21fdff3813f28327a2da94f4b5bed94b54abcd74))
+
 # [2.13.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.12.0...v2.13.0) (2026-04-07)
 
 
