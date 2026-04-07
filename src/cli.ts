@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
 import { buildCliCommand } from './cli-builder.js';
-import { findClaudeCli, findCodexCli, findGeminiCli } from './cli-utils.js';
+import { findClaudeCli, findCodexCli, findForgeCli, findGeminiCli } from './cli-utils.js';
 
 /**
  * Minimal argv parser. No external dependencies.
@@ -35,12 +35,12 @@ function parseArgs(argv: string[]): Record<string, string> {
 const USAGE = `Usage: npm run -s cli.run -- --model <model> --workFolder <path> --prompt "..." [options]
 
 Options:
-  --model              Model name or alias (e.g. sonnet, opus, gpt-5.2-codex, gemini-2.5-pro)
+  --model              Model name or alias (e.g. sonnet, opus, gpt-5.2-codex, gemini-2.5-pro, forge)
   --workFolder         Working directory (absolute path)
   --prompt             Prompt string (mutually exclusive with --prompt_file)
   --prompt_file        Path to a file containing the prompt
   --session_id         Session ID to resume
-  --reasoning_effort   Claude/Codex: Claude=low|medium|high, Codex=low|medium|high|xhigh
+  --reasoning_effort   Claude/Codex only: Claude=low|medium|high, Codex=low|medium|high|xhigh
   --help               Show this help message
 
 Raw CLI output goes to stdout. Use cli.run.parse to parse the output:
@@ -73,6 +73,7 @@ async function main(): Promise<void> {
     claude: findClaudeCli(),
     codex: findCodexCli(),
     gemini: findGeminiCli(),
+    forge: findForgeCli(),
   };
 
   // Build command

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseCodexOutput, parseClaudeOutput } from '../parsers.js';
+import { parseCodexOutput, parseClaudeOutput, parseForgeOutput } from '../parsers.js';
 
 describe('parseCodexOutput', () => {
   it('should parse basic Codex output with message and session_id', () => {
@@ -104,5 +104,48 @@ INVALID_LINE
 `;
     const result = parseClaudeOutput(output);
     expect(result.message).toBe("Success");
+  });
+});
+
+describe('parseForgeOutput', () => {
+  it('should parse initialized forge output with a conversation id', () => {
+    const output = `● [21:09:01] Initialize 123e4567-e89b-12d3-a456-426614174000
+Hello from Forge
+● [21:09:08] Finished 123e4567-e89b-12d3-a456-426614174000
+`;
+
+    expect(parseForgeOutput(output)).toEqual({
+      message: 'Hello from Forge',
+      session_id: '123e4567-e89b-12d3-a456-426614174000',
+    });
+  });
+
+  it('should parse resumed forge output with multiline assistant content', () => {
+    const output = `● [21:09:33] Continue conv-123
+Line one
+
+Line three
+● [21:09:37] Finished conv-123
+`;
+
+    expect(parseForgeOutput(output)).toEqual({
+      message: 'Line one\n\nLine three',
+      session_id: 'conv-123',
+    });
+  });
+
+  it('should return the current message while forge output is still in progress', () => {
+    const output = `● [21:09:33] Continue conv-456
+Partial answer
+still streaming`;
+
+    expect(parseForgeOutput(output)).toEqual({
+      message: 'Partial answer\nstill streaming',
+      session_id: 'conv-456',
+    });
+  });
+
+  it('should return null for unrelated forge output', () => {
+    expect(parseForgeOutput('plain text')).toBeNull();
   });
 });

@@ -5,7 +5,10 @@ import { MODEL_ALIASES } from './model-catalog.js';
 export const ALLOWED_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
 const CLAUDE_REASONING_EFFORTS = new Set(['low', 'medium', 'high']);
 
-function getAgentForModel(model: string): 'codex' | 'claude' | 'gemini' {
+function getAgentForModel(model: string): 'codex' | 'claude' | 'gemini' | 'forge' {
+  if (model === 'forge') {
+    return 'forge';
+  }
   if (model.startsWith('gpt-')) {
     return 'codex';
   }
@@ -44,6 +47,9 @@ export function getReasoningEffort(model: string, rawValue: unknown): string {
     );
   }
   const agent = getAgentForModel(model);
+  if (agent === 'forge') {
+    throw new Error('reasoning_effort is not supported for forge.');
+  }
   if (agent === 'gemini') {
     throw new Error(
       'reasoning_effort is only supported for Claude and Codex models.'
@@ -61,7 +67,7 @@ export interface CliCommand {
   cliPath: string;
   args: string[];
   cwd: string;
-  agent: 'claude' | 'codex' | 'gemini';
+  agent: 'claude' | 'codex' | 'gemini' | 'forge';
   prompt: string;
   resolvedModel: string;
 }
@@ -73,7 +79,7 @@ export interface BuildCliCommandOptions {
   model?: string;
   session_id?: string;
   reasoning_effort?: string;
-  cliPaths: { claude: string; codex: string; gemini: string };
+  cliPaths: { claude: string; codex: string; gemini: string; forge: string };
 }
 
 /**
@@ -178,6 +184,15 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
 
     args.push(prompt);
 
+  } else if (agent === 'forge') {
+    cliPath = options.cliPaths.forge;
+    args = ['-C', cwd];
+
+    if (options.session_id && typeof options.session_id === 'string') {
+      args.push('--conversation-id', options.session_id);
+    }
+
+    args.push('-p', prompt);
   } else {
     cliPath = options.cliPaths.claude;
     args = ['--dangerously-skip-permissions', '--output-format', 'stream-json', '--verbose'];

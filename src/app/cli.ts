@@ -26,9 +26,9 @@ Options:
   --cwd <path>                 Working directory
   --prompt <text>              Prompt text
   --prompt-file <path>         Path to a prompt file
-  --model <model>              Model name or alias (e.g. sonnet, claude-ultra, gpt-5.2-codex, codex-ultra, gemini-2.5-pro, gemini-ultra)
+  --model <model>              Model name or alias (e.g. sonnet, claude-ultra, gpt-5.2-codex, codex-ultra, gemini-2.5-pro, gemini-ultra, forge)
   --session-id <id>            Resume a previous session
-  --reasoning-effort <level>   Reasoning level for Claude/Codex
+  --reasoning-effort <level>   Reasoning level for Claude/Codex only
   --help, -h                   Show this help message
 
 Compatibility aliases:

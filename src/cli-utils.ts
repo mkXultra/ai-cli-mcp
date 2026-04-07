@@ -148,7 +148,7 @@ function isExecutableFile(filePath: string): boolean {
   }
 }
 
-type CliBinaryName = 'claude' | 'codex' | 'gemini';
+type CliBinaryName = 'claude' | 'codex' | 'gemini' | 'forge';
 
 function getCliBinaryConfig(name: CliBinaryName): {
   envVarName: string;
@@ -174,6 +174,15 @@ function getCliBinaryConfig(name: CliBinaryName): {
     };
   }
 
+  if (name === 'forge') {
+    return {
+      envVarName: 'FORGE_CLI_NAME',
+      customCliName: process.env.FORGE_CLI_NAME,
+      defaultCliName: 'forge',
+      localInstallPath: join(homedir(), '.forge', 'local', 'forge'),
+    };
+  }
+
   return {
     envVarName: 'GEMINI_CLI_NAME',
     customCliName: process.env.GEMINI_CLI_NAME,
@@ -190,11 +199,13 @@ export function getCliDoctorStatus(): {
   claude: CliBinaryStatus;
   codex: CliBinaryStatus;
   gemini: CliBinaryStatus;
+  forge: CliBinaryStatus;
 } {
   return {
     claude: getCliBinaryStatus('claude'),
     codex: getCliBinaryStatus('codex'),
     gemini: getCliBinaryStatus('gemini'),
+    forge: getCliBinaryStatus('forge'),
   };
 }
 
@@ -215,6 +226,15 @@ export function findGeminiCli(): string {
 export function findCodexCli(): string {
   debugLog('[Debug] Attempting to find Codex CLI...');
   const status = getCliBinaryStatus('codex');
+  return getCliCommandOrThrow(status);
+}
+
+/**
+ * Determine the Forge CLI command/path.
+ */
+export function findForgeCli(): string {
+  debugLog('[Debug] Attempting to find Forge CLI...');
+  const status = getCliBinaryStatus('forge');
   return getCliCommandOrThrow(status);
 }
 

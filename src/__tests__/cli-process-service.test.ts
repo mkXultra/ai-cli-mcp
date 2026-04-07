@@ -65,6 +65,7 @@ describe('CliProcessService', () => {
         claude: scriptPath,
         codex: scriptPath,
         gemini: scriptPath,
+        forge: scriptPath,
       },
     });
 
@@ -114,6 +115,7 @@ describe('CliProcessService', () => {
         claude: scriptPath,
         codex: scriptPath,
         gemini: scriptPath,
+        forge: scriptPath,
       },
     });
 
@@ -152,6 +154,7 @@ describe('CliProcessService', () => {
         claude: '/bin/sh',
         codex: '/bin/sh',
         gemini: '/bin/sh',
+        forge: '/bin/sh',
       },
     });
 
@@ -254,6 +257,7 @@ describe('CliProcessService', () => {
         claude: '/bin/sh',
         codex: '/bin/sh',
         gemini: '/bin/sh',
+        forge: '/bin/sh',
       },
     });
 
@@ -274,5 +278,57 @@ describe('CliProcessService', () => {
     expect(existsSync(completedDir)).toBe(false);
     expect(existsSync(failedDir)).toBe(false);
     killSpy.mockRestore();
+  });
+
+  it('parses forge output from detached process logs', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
+    tempDirs.push(root);
+    const stateDir = join(root, 'state');
+    const workFolder = join(root, 'forge-project');
+    mkdirSync(workFolder, { recursive: true });
+    const pid = 54321;
+    const processDir = join(stateDir, 'cwds', encodeCwd(realpathSync(workFolder)), String(pid));
+    mkdirSync(processDir, { recursive: true });
+
+    writeFileSync(
+      join(processDir, 'stdout.log'),
+      `● [21:09:01] Initialize forge-conv-1
+Forge assistant reply
+● [21:09:08] Finished forge-conv-1
+`
+    );
+    writeFileSync(join(processDir, 'stderr.log'), '');
+    writeFileSync(
+      join(processDir, 'meta.json'),
+      JSON.stringify({
+        pid,
+        prompt: 'hello forge',
+        workFolder,
+        model: 'forge',
+        toolType: 'forge',
+        startTime: new Date().toISOString(),
+        stdoutPath: join(processDir, 'stdout.log'),
+        stderrPath: join(processDir, 'stderr.log'),
+        status: 'completed',
+      })
+    );
+
+    const service = new CliProcessService({
+      stateDir,
+      cliPaths: {
+        claude: '/bin/sh',
+        codex: '/bin/sh',
+        gemini: '/bin/sh',
+        forge: '/bin/sh',
+      },
+    });
+
+    const result = await service.getProcessResult(pid, false);
+    expect(result.agent).toBe('forge');
+    expect(result.session_id).toBe('forge-conv-1');
+    expect(result.agentOutput).toEqual({
+      message: 'Forge assistant reply',
+      session_id: 'forge-conv-1',
+    });
   });
 });

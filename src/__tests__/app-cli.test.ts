@@ -222,6 +222,7 @@ describe('ai-cli app', () => {
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"aliases"'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"claude-ultra"'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"gpt-5.4"'));
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"forge"'));
     expect(stderr).not.toHaveBeenCalled();
   });
 
@@ -244,6 +245,12 @@ describe('ai-cli app', () => {
       gemini: {
         configuredCommand: 'gemini',
         resolvedPath: '/tmp/bin/gemini',
+        available: true,
+        lookup: 'path',
+      },
+      forge: {
+        configuredCommand: 'forge',
+        resolvedPath: '/tmp/bin/forge',
         available: true,
         lookup: 'path',
       },
@@ -280,6 +287,7 @@ describe('ai-cli app', () => {
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('claude-ultra'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('gpt-5.2-codex'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('gemini-2.5-pro'));
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('forge'));
     expect(stderr).not.toHaveBeenCalled();
   });
 

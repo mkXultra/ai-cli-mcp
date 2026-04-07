@@ -1,8 +1,8 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
-import { parseClaudeOutput, parseCodexOutput, parseGeminiOutput } from './parsers.js';
+import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput } from './parsers.js';
 
-export type AgentType = 'claude' | 'codex' | 'gemini';
+export type AgentType = 'claude' | 'codex' | 'gemini' | 'forge';
 export type ProcessStatus = 'running' | 'completed' | 'failed';
 
 interface TrackedProcess {
@@ -144,6 +144,8 @@ export class ProcessService {
         agentOutput = parseClaudeOutput(process.stdout);
       } else if (process.toolType === 'gemini') {
         agentOutput = parseGeminiOutput(process.stdout);
+      } else if (process.toolType === 'forge') {
+        agentOutput = parseForgeOutput(process.stdout);
       }
     }
 

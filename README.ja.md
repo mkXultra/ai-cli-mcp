@@ -5,7 +5,7 @@
 
 > **📦 パッケージ移行のお知らせ**: 本パッケージは旧名 `@mkxultra/claude-code-mcp` から `ai-cli-mcp` に名称変更されました。これは、複数のAI CLIツールのサポート拡大を反映したものです。
 
-AI CLIツール（Claude, Codex, Gemini）をバックグラウンドプロセスとして実行し、権限処理を自動化するMCP（Model Context Protocol）サーバーです。
+AI CLIツール（Claude, Codex, Gemini, Forge）をバックグラウンドプロセスとして実行し、権限処理を自動化するMCP（Model Context Protocol）サーバーです。
 
 Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦戦していることに気づいたことはありませんか？このサーバーは、強力な統合 `run` ツールを提供し、複数のAIエージェントを活用してコーディングタスクをより効果的に処理できるようにします。
 
@@ -20,10 +20,12 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 - すべての権限確認をスキップしてClaude CLIを実行（`--dangerously-skip-permissions` を使用）
 - 自動承認モードでCodex CLIを実行（`--full-auto` を使用）
 - 自動承認モードでGemini CLIを実行（`-y` を使用）
+- Forge CLI を非対話モードで実行（`forge -C <workFolder> -p <prompt>` を使用）
 - 複数のAIモデルのサポート：
     - Claude (sonnet, sonnet[1m], opus, opusplan, haiku)
     - Codex (gpt-5.4, gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, など)
     - Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview)
+    - Forge (`forge`)
 - PID追跡によるバックグラウンドプロセスの管理
 - ツールからの構造化された出力の解析と返却
 
@@ -55,7 +57,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 
 - **真の非同期マルチタスク**: エージェントの実行はバックグラウンドで行われ、即座に制御が戻ります。呼び出し元のAIは実行完了を待つことなく、並行して次のタスクの実行や別のエージェントの呼び出しを行うことができます。
 - **CLI in CLI (Agent in Agent) の実現**: MCPをサポートするあらゆるIDEやCLIから、Claude CodeやCodexといった強力なCLIツールを直接呼び出せます。ホスト環境の制限を超えた、より広範で複雑なシステム操作や自動化が可能になります。
-- **モデル・プロバイダの制約からの解放**: 特定のエコシステムに縛られることなく、Claude、Codex (GPT)、Geminiの中から、タスクに最適な「最強のモデル」や「コスト効率の良いモデル」を自由に選択・組み合わせて利用できます。
+- **モデル・プロバイダの制約からの解放**: 特定のエコシステムに縛られることなく、Claude、Codex (GPT)、Gemini、Forgeの中から、タスクに最適な「最強のモデル」や「コスト効率の良いモデル」を自由に選択・組み合わせて利用できます。
 
 ## 前提条件
 
@@ -64,6 +66,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 - **Claude Code**: `claude doctor` が通り、`--dangerously-skip-permissions` での実行が承認済み（一度手動で実行してログイン・承認済み）であること。
 - **Codex CLI**（オプション）: インストール済みで、ログインなどの初期設定が完了していること。
 - **Gemini CLI**（オプション）: インストール済みで、ログインなどの初期設定が完了していること。
+- **Forge CLI**（オプション）: インストール済みで、初期設定が完了していること。
 
 ## インストールと使い方
 
@@ -222,7 +225,7 @@ detached 実行された `ai-cli` の自然終了 exit code は、まだ永続�
 
 ### `run`
 
-Claude CLI、Codex CLI、またはGemini CLIを使用してプロンプトを実行します。モデル名に基づいて適切なCLIが自動的に選択されます。
+Claude CLI、Codex CLI、Gemini CLI、または Forge CLI を使用してプロンプトを実行します。モデル名に基づいて適切なCLIが自動的に選択されます。
 
 **引数:**
 - `prompt` (string, 任意): AIエージェントに送信するプロンプト。`prompt` または `prompt_file` のいずれかが必須です。
@@ -233,8 +236,9 @@ Claude CLI、Codex CLI、またはGemini CLIを使用してプロンプトを実
     - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
     - Codex: `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
     - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
-- `reasoning_effort` (string, 任意): Claude と Codex の推論制御。Claude では `--effort` を使います（許容値: "low", "medium", "high"）。Codex では `model_reasoning_effort` を使います（許容値: "low", "medium", "high", "xhigh"）。
-- `session_id` (string, 任意): 以前のセッションを再開するためのセッションID。対応モデル: haiku, sonnet, opus, gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview。
+    - Forge: `forge`
+- `reasoning_effort` (string, 任意): Claude と Codex の推論制御。Claude では `--effort` を使います（許容値: "low", "medium", "high"）。Codex では `model_reasoning_effort` を使います（許容値: "low", "medium", "high", "xhigh"）。Forge では `reasoning_effort` はサポートしません。
+- `session_id` (string, 任意): 以前のセッションを再開するためのセッションID。対応モデル: haiku, sonnet, opus, gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview, forge。
 
 ### `wait`
 
@@ -296,6 +300,7 @@ npm run test:e2e
 - `CLAUDE_CLI_NAME`: Claude CLIのバイナリ名または絶対パスを上書き（デフォルト: `claude`）
 - `CODEX_CLI_NAME`: Codex CLIのバイナリ名または絶対パスを上書き（デフォルト: `codex`）
 - `GEMINI_CLI_NAME`: Gemini CLIのバイナリ名または絶対パスを上書き（デフォルト: `gemini`）
+- `FORGE_CLI_NAME`: Forge CLIのバイナリ名または絶対パスを上書き（デフォルト: `forge`）
 - `MCP_CLAUDE_DEBUG`: デバッグログを有効化（`true` に設定すると詳細な出力が表示されます）
 
 **CLI名の指定方法:**

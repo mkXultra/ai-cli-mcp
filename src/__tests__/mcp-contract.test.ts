@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { cleanupSharedMock, getSharedMock } from './utils/persistent-mock.js';
@@ -17,6 +17,53 @@ function expectProcessSummaryShape(processInfo: any): void {
     agent: expect.any(String),
     status: expect.any(String),
   });
+}
+
+function createForgeMockScript(dir: string, argsLogPath: string): string {
+  const scriptPath = join(dir, 'mock-forge');
+  writeFileSync(
+    scriptPath,
+    `#!/bin/bash
+set -euo pipefail
+
+log_file="${argsLogPath}"
+prompt=""
+conversation_id=""
+
+printf '%s\\n' "$*" >> "$log_file"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -C)
+      shift 2
+      ;;
+    -p)
+      prompt="$2"
+      shift 2
+      ;;
+    --conversation-id)
+      conversation_id="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+if [[ -n "$conversation_id" ]]; then
+  printf '● [21:09:33] Continue %s\\n' "$conversation_id"
+  printf 'Resumed: %s\\n' "$prompt"
+  printf '● [21:09:37] Finished %s\\n' "$conversation_id"
+else
+  printf '● [21:09:01] Initialize forge-session-1\\n'
+  printf 'Initial: %s\\n' "$prompt"
+  printf '● [21:09:08] Finished forge-session-1\\n'
+fi
+`
+  );
+  chmodSync(scriptPath, 0o755);
+  return scriptPath;
 }
 
 describe('MCP Contract Tests', () => {
@@ -152,6 +199,131 @@ describe('MCP Contract Tests', () => {
       agent: 'claude',
       message: expect.any(String),
     });
+  });
+
+  it('covers forge end-to-end through the MCP process path', async () => {
+    await client.disconnect();
+
+    const forgeArgsLogPath = join(testDir, 'forge-args.log');
+    const forgeMockPath = createForgeMockScript(testDir, forgeArgsLogPath);
+
+    client = createTestClient({
+      debug: false,
+      env: {
+        FORGE_CLI_NAME: forgeMockPath,
+      },
+    });
+    await client.connect();
+
+    const initialRunResponse = await client.callTool('run', {
+      prompt: 'forge-initial-prompt',
+      workFolder: testDir,
+      model: 'forge',
+    });
+    const initialRunData = parseToolJson(initialRunResponse);
+
+    expect(initialRunData).toEqual({
+      pid: expect.any(Number),
+      status: 'started',
+      agent: 'forge',
+      message: expect.any(String),
+    });
+
+    const initialWaitResponse = await client.callTool('wait', { pids: [initialRunData.pid], timeout: 5 });
+    const initialWaitData = parseToolJson(initialWaitResponse);
+
+    expect(initialWaitData).toHaveLength(1);
+    expect(initialWaitData[0]).toMatchObject({
+      pid: initialRunData.pid,
+      agent: 'forge',
+      status: 'completed',
+      session_id: 'forge-session-1',
+      agentOutput: {
+        message: 'Initial: forge-initial-prompt',
+        session_id: 'forge-session-1',
+      },
+    });
+
+    const initialResultResponse = await client.callTool('get_result', { pid: initialRunData.pid });
+    const initialResultData = parseToolJson(initialResultResponse);
+
+    expect(initialResultData).toMatchObject({
+      pid: initialRunData.pid,
+      agent: 'forge',
+      status: 'completed',
+      session_id: 'forge-session-1',
+      agentOutput: {
+        message: 'Initial: forge-initial-prompt',
+        session_id: 'forge-session-1',
+      },
+    });
+
+    const resumedRunResponse = await client.callTool('run', {
+      prompt: 'forge-resume-prompt',
+      workFolder: testDir,
+      model: 'forge',
+      session_id: 'forge-session-1',
+    });
+    const resumedRunData = parseToolJson(resumedRunResponse);
+
+    expect(resumedRunData).toEqual({
+      pid: expect.any(Number),
+      status: 'started',
+      agent: 'forge',
+      message: expect.any(String),
+    });
+
+    const resumedWaitResponse = await client.callTool('wait', { pids: [resumedRunData.pid], timeout: 5 });
+    const resumedWaitData = parseToolJson(resumedWaitResponse);
+
+    expect(resumedWaitData).toHaveLength(1);
+    expect(resumedWaitData[0]).toMatchObject({
+      pid: resumedRunData.pid,
+      agent: 'forge',
+      status: 'completed',
+      session_id: 'forge-session-1',
+      agentOutput: {
+        message: 'Resumed: forge-resume-prompt',
+        session_id: 'forge-session-1',
+      },
+    });
+
+    const resumedResultResponse = await client.callTool('get_result', { pid: resumedRunData.pid });
+    const resumedResultData = parseToolJson(resumedResultResponse);
+
+    expect(resumedResultData).toMatchObject({
+      pid: resumedRunData.pid,
+      agent: 'forge',
+      status: 'completed',
+      session_id: 'forge-session-1',
+      agentOutput: {
+        message: 'Resumed: forge-resume-prompt',
+        session_id: 'forge-session-1',
+      },
+    });
+
+    const forgeInvocations = readFileSync(forgeArgsLogPath, 'utf-8').trim().split('\n');
+    expect(forgeInvocations).toHaveLength(2);
+    expect(forgeInvocations[0]).toContain(`-C ${testDir}`);
+    expect(forgeInvocations[0]).toContain('-p forge-initial-prompt');
+    expect(forgeInvocations[0]).not.toContain('--model');
+    expect(forgeInvocations[0]).not.toContain('--agent');
+    expect(forgeInvocations[0]).not.toContain('--conversation-id');
+
+    expect(forgeInvocations[1]).toContain(`-C ${testDir}`);
+    expect(forgeInvocations[1]).toContain('--conversation-id forge-session-1');
+    expect(forgeInvocations[1]).toContain('-p forge-resume-prompt');
+    expect(forgeInvocations[1]).not.toContain('--model');
+    expect(forgeInvocations[1]).not.toContain('--agent');
+
+    await expect(
+      client.callTool('run', {
+        prompt: 'forge-invalid-reasoning',
+        workFolder: testDir,
+        model: 'forge',
+        reasoning_effort: 'high',
+      })
+    ).rejects.toThrow(/reasoning_effort is not supported for forge/i);
   });
 
   it('keeps key invalid-input errors stable', async () => {

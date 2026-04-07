@@ -15,8 +15,8 @@ import {
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
-import { findClaudeCli, findCodexCli, findGeminiCli } from './cli-utils.js';
-import { parseClaudeOutput, parseCodexOutput, parseGeminiOutput } from './parsers.js';
+import { findClaudeCli, findCodexCli, findForgeCli, findGeminiCli } from './cli-utils.js';
+import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput } from './parsers.js';
 import type { AgentType, ProcessListItem } from './process-service.js';
 
 interface StoredProcess {
@@ -78,6 +78,7 @@ export class CliProcessService {
       claude: findClaudeCli(),
       codex: findCodexCli(),
       gemini: findGeminiCli(),
+      forge: findForgeCli(),
     };
     mkdirSync(this.stateDir, { recursive: true });
   }
@@ -177,6 +178,8 @@ export class CliProcessService {
         agentOutput = parseClaudeOutput(stdout);
       } else if (refreshed.toolType === 'gemini') {
         agentOutput = parseGeminiOutput(stdout);
+      } else if (refreshed.toolType === 'forge') {
+        agentOutput = parseForgeOutput(stdout);
       }
     }
 
