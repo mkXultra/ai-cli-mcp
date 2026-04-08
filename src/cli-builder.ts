@@ -164,6 +164,7 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
     if (reasoningEffort) {
       args.push('-c', `model_reasoning_effort=${reasoningEffort}`);
     }
+    args.push('-c', 'sandbox_mode=workspace-write');
     if (resolvedModel) {
       args.push('--model', resolvedModel);
     }
