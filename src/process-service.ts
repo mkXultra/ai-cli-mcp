@@ -1,9 +1,9 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
-import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput } from './parsers.js';
+import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput } from './parsers.js';
 import { buildProcessResult } from './process-result.js';
 
-export type AgentType = 'claude' | 'codex' | 'gemini' | 'forge';
+export type AgentType = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode';
 export type ProcessStatus = 'running' | 'completed' | 'failed';
 
 interface TrackedProcess {
@@ -35,6 +35,31 @@ export interface StartProcessResult {
 
 interface ProcessServiceOptions {
   cliPaths: BuildCliCommandOptions['cliPaths'];
+}
+
+function parseAgentOutput(agent: AgentType, stdout: string, stderr: string): any {
+  if (agent === 'codex') {
+    return parseCodexOutput(`${stdout || ''}\n${stderr || ''}`);
+  }
+
+  if (!stdout) {
+    return null;
+  }
+
+  if (agent === 'claude') {
+    return parseClaudeOutput(stdout);
+  }
+  if (agent === 'gemini') {
+    return parseGeminiOutput(stdout);
+  }
+  if (agent === 'forge') {
+    return parseForgeOutput(stdout);
+  }
+  if (agent === 'opencode') {
+    return parseOpenCodeOutput(stdout);
+  }
+
+  return null;
 }
 
 export class ProcessService {
@@ -136,19 +161,7 @@ export class ProcessService {
       throw new Error(`Process with PID ${pid} not found`);
     }
 
-    let agentOutput: any = null;
-    if (process.toolType === 'codex') {
-      const combinedOutput = (process.stdout || '') + '\n' + (process.stderr || '');
-      agentOutput = parseCodexOutput(combinedOutput);
-    } else if (process.stdout) {
-      if (process.toolType === 'claude') {
-        agentOutput = parseClaudeOutput(process.stdout);
-      } else if (process.toolType === 'gemini') {
-        agentOutput = parseGeminiOutput(process.stdout);
-      } else if (process.toolType === 'forge') {
-        agentOutput = parseForgeOutput(process.stdout);
-      }
-    }
+    const agentOutput = parseAgentOutput(process.toolType, process.stdout, process.stderr);
 
     return buildProcessResult({
       pid,

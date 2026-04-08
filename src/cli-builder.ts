@@ -1,11 +1,21 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve as pathResolve, isAbsolute } from 'node:path';
+import type { CliPaths } from './cli-utils.js';
 import { MODEL_ALIASES } from './model-catalog.js';
 
 export const ALLOWED_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
 const CLAUDE_REASONING_EFFORTS = new Set(['low', 'medium', 'high']);
+const OPENCODE_MODEL_ERROR = 'Invalid OpenCode model. Expected exact syntax oc-<provider/model>.';
 
-function getAgentForModel(model: string): 'codex' | 'claude' | 'gemini' | 'forge' {
+type Agent = 'codex' | 'claude' | 'gemini' | 'forge' | 'opencode';
+
+interface ModelSelection {
+  agent: Agent;
+  resolvedModel: string;
+  openCodeModel: string | null;
+}
+
+function getStandardAgentForModel(model: string): Exclude<Agent, 'opencode'> {
   if (model === 'forge') {
     return 'forge';
   }
@@ -18,20 +28,63 @@ function getAgentForModel(model: string): 'codex' | 'claude' | 'gemini' | 'forge
   return 'claude';
 }
 
-/**
- * Resolves model aliases to their full model names
- * @param model - The model name or alias to resolve
- * @returns The full model name, or the original value if no alias exists
- */
+function isPotentialOpenCodeExplicitModel(rawModel: string): boolean {
+  return rawModel.startsWith('oc-') || rawModel.trim().startsWith('oc-');
+}
+
+function extractOpenCodeModel(rawModel: string): string {
+  if (rawModel !== rawModel.trim()) {
+    throw new Error(OPENCODE_MODEL_ERROR);
+  }
+
+  if (!rawModel.startsWith('oc-')) {
+    throw new Error(OPENCODE_MODEL_ERROR);
+  }
+
+  const remainder = rawModel.slice(3);
+  const slashIndex = remainder.indexOf('/');
+  if (slashIndex === -1) {
+    throw new Error(OPENCODE_MODEL_ERROR);
+  }
+
+  const provider = remainder.slice(0, slashIndex);
+  const model = remainder.slice(slashIndex + 1);
+  if (!provider || !model) {
+    throw new Error(OPENCODE_MODEL_ERROR);
+  }
+
+  return remainder;
+}
+
+function resolveModelSelection(rawModel: string): ModelSelection {
+  if (rawModel === 'opencode') {
+    return {
+      agent: 'opencode',
+      resolvedModel: rawModel,
+      openCodeModel: null,
+    };
+  }
+
+  if (isPotentialOpenCodeExplicitModel(rawModel)) {
+    return {
+      agent: 'opencode',
+      resolvedModel: rawModel,
+      openCodeModel: extractOpenCodeModel(rawModel),
+    };
+  }
+
+  const resolvedModel = resolveModelAlias(rawModel);
+  return {
+    agent: getStandardAgentForModel(resolvedModel),
+    resolvedModel,
+    openCodeModel: null,
+  };
+}
+
 export function resolveModelAlias(model: string): string {
   return MODEL_ALIASES[model] || model;
 }
 
-/**
- * Validates and normalizes reasoning effort parameter.
- * @returns normalized reasoning effort string, or '' if not applicable
- * @throws Error for invalid values (plain Error, not MCP-specific)
- */
 export function getReasoningEffort(model: string, rawValue: unknown): string {
   if (typeof rawValue !== 'string') {
     return '';
@@ -40,13 +93,18 @@ export function getReasoningEffort(model: string, rawValue: unknown): string {
   if (!trimmed) {
     return '';
   }
+
+  if (model === 'opencode' || model.startsWith('oc-')) {
+    throw new Error('reasoning_effort is not supported for opencode.');
+  }
+
   const normalized = trimmed.toLowerCase();
   if (!ALLOWED_REASONING_EFFORTS.has(normalized)) {
     throw new Error(
       `Invalid reasoning_effort: ${rawValue}. Allowed values: low, medium, high, xhigh.`
     );
   }
-  const agent = getAgentForModel(model);
+  const agent = getStandardAgentForModel(model);
   if (agent === 'forge') {
     throw new Error('reasoning_effort is not supported for forge.');
   }
@@ -67,7 +125,7 @@ export interface CliCommand {
   cliPath: string;
   args: string[];
   cwd: string;
-  agent: 'claude' | 'codex' | 'gemini' | 'forge';
+  agent: Agent;
   prompt: string;
   resolvedModel: string;
 }
@@ -79,21 +137,14 @@ export interface BuildCliCommandOptions {
   model?: string;
   session_id?: string;
   reasoning_effort?: string;
-  cliPaths: { claude: string; codex: string; gemini: string; forge: string };
+  cliPaths: CliPaths;
 }
 
-/**
- * Build a CLI command from the given options.
- * This is a pure function (aside from filesystem reads for prompt_file / workFolder validation).
- * @throws Error on validation failures
- */
 export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
-  // Validate workFolder
   if (!options.workFolder || typeof options.workFolder !== 'string') {
     throw new Error('Missing or invalid required parameter: workFolder');
   }
 
-  // Validate prompt / prompt_file
   const hasPrompt = !!options.prompt && typeof options.prompt === 'string' && options.prompt.trim() !== '';
   const hasPromptFile = !!options.prompt_file && typeof options.prompt_file === 'string' && options.prompt_file.trim() !== '';
 
@@ -105,7 +156,6 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
     throw new Error('Cannot specify both prompt and prompt_file. Please use only one.');
   }
 
-  // Determine prompt
   let prompt: string;
   if (hasPrompt) {
     prompt = options.prompt!;
@@ -125,18 +175,14 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
     }
   }
 
-  // Resolve workFolder
   const cwd = pathResolve(options.workFolder);
   if (!existsSync(cwd)) {
     throw new Error(`Working folder does not exist: ${options.workFolder}`);
   }
 
-  // Resolve model
   const rawModel = options.model || '';
-  const resolvedModel = resolveModelAlias(rawModel);
-  const agent = getAgentForModel(resolvedModel);
+  const { agent, resolvedModel, openCodeModel } = resolveModelSelection(rawModel);
 
-  // Special handling for ultra aliases: default to higher reasoning if not specified
   let reasoningEffortArg: string | undefined = options.reasoning_effort;
   if (!reasoningEffortArg) {
     if (rawModel === 'codex-ultra') {
@@ -146,9 +192,11 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
     }
   }
 
-  const reasoningEffort = getReasoningEffort(resolvedModel, reasoningEffortArg);
+  const reasoningTargetModel = rawModel === 'opencode' || rawModel.startsWith('oc-')
+    ? rawModel
+    : (resolvedModel || rawModel);
+  const reasoningEffort = getReasoningEffort(reasoningTargetModel, reasoningEffortArg);
 
-  // Build CLI path and args
   let cliPath: string;
   let args: string[];
 
@@ -169,7 +217,6 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
     }
 
     args.push('--skip-git-repo-check', '--full-auto', '--json', prompt);
-
   } else if (agent === 'gemini') {
     cliPath = options.cliPaths.gemini;
     args = ['-y', '--output-format', 'json'];
@@ -183,7 +230,6 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
     }
 
     args.push(prompt);
-
   } else if (agent === 'forge') {
     cliPath = options.cliPaths.forge;
     args = ['-C', cwd];
@@ -193,6 +239,19 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
     }
 
     args.push('-p', prompt);
+  } else if (agent === 'opencode') {
+    cliPath = options.cliPaths.opencode;
+    args = ['run', '--format', 'json', '--dir', cwd];
+
+    if (options.session_id && typeof options.session_id === 'string') {
+      args.push('--session', options.session_id);
+    }
+
+    if (openCodeModel) {
+      args.push('--model', openCodeModel);
+    }
+
+    args.push(prompt);
   } else {
     cliPath = options.cliPaths.claude;
     args = ['--dangerously-skip-permissions', '--output-format', 'stream-json', '--verbose'];

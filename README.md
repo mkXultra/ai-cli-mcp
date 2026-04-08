@@ -7,7 +7,7 @@
 
 > **📦 Package Migration Notice**: This package was formerly `@mkxultra/claude-code-mcp` and has been renamed to `ai-cli-mcp` to reflect its expanded support for multiple AI CLI tools.
 
-An MCP (Model Context Protocol) server that allows running AI CLI tools (Claude, Codex, Gemini, and Forge) in background processes with automatic permission handling.
+An MCP (Model Context Protocol) server that allows running AI CLI tools (Claude, Codex, Gemini, Forge, and OpenCode) in background processes with automatic permission handling.
 
 Did you notice that Cursor sometimes struggles with complex, multi-step edits or operations? This server, with its powerful unified `run` tool, enables multiple AI agents to handle your coding tasks more effectively.
 
@@ -23,7 +23,8 @@ This MCP server provides tools that can be used by LLMs to interact with AI CLI 
 - Execute Codex CLI with automatic approval mode (using `--full-auto`)
 - Execute Gemini CLI with automatic approval mode (using `-y`)
 - Execute Forge CLI in non-interactive mode (using `forge -C <workFolder> -p <prompt>`)
-- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, haiku), Codex (gpt-5.4, gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, gpt-5.2, gpt-5.1, gpt-5.1-codex, gpt-5-codex, gpt-5-codex-mini, gpt-5), Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview), and Forge (`forge`)
+- Execute OpenCode in non-interactive JSON mode (using `opencode run --format json --dir <workFolder> <prompt>`)
+- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, haiku), Codex (gpt-5.4, gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, gpt-5.2, gpt-5.1, gpt-5.1-codex, gpt-5-codex, gpt-5-codex-mini, gpt-5), Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview), Forge (`forge`), and OpenCode (`opencode` plus explicit `oc-<provider/model>` wrappers such as `oc-openai/gpt-5.4`)
 - Manage background processes with PID tracking
 - Parse and return structured outputs from both tools
 
@@ -65,6 +66,7 @@ The only prerequisite is that the AI CLI tools you want to use are locally insta
 - **Codex CLI** (Optional): Installed and initial setup (login etc.) completed.
 - **Gemini CLI** (Optional): Installed and initial setup (login etc.) completed.
 - **Forge CLI** (Optional): Installed and initial setup completed.
+- **OpenCode** (Optional): Installed and configured. This integration uses `opencode run --format json`, and explicit provider/model selection follows the `oc-<provider/model>` wrapper syntax exposed by `ai-cli models`.
 
 ## Installation & Usage
 
@@ -114,6 +116,8 @@ Examples:
 ai-cli doctor
 ai-cli models
 ai-cli run --cwd "$PWD" --model sonnet --prompt "summarize this repository"
+ai-cli run --cwd "$PWD" --model opencode --prompt "summarize this repository with OpenCode defaults"
+ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --session-id ses_123 --prompt "continue this session with an explicit OpenCode model"
 ai-cli ps
 ai-cli result 12345
 ai-cli result 12345 --verbose
@@ -130,6 +134,7 @@ Because the published package name is still `ai-cli-mcp`, the shortest `npx` for
 
 ```bash
 npx -y --package ai-cli-mcp@latest ai-cli run --cwd "$PWD" --model sonnet --prompt "hello"
+npx -y --package ai-cli-mcp@latest ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --prompt "hello from OpenCode"
 ```
 
 ## Important First-Time Setup
@@ -183,6 +188,8 @@ Example flow:
 ai-cli doctor
 ai-cli models
 ai-cli run --cwd "$PWD" --model codex-ultra --prompt "fix failing tests"
+ai-cli run --cwd "$PWD" --model opencode --session-id ses_existing --prompt "continue this OpenCode session"
+ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --prompt "run with an explicit OpenCode backend model"
 ai-cli ps
 ai-cli wait 12345
 ai-cli wait 12345 --verbose
@@ -192,6 +199,13 @@ ai-cli cleanup
 ```
 
 `run` accepts `--cwd` as the primary working-directory flag and also accepts the older aliases `--workFolder` / `--work-folder` for compatibility.
+
+OpenCode model selection accepts either:
+
+- `opencode` for the CLI's configured default model
+- `oc-<provider/model>` for an explicit OpenCode provider/model, for example `oc-openai/gpt-5.4`
+
+`ai-cli models` exposes OpenCode machine-readably via `opencode: ["opencode"]` plus `dynamicModelBackends.opencode`, which points users to `opencode models` for backend-native discovery.
 
 `doctor` checks only binary existence and path resolution. It does not verify login state or terms acceptance.
 
@@ -208,12 +222,13 @@ Each PID directory contains:
 - `meta.json`
 - `stdout.log`
 - `stderr.log`
+- `exit-status.json` for detached OpenCode runs
 
 Use `ai-cli cleanup` to remove completed and failed runs. Running processes are preserved.
 
 ## Known Limitation
 
-Detached `ai-cli` runs do not currently persist natural process exit codes. As a result, the CLI can report process output and running/completed state, but it does not yet guarantee `exitCode` for naturally finished background runs.
+Detached `ai-cli` runs persist natural exit status for OpenCode-backed runs, including failed exit codes used to preserve raw OpenCode stdout/stderr in result output. Other detached backends still keep the pre-existing limitation: naturally finished runs may be surfaced as completed without a reliable persisted exit code until broader exit tracking is added.
 
 ## Connecting to Your MCP Client
 
@@ -227,7 +242,7 @@ This server exposes the following tools:
 
 ### `run`
 
-Executes a prompt using Claude CLI, Codex CLI, Gemini CLI, or Forge CLI. The appropriate CLI is automatically selected based on the model name.
+Executes a prompt using Claude CLI, Codex CLI, Gemini CLI, Forge CLI, or OpenCode. The appropriate CLI is automatically selected based on the model name.
 
 **Arguments:**
 - `prompt` (string, optional): The prompt to send to the AI agent. Either `prompt` or `prompt_file` is required.
@@ -239,8 +254,9 @@ Executes a prompt using Claude CLI, Codex CLI, Gemini CLI, or Forge CLI. The app
 - Codex: `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
 - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
 - Forge: `forge`
-- `reasoning_effort` (string, optional): Reasoning control for Claude and Codex. Claude uses `--effort` (allowed: "low", "medium", "high"). Codex uses `model_reasoning_effort` (allowed: "low", "medium", "high", "xhigh"). Forge does not support `reasoning_effort`.
-- `session_id` (string, optional): Optional session ID to resume a previous session. Supported for: haiku, sonnet, opus, gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview, forge.
+- OpenCode: `opencode` for the configured default backend model, plus explicit wrappers like `oc-openai/gpt-5.4`
+- `reasoning_effort` (string, optional): Reasoning control for Claude and Codex. Claude uses `--effort` (allowed: "low", "medium", "high"). Codex uses `model_reasoning_effort` (allowed: "low", "medium", "high", "xhigh"). Gemini, Forge, and OpenCode do not support `reasoning_effort`.
+- `session_id` (string, optional): Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, and OpenCode. OpenCode resumes in place via `--session` and may also be combined with an explicit `oc-<provider/model>` selection.
 
 ### `wait`
 
@@ -295,6 +311,7 @@ Normally not required, but useful for customizing CLI paths or debugging.
 - `CODEX_CLI_NAME`: Override the Codex CLI binary name or provide an absolute path (default: `codex`)
 - `GEMINI_CLI_NAME`: Override the Gemini CLI binary name or provide an absolute path (default: `gemini`)
 - `FORGE_CLI_NAME`: Override the Forge CLI binary name or provide an absolute path (default: `forge`)
+- `OPENCODE_CLI_NAME`: Override the OpenCode CLI binary name or provide an absolute path (default: `opencode`)
 - `MCP_CLAUDE_DEBUG`: Enable debug logging (set to `true` for verbose output)
 
 **CLI Name Specification:**
@@ -313,7 +330,8 @@ Normally not required, but useful for customizing CLI paths or debugging.
       ],
       "env": {
         "CLAUDE_CLI_NAME": "claude-custom",
-        "CODEX_CLI_NAME": "codex-custom"
+        "CODEX_CLI_NAME": "codex-custom",
+        "OPENCODE_CLI_NAME": "opencode-custom"
       }
     },
 ```

@@ -20,6 +20,7 @@ describe('cli-utils doctor status', () => {
     delete process.env.CODEX_CLI_NAME;
     delete process.env.GEMINI_CLI_NAME;
     delete process.env.FORGE_CLI_NAME;
+    delete process.env.OPENCODE_CLI_NAME;
     process.env.PATH = '/mock/bin:/usr/bin';
   });
 
@@ -51,6 +52,12 @@ describe('cli-utils doctor status', () => {
       available: false,
       lookup: 'path',
     });
+    expect(status.opencode).toEqual({
+      configuredCommand: 'opencode',
+      resolvedPath: null,
+      available: false,
+      lookup: 'path',
+    });
   });
 
   it('does not mark non-executable PATH entries as available', async () => {
@@ -69,6 +76,12 @@ describe('cli-utils doctor status', () => {
     });
     expect(status.forge).toEqual({
       configuredCommand: 'forge',
+      resolvedPath: null,
+      available: false,
+      lookup: 'path',
+    });
+    expect(status.opencode).toEqual({
+      configuredCommand: 'opencode',
       resolvedPath: null,
       available: false,
       lookup: 'path',
@@ -162,5 +175,26 @@ describe('cli-utils doctor status', () => {
       lookup: 'env',
     });
     expect(findForgeCli()).toBe('forge-custom');
+  });
+
+  it('supports OpenCode lookup via OPENCODE_CLI_NAME', async () => {
+    process.env.OPENCODE_CLI_NAME = 'opencode-custom';
+    mockAccessSync.mockImplementation((filePath) => {
+      if (filePath === '/mock/bin/opencode-custom') {
+        return undefined;
+      }
+      throw new Error('not executable');
+    });
+
+    const { getCliDoctorStatus, findOpencodeCli } = await import('../cli-utils.js');
+    const status = getCliDoctorStatus();
+
+    expect(status.opencode).toEqual({
+      configuredCommand: 'opencode-custom',
+      resolvedPath: '/mock/bin/opencode-custom',
+      available: true,
+      lookup: 'env',
+    });
+    expect(findOpencodeCli()).toBe('opencode-custom');
   });
 });

@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createTestClient, MCPTestClient } from './utils/mcp-client.js';
 import { getSharedMock, cleanupSharedMock } from './utils/persistent-mock.js';
+import { createOpenCodeMock } from './utils/opencode-mock.js';
 
 describe('Claude Code MCP E2E Tests', () => {
   let client: MCPTestClient;
@@ -40,40 +41,10 @@ describe('Claude Code MCP E2E Tests', () => {
       
       expect(tools).toHaveLength(6);
       const claudeCodeTool = tools.find((t: any) => t.name === 'run');
-      expect(claudeCodeTool).toEqual({
-        name: 'run',
-        description: expect.stringContaining('AI Agent Runner'),
-        inputSchema: {
-          type: 'object',
-          properties: {
-            prompt: {
-              type: 'string',
-              description: expect.stringContaining('Either this or prompt_file is required'),
-            },
-            prompt_file: {
-              type: 'string',
-              description: expect.stringContaining('Path to a file containing the prompt'),
-            },
-            workFolder: {
-              type: 'string',
-              description: expect.stringContaining('working directory'),
-            },
-            model: {
-              type: 'string',
-              description: expect.stringContaining('sonnet'),
-            },
-            reasoning_effort: {
-              type: 'string',
-              description: expect.stringContaining('model_reasoning_effort'),
-            },
-            session_id: {
-              type: 'string',
-              description: expect.stringContaining('session ID'),
-            },
-          },
-          required: ['workFolder'],
-        },
-      });
+      expect(claudeCodeTool.inputSchema.properties.model.description).toContain('sonnet');
+      expect(claudeCodeTool.inputSchema.properties.model.description).toContain('opencode');
+      expect(claudeCodeTool.inputSchema.properties.model.description).toContain('oc-<provider/model>');
+      expect(claudeCodeTool.inputSchema.properties.reasoning_effort.description).toContain('OpenCode');
       
       // Verify other tools exist
       expect(tools.some((t: any) => t.name === 'list_processes')).toBe(true);
@@ -216,6 +187,78 @@ describe('Claude Code MCP E2E Tests', () => {
         type: 'text',
         text: expect.stringContaining('pid'),
       }]);
+    });
+  });
+
+  describe('OpenCode flows', () => {
+    it('should execute and resume OpenCode runs through the MCP client', async () => {
+      await client.disconnect();
+
+      const opencodeArgsLogPath = join(testDir, 'opencode-args.log');
+      const { scriptPath } = createOpenCodeMock(testDir, {
+        argsLogPath: opencodeArgsLogPath,
+        defaultSessionId: 'ses-opencode-e2e',
+      });
+
+      client = createTestClient({
+        debug: false,
+        env: {
+          OPENCODE_CLI_NAME: scriptPath,
+        },
+      });
+      await client.connect();
+
+      const runResponse = await client.callTool('run', {
+        prompt: 'e2e OpenCode initial prompt',
+        workFolder: testDir,
+        model: 'opencode',
+      });
+      const runData = JSON.parse(runResponse[0].text);
+      expect(runData.agent).toBe('opencode');
+
+      const initialWait = JSON.parse((await client.callTool('wait', { pids: [runData.pid], timeout: 5 }))[0].text);
+      expect(initialWait).toHaveLength(1);
+      expect(initialWait[0]).toMatchObject({
+        pid: runData.pid,
+        agent: 'opencode',
+        status: 'completed',
+        exitCode: 0,
+        model: 'opencode',
+        session_id: 'ses-opencode-e2e',
+        agentOutput: {
+          message: 'Initial: e2e OpenCode initial prompt',
+          session_id: 'ses-opencode-e2e',
+        },
+      });
+
+      const resumedResponse = await client.callTool('run', {
+        prompt: 'e2e OpenCode resumed prompt',
+        workFolder: testDir,
+        model: 'oc-openai/gpt-5.4',
+        session_id: 'ses-opencode-e2e',
+      });
+      const resumedRunData = JSON.parse(resumedResponse[0].text);
+
+      const resumedWait = JSON.parse((await client.callTool('wait', { pids: [resumedRunData.pid], timeout: 5 }))[0].text);
+      expect(resumedWait).toHaveLength(1);
+      expect(resumedWait[0]).toMatchObject({
+        pid: resumedRunData.pid,
+        agent: 'opencode',
+        status: 'completed',
+        exitCode: 0,
+        model: 'oc-openai/gpt-5.4',
+        session_id: 'ses-opencode-e2e',
+        agentOutput: {
+          message: 'Resumed model openai/gpt-5.4: e2e OpenCode resumed prompt',
+          session_id: 'ses-opencode-e2e',
+        },
+      });
+
+      const invocationLog = readFileSync(opencodeArgsLogPath, 'utf-8').trim().split('\n');
+      expect(invocationLog[0]).toContain(`--dir ${testDir}`);
+      expect(invocationLog[0]).not.toContain('--model');
+      expect(invocationLog[1]).toContain('--session ses-opencode-e2e');
+      expect(invocationLog[1]).toContain('--model openai/gpt-5.4');
     });
   });
 

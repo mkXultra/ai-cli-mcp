@@ -5,7 +5,7 @@
 
 > **📦 パッケージ移行のお知らせ**: 本パッケージは旧名 `@mkxultra/claude-code-mcp` から `ai-cli-mcp` に名称変更されました。これは、複数のAI CLIツールのサポート拡大を反映したものです。
 
-AI CLIツール（Claude, Codex, Gemini, Forge）をバックグラウンドプロセスとして実行し、権限処理を自動化するMCP（Model Context Protocol）サーバーです。
+AI CLIツール（Claude, Codex, Gemini, Forge, OpenCode）をバックグラウンドプロセスとして実行し、権限処理を自動化するMCP（Model Context Protocol）サーバーです。
 
 Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦戦していることに気づいたことはありませんか？このサーバーは、強力な統合 `run` ツールを提供し、複数のAIエージェントを活用してコーディングタスクをより効果的に処理できるようにします。
 
@@ -21,11 +21,13 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 - 自動承認モードでCodex CLIを実行（`--full-auto` を使用）
 - 自動承認モードでGemini CLIを実行（`-y` を使用）
 - Forge CLI を非対話モードで実行（`forge -C <workFolder> -p <prompt>` を使用）
+- OpenCode を非対話 JSON モードで実行（`opencode run --format json --dir <workFolder> <prompt>` を使用）
 - 複数のAIモデルのサポート：
     - Claude (sonnet, sonnet[1m], opus, opusplan, haiku)
     - Codex (gpt-5.4, gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, など)
     - Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview)
     - Forge (`forge`)
+    - OpenCode (`opencode` と `oc-<provider/model>` ラッパー。例: `oc-openai/gpt-5.4`)
 - PID追跡によるバックグラウンドプロセスの管理
 - ツールからの構造化された出力の解析と返却
 
@@ -67,6 +69,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 - **Codex CLI**（オプション）: インストール済みで、ログインなどの初期設定が完了していること。
 - **Gemini CLI**（オプション）: インストール済みで、ログインなどの初期設定が完了していること。
 - **Forge CLI**（オプション）: インストール済みで、初期設定が完了していること。
+- **OpenCode**（オプション）: インストール済みで、設定が完了していること。この統合では `opencode run --format json` を使用し、明示的なモデル指定は `ai-cli models` が公開する `oc-<provider/model>` 構文に従います。
 
 ## インストールと使い方
 
@@ -116,6 +119,8 @@ npm install -g ai-cli-mcp
 ai-cli doctor
 ai-cli models
 ai-cli run --cwd "$PWD" --model sonnet --prompt "summarize this repository"
+ai-cli run --cwd "$PWD" --model opencode --prompt "OpenCode のデフォルト設定でこのリポジトリを要約して"
+ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --session-id ses_123 --prompt "明示モデル付きでこの OpenCode セッションを続けて"
 ai-cli ps
 ai-cli result 12345
 ai-cli result 12345 --verbose
@@ -132,6 +137,7 @@ ai-cli-mcp
 
 ```bash
 npx -y --package ai-cli-mcp@latest ai-cli run --cwd "$PWD" --model sonnet --prompt "hello"
+npx -y --package ai-cli-mcp@latest ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --prompt "OpenCode で hello"
 ```
 
 ## 重要な初回セットアップ
@@ -185,6 +191,8 @@ macOSでは、これらのツールを初めて実行する際にフォルダへ
 ai-cli doctor
 ai-cli models
 ai-cli run --cwd "$PWD" --model codex-ultra --prompt "fix failing tests"
+ai-cli run --cwd "$PWD" --model opencode --session-id ses_existing --prompt "この OpenCode セッションを継続して"
+ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --prompt "明示的な OpenCode モデルで実行"
 ai-cli ps
 ai-cli wait 12345
 ai-cli wait 12345 --verbose
@@ -194,6 +202,13 @@ ai-cli cleanup
 ```
 
 `run` の作業ディレクトリ指定は `--cwd` が基本です。互換性のために `--workFolder` / `--work-folder` も受け付けます。
+
+OpenCode のモデル指定は次の 2 つを受け付けます。
+
+- `opencode`: OpenCode 側で設定されたデフォルトモデルを使用
+- `oc-<provider/model>`: 明示的な OpenCode の provider/model を指定。例: `oc-openai/gpt-5.4`
+
+`ai-cli models` は OpenCode を機械可読に `opencode: ["opencode"]` と `dynamicModelBackends.opencode` で公開します。実際に利用可能なバックエンドネイティブなモデル一覧は `opencode models` で確認してください。
 
 `doctor` は CLI バイナリの存在確認と path 解決だけを行います。ログイン状態や利用規約同意までは確認しません。
 
@@ -210,12 +225,13 @@ ai-cli cleanup
 - `meta.json`
 - `stdout.log`
 - `stderr.log`
+- `exit-status.json`（detached な OpenCode 実行用）
 
 完了済み・失敗済みの実行は `ai-cli cleanup` で削除できます。`running` のものは保持されます。
 
 ## 既知の制約
 
-detached 実行された `ai-cli` の自然終了 exit code は、まだ永続化していません。そのため、CLI は出力と running/completed 状態は返せますが、自然終了したバックグラウンド実行の `exitCode` は現時点では保証しません。
+detached 実行された `ai-cli` では、OpenCode バックエンドに限り自然終了時の exit status を永続化します。そのため OpenCode の失敗終了は非ゼロ exit code を含めて `failed` として扱われ、結果では生の `stdout` / `stderr` を保持します。一方、他の detached バックエンドでは従来どおり、より広い exit-status 追跡が追加されるまでは自然終了した実行が信頼できる exit code なしで `completed` と見なされる制約が残ります。
 
 ## MCPクライアントへの接続
 
@@ -229,7 +245,7 @@ detached 実行された `ai-cli` の自然終了 exit code は、まだ永続�
 
 ### `run`
 
-Claude CLI、Codex CLI、Gemini CLI、または Forge CLI を使用してプロンプトを実行します。モデル名に基づいて適切なCLIが自動的に選択されます。
+Claude CLI、Codex CLI、Gemini CLI、Forge CLI、または OpenCode を使用してプロンプトを実行します。モデル名に基づいて適切なCLIが自動的に選択されます。
 
 **引数:**
 - `prompt` (string, 任意): AIエージェントに送信するプロンプト。`prompt` または `prompt_file` のいずれかが必須です。
@@ -241,8 +257,9 @@ Claude CLI、Codex CLI、Gemini CLI、または Forge CLI を使用してプロ�
     - Codex: `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
     - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
     - Forge: `forge`
-- `reasoning_effort` (string, 任意): Claude と Codex の推論制御。Claude では `--effort` を使います（許容値: "low", "medium", "high"）。Codex では `model_reasoning_effort` を使います（許容値: "low", "medium", "high", "xhigh"）。Forge では `reasoning_effort` はサポートしません。
-- `session_id` (string, 任意): 以前のセッションを再開するためのセッションID。対応モデル: haiku, sonnet, opus, gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview, forge。
+    - OpenCode: `opencode`（設定済みのデフォルトモデル）および `oc-openai/gpt-5.4` のような明示ラッパー
+- `reasoning_effort` (string, 任意): Claude と Codex の推論制御。Claude では `--effort` を使います（許容値: "low", "medium", "high"）。Codex では `model_reasoning_effort` を使います（許容値: "low", "medium", "high", "xhigh"）。Gemini、Forge、OpenCode では `reasoning_effort` はサポートしません。
+- `session_id` (string, 任意): 以前のセッションを再開するためのセッションID。Claude、Codex、Gemini、Forge、OpenCode でサポートされます。OpenCode は `--session` による in-place resume で再開し、`oc-<provider/model>` の明示指定と併用できます。
 
 ### `wait`
 
@@ -311,6 +328,7 @@ npm run test:e2e
 - `CODEX_CLI_NAME`: Codex CLIのバイナリ名または絶対パスを上書き（デフォルト: `codex`）
 - `GEMINI_CLI_NAME`: Gemini CLIのバイナリ名または絶対パスを上書き（デフォルト: `gemini`）
 - `FORGE_CLI_NAME`: Forge CLIのバイナリ名または絶対パスを上書き（デフォルト: `forge`）
+- `OPENCODE_CLI_NAME`: OpenCode CLIのバイナリ名または絶対パスを上書き（デフォルト: `opencode`）
 - `MCP_CLAUDE_DEBUG`: デバッグログを有効化（`true` に設定すると詳細な出力が表示されます）
 
 **CLI名の指定方法:**
@@ -329,7 +347,8 @@ npm run test:e2e
       ],
       "env": {
         "CLAUDE_CLI_NAME": "claude-custom",
-        "CODEX_CLI_NAME": "codex-custom"
+        "CODEX_CLI_NAME": "codex-custom",
+        "OPENCODE_CLI_NAME": "opencode-custom"
       }
     },
 ```

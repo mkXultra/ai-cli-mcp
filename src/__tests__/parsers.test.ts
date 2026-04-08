@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseCodexOutput, parseClaudeOutput, parseForgeOutput } from '../parsers.js';
+import { parseCodexOutput, parseClaudeOutput, parseForgeOutput, parseOpenCodeOutput } from '../parsers.js';
 
 describe('parseCodexOutput', () => {
   it('should parse basic Codex output with message and session_id', () => {
@@ -147,5 +147,77 @@ still streaming`;
 
   it('should return null for unrelated forge output', () => {
     expect(parseForgeOutput('plain text')).toBeNull();
+  });
+});
+
+describe('parseOpenCodeOutput', () => {
+  it('parses a single completed OpenCode step', () => {
+    const output = `{"type":"step_start","sessionID":"ses_1"}
+{"type":"text","sessionID":"ses_1","part":{"type":"text","text":"Hello"}}
+{"type":"step_finish","sessionID":"ses_1","part":{"type":"step-finish","tokens":{"total":11833},"cost":0}}`;
+
+    expect(parseOpenCodeOutput(output)).toEqual({
+      message: 'Hello',
+      session_id: 'ses_1',
+      tokens: { total: 11833 },
+      cost: 0,
+    });
+  });
+
+  it('returns the last completed step for multi-step output', () => {
+    const output = `{"type":"step_start","sessionID":"ses_2"}
+{"type":"text","sessionID":"ses_2","part":{"type":"text","text":"First"}}
+{"type":"step_finish","sessionID":"ses_2","part":{"type":"step-finish","tokens":{"total":10},"cost":0}}
+{"type":"step_start","sessionID":"ses_2"}
+{"type":"text","sessionID":"ses_2","part":{"type":"text","text":"Second"}}
+{"type":"step_finish","sessionID":"ses_2","part":{"type":"step-finish","tokens":{"total":20},"cost":1}}`;
+
+    expect(parseOpenCodeOutput(output)).toEqual({
+      message: 'Second',
+      session_id: 'ses_2',
+      tokens: { total: 20 },
+      cost: 1,
+    });
+  });
+
+  it('resets the current-step buffer on each step_start', () => {
+    const output = `{"type":"step_start","sessionID":"ses_3"}
+{"type":"text","sessionID":"ses_3","part":{"type":"text","text":"Discard me"}}
+{"type":"step_start","sessionID":"ses_3"}
+{"type":"text","sessionID":"ses_3","part":{"type":"text","text":"Keep me"}}
+{"type":"step_finish","sessionID":"ses_3","part":{"type":"step-finish","tokens":{"total":5},"cost":0}}`;
+
+    expect(parseOpenCodeOutput(output)).toEqual({
+      message: 'Keep me',
+      session_id: 'ses_3',
+      tokens: { total: 5 },
+      cost: 0,
+    });
+  });
+
+  it('returns partial output when text exists without step_finish', () => {
+    const output = `{"type":"step_start","sessionID":"ses_4"}
+{"type":"text","sessionID":"ses_4","part":{"type":"text","text":"Partial"}}`;
+
+    expect(parseOpenCodeOutput(output)).toEqual({
+      message: 'Partial',
+      session_id: 'ses_4',
+    });
+  });
+
+  it('ignores malformed lines and unknown event types', () => {
+    const output = `not-json
+{"type":"unknown","sessionID":"ses_5"}
+{"type":"text","sessionID":"ses_5","part":{"type":"text","text":"Hello"}}`;
+
+    expect(parseOpenCodeOutput(output)).toEqual({
+      message: 'Hello',
+      session_id: 'ses_5',
+    });
+  });
+
+  it('returns null when no useful OpenCode events exist', () => {
+    expect(parseOpenCodeOutput('{"type":"unknown"}')).toBeNull();
+    expect(parseOpenCodeOutput('')).toBeNull();
   });
 });
