@@ -68,7 +68,7 @@ describe('Process Management Tests', () => {
   async function setupServer() {
     const { Server } = await import('@modelcontextprotocol/sdk/server/index.js');
     
-    vi.mocked(Server).mockImplementation(() => {
+    vi.mocked(Server).mockImplementation(function(this: any) {
       mockServerInstance = {
         setRequestHandler: vi.fn((schema: any, handler: Function) => {
           handlers.set(schema.name, handler);

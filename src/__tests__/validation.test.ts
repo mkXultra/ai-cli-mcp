@@ -69,7 +69,6 @@ describe('Argument Validation Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
-    vi.unmock('../server.js');
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     // Set up process.env
     process.env = { ...process.env };
@@ -80,6 +79,7 @@ describe('Argument Validation Tests', () => {
       mockHomedir.mockReturnValue('/home/user');
       mockExistsSync.mockReturnValue(true);
       setupServerMock();
+      vi.doUnmock('../server.js');
       const module = await import('../server.js');
       // @ts-ignore
       const { ClaudeCodeServer } = module;
@@ -114,6 +114,7 @@ describe('Argument Validation Tests', () => {
       mockHomedir.mockReturnValue('/home/user');
       mockExistsSync.mockReturnValue(true);
       setupServerMock();
+      vi.doUnmock('../server.js');
       const module = await import('../server.js');
       // @ts-ignore
       const { ClaudeCodeServer } = module;
@@ -216,7 +217,7 @@ describe('Argument Validation Tests', () => {
 
       const { Server } = await import('@modelcontextprotocol/sdk/server/index.js');
 
-      vi.mocked(Server).mockImplementation(() => {
+      vi.mocked(Server).mockImplementation(function(this: any) {
         mockServerInstance = {
           setRequestHandler: vi.fn((schema: any, handler: Function) => {
             handlers.set(schema.name, handler);
@@ -228,6 +229,7 @@ describe('Argument Validation Tests', () => {
         return mockServerInstance as any;
       });
 
+      vi.doUnmock('../server.js');
       const module = await import('../server.js');
       // @ts-ignore
       const { ClaudeCodeServer } = module;
