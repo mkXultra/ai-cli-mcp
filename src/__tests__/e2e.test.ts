@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
-import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createTestClient, MCPTestClient } from './utils/mcp-client.js';
@@ -250,30 +250,18 @@ describe('Integration Tests (Local Only)', () => {
     rmSync(testDir, { recursive: true, force: true });
   });
 
-  // These tests will only run locally when Claude is available
-  it.skip('should create a file with real Claude CLI', async () => {
+  // This smoke test only verifies that a real Claude CLI can be invoked.
+  it.skip('should invoke the real Claude CLI', async () => {
     await client.connect();
-    
+
     const response = await client.callTool('run', {
-      prompt: 'Create a file called hello.txt with content "Hello from Claude"',
+      prompt: 'Reply with hi',
       workFolder: testDir,
     });
 
-    const filePath = join(testDir, 'hello.txt');
-    expect(existsSync(filePath)).toBe(true);
-    expect(readFileSync(filePath, 'utf-8')).toContain('Hello from Claude');
-  });
-
-  it.skip('should handle git operations with real Claude CLI', async () => {
-    await client.connect();
-    
-    // Initialize git repo
-    const response = await client.callTool('run', {
-      prompt: 'Initialize a git repository and create a README.md file',
-      workFolder: testDir,
-    });
-
-    expect(existsSync(join(testDir, '.git'))).toBe(true);
-    expect(existsSync(join(testDir, 'README.md'))).toBe(true);
+    expect(response).toEqual([{
+      type: 'text',
+      text: expect.stringContaining('pid'),
+    }]);
   });
 });
