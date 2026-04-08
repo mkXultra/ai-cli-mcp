@@ -201,6 +201,41 @@ describe('ClaudeCodeServer Unit Tests', () => {
     });
   });
 
+  describe('findOpencodeCli function', () => {
+    it('should fallback to PATH for OpenCode when no override is configured', async () => {
+      mockHomedir.mockReturnValue('/home/user');
+      mockExistsSync.mockImplementation((path) => path === '/usr/bin/opencode');
+      mockAccessSync.mockImplementation((filePath) => {
+        if (filePath === '/usr/bin/opencode') return undefined;
+        throw new Error('not executable');
+      });
+      process.env.PATH = '/usr/bin';
+
+      const module = await import('../server.js');
+      // @ts-ignore
+      const findOpencodeCli = module.default?.findOpencodeCli || module.findOpencodeCli;
+
+      expect(findOpencodeCli()).toBe('/usr/bin/opencode');
+    });
+
+    it('should use custom name from OPENCODE_CLI_NAME', async () => {
+      process.env.OPENCODE_CLI_NAME = 'opencode-custom';
+      mockHomedir.mockReturnValue('/home/user');
+      mockExistsSync.mockImplementation((path) => path === '/usr/bin/opencode-custom');
+      mockAccessSync.mockImplementation((filePath) => {
+        if (filePath === '/usr/bin/opencode-custom') return undefined;
+        throw new Error('not executable');
+      });
+      process.env.PATH = '/usr/bin';
+
+      const module = await import('../server.js');
+      // @ts-ignore
+      const findOpencodeCli = module.default?.findOpencodeCli || module.findOpencodeCli;
+
+      expect(findOpencodeCli()).toBe('opencode-custom');
+    });
+  });
+
   describe('spawnAsync function', () => {
     let mockProcess: any;
     
@@ -333,28 +368,28 @@ describe('ClaudeCodeServer Unit Tests', () => {
       );
     });
 
-    it('should set up tool handlers', async () => {
+    it('should include OpenCode in setup logging', async () => {
       mockHomedir.mockReturnValue('/home/user');
       mockExistsSync.mockReturnValue(true);
-      
-      const { Server } = await import('@modelcontextprotocol/sdk/server/index.js');
-      const mockSetRequestHandler = vi.fn();
+
       vi.mocked(Server).mockImplementation(function(this: any) {
-        this.setRequestHandler = mockSetRequestHandler;
+        this.setRequestHandler = vi.fn();
         this.connect = vi.fn();
         this.close = vi.fn();
         this.onerror = undefined;
         return this;
       });
-      
+
       const module = await import('../server.js');
       // @ts-ignore
       const { ClaudeCodeServer } = module;
-      
-      const server = new ClaudeCodeServer();
-      
-      expect(mockSetRequestHandler).toHaveBeenCalled();
+      new ClaudeCodeServer();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Setup] Using OpenCode CLI command/path:')
+      );
     });
+
 
     it('should set up error handler', async () => {
       mockHomedir.mockReturnValue('/home/user');

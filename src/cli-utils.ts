@@ -3,10 +3,8 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import * as path from 'path';
 
-// Define debugMode globally using const
 const debugMode = process.env.MCP_CLAUDE_DEBUG === 'true';
 
-// Dedicated debug logging function
 export function debugLog(message?: any, ...optionalParams: any[]): void {
   if (debugMode) {
     console.error(message, ...optionalParams);
@@ -19,6 +17,24 @@ export interface CliBinaryStatus {
   available: boolean;
   lookup: 'env' | 'local' | 'path';
   error?: string;
+}
+
+export type CliBinaryName = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode';
+
+export interface CliPaths {
+  claude: string;
+  codex: string;
+  gemini: string;
+  forge: string;
+  opencode: string;
+}
+
+export interface CliDoctorStatus {
+  claude: CliBinaryStatus;
+  codex: CliBinaryStatus;
+  gemini: CliBinaryStatus;
+  forge: CliBinaryStatus;
+  opencode: CliBinaryStatus;
 }
 
 function getPathDelimiter(): string {
@@ -75,7 +91,7 @@ function inspectCliBinary(options: {
   envVarName: string;
   customCliName: string | undefined;
   defaultCliName: string;
-  localInstallPath: string;
+  localInstallPath?: string;
 }): CliBinaryStatus {
   const configuredCommand = options.customCliName || options.defaultCliName;
 
@@ -109,7 +125,7 @@ function inspectCliBinary(options: {
     };
   }
 
-  if (isExecutableFile(options.localInstallPath)) {
+  if (options.localInstallPath && isExecutableFile(options.localInstallPath)) {
     return {
       configuredCommand,
       resolvedPath: options.localInstallPath,
@@ -148,13 +164,11 @@ function isExecutableFile(filePath: string): boolean {
   }
 }
 
-type CliBinaryName = 'claude' | 'codex' | 'gemini' | 'forge';
-
 function getCliBinaryConfig(name: CliBinaryName): {
   envVarName: string;
   customCliName: string | undefined;
   defaultCliName: string;
-  localInstallPath: string;
+  localInstallPath?: string;
 } {
   if (name === 'claude') {
     return {
@@ -183,6 +197,14 @@ function getCliBinaryConfig(name: CliBinaryName): {
     };
   }
 
+  if (name === 'opencode') {
+    return {
+      envVarName: 'OPENCODE_CLI_NAME',
+      customCliName: process.env.OPENCODE_CLI_NAME,
+      defaultCliName: 'opencode',
+    };
+  }
+
   return {
     envVarName: 'GEMINI_CLI_NAME',
     customCliName: process.env.GEMINI_CLI_NAME,
@@ -195,58 +217,40 @@ function getCliBinaryStatus(name: CliBinaryName): CliBinaryStatus {
   return inspectCliBinary(getCliBinaryConfig(name));
 }
 
-export function getCliDoctorStatus(): {
-  claude: CliBinaryStatus;
-  codex: CliBinaryStatus;
-  gemini: CliBinaryStatus;
-  forge: CliBinaryStatus;
-} {
+export function getCliDoctorStatus(): CliDoctorStatus {
   return {
     claude: getCliBinaryStatus('claude'),
     codex: getCliBinaryStatus('codex'),
     gemini: getCliBinaryStatus('gemini'),
     forge: getCliBinaryStatus('forge'),
+    opencode: getCliBinaryStatus('opencode'),
   };
 }
 
-/**
- * Determine the Gemini CLI command/path.
- * Similar to findClaudeCli but for Gemini
- */
 export function findGeminiCli(): string {
   debugLog('[Debug] Attempting to find Gemini CLI...');
   const status = getCliBinaryStatus('gemini');
   return getCliCommandOrThrow(status);
 }
 
-/**
- * Determine the Codex CLI command/path.
- * Similar to findClaudeCli but for Codex
- */
 export function findCodexCli(): string {
   debugLog('[Debug] Attempting to find Codex CLI...');
   const status = getCliBinaryStatus('codex');
   return getCliCommandOrThrow(status);
 }
 
-/**
- * Determine the Forge CLI command/path.
- */
 export function findForgeCli(): string {
   debugLog('[Debug] Attempting to find Forge CLI...');
   const status = getCliBinaryStatus('forge');
   return getCliCommandOrThrow(status);
 }
 
-/**
- * Determine the Claude CLI command/path.
- * 1. Checks for CLAUDE_CLI_NAME environment variable:
- *    - If absolute path, uses it directly
- *    - If relative path, throws error
- *    - If simple name, continues with path resolution
- * 2. Checks for Claude CLI at the local user path: ~/.claude/local/claude.
- * 3. If not found, defaults to the CLI name (or 'claude'), relying on the system's PATH for lookup.
- */
+export function findOpencodeCli(): string {
+  debugLog('[Debug] Attempting to find OpenCode CLI...');
+  const status = getCliBinaryStatus('opencode');
+  return getCliCommandOrThrow(status);
+}
+
 export function findClaudeCli(): string {
   debugLog('[Debug] Attempting to find Claude CLI...');
   const status = getCliBinaryStatus('claude');

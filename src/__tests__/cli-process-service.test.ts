@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CliProcessService } from '../cli-process-service.js';
+import { createOpenCodeMock } from './utils/opencode-mock.js';
 
 function createMockCliScript(dir: string, name: string, options: { ignoreSigterm?: boolean } = {}): string {
   const scriptPath = join(dir, name);
@@ -66,6 +67,7 @@ describe('CliProcessService', () => {
         codex: scriptPath,
         gemini: scriptPath,
         forge: scriptPath,
+        opencode: scriptPath,
       },
     });
 
@@ -145,6 +147,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
         codex: scriptPath,
         gemini: scriptPath,
         forge: scriptPath,
+        opencode: scriptPath,
       },
     });
 
@@ -255,6 +258,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
         codex: scriptPath,
         gemini: scriptPath,
         forge: scriptPath,
+        opencode: scriptPath,
       },
     });
 
@@ -294,6 +298,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
         codex: '/bin/sh',
         gemini: '/bin/sh',
         forge: '/bin/sh',
+        opencode: '/bin/sh',
       },
     });
 
@@ -368,6 +373,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
         codex: '/bin/sh',
         gemini: '/bin/sh',
         forge: '/bin/sh',
+        opencode: '/bin/sh',
       },
     });
 
@@ -426,6 +432,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
         codex: '/bin/sh',
         gemini: '/bin/sh',
         forge: '/bin/sh',
+        opencode: '/bin/sh',
       },
     });
 
@@ -502,6 +509,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
         codex: '/bin/sh',
         gemini: '/bin/sh',
         forge: '/bin/sh',
+        opencode: '/bin/sh',
       },
     });
 
@@ -564,6 +572,7 @@ Forge assistant reply
         codex: '/bin/sh',
         gemini: '/bin/sh',
         forge: '/bin/sh',
+        opencode: '/bin/sh',
       },
     });
 
@@ -573,6 +582,109 @@ Forge assistant reply
     expect(result.agentOutput).toEqual({
       message: 'Forge assistant reply',
       session_id: 'forge-conv-1',
+    });
+  });
+
+  it('parses successful OpenCode detached runs from stdout only', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
+    tempDirs.push(root);
+    const stateDir = join(root, 'state');
+    const workFolder = join(root, 'opencode-project');
+    mkdirSync(workFolder, { recursive: true });
+    const argsLogPath = join(root, 'opencode-args.log');
+    const { scriptPath } = createOpenCodeMock(root, { argsLogPath });
+
+    const service = new CliProcessService({
+      stateDir,
+      cliPaths: {
+        claude: '/bin/sh',
+        codex: '/bin/sh',
+        gemini: '/bin/sh',
+        forge: '/bin/sh',
+        opencode: scriptPath,
+      },
+    });
+
+    const runResult = await service.startProcess({
+      prompt: 'hello opencode',
+      cwd: workFolder,
+      model: 'opencode',
+    });
+
+    const waited = await service.waitForProcesses([runResult.pid], 5);
+    expect(waited).toHaveLength(1);
+    expect(waited[0]).toMatchObject({
+      pid: runResult.pid,
+      agent: 'opencode',
+      status: 'completed',
+      exitCode: 0,
+      model: 'opencode',
+      session_id: 'ses-opencode-default',
+      agentOutput: {
+        message: 'Initial: hello opencode',
+        session_id: 'ses-opencode-default',
+        tokens: { total: 11833 },
+        cost: 0,
+      },
+    });
+    expect(waited[0]).not.toHaveProperty('stdout');
+    expect(waited[0]).not.toHaveProperty('stderr');
+    expect(readFileSync(argsLogPath, 'utf8')).toContain(`--dir ${workFolder}`);
+  });
+
+  it('preserves raw stdout and stderr for failed detached OpenCode runs', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
+    tempDirs.push(root);
+    const stateDir = join(root, 'state');
+    const workFolder = join(root, 'opencode-fail-project');
+    mkdirSync(workFolder, { recursive: true });
+    const { scriptPath } = createOpenCodeMock(root);
+
+    const service = new CliProcessService({
+      stateDir,
+      cliPaths: {
+        claude: '/bin/sh',
+        codex: '/bin/sh',
+        gemini: '/bin/sh',
+        forge: '/bin/sh',
+        opencode: scriptPath,
+      },
+    });
+
+    const runResult = await service.startProcess({
+      prompt: 'please fail',
+      cwd: workFolder,
+      model: 'oc-openai/gpt-5.4',
+    });
+
+    const [compactResult] = await service.waitForProcesses([runResult.pid], 5);
+    expect(compactResult).toMatchObject({
+      pid: runResult.pid,
+      agent: 'opencode',
+      status: 'failed',
+      exitCode: 7,
+      model: 'oc-openai/gpt-5.4',
+      session_id: 'ses-opencode-default',
+      stdout: expect.stringContaining('Partial failure output'),
+      stderr: expect.stringContaining('OpenCode failed for openai/gpt-5.4'),
+    });
+    expect(compactResult).not.toHaveProperty('agentOutput');
+
+    const verboseResult = await service.getProcessResult(runResult.pid, true);
+    expect(verboseResult).toMatchObject({
+      pid: runResult.pid,
+      agent: 'opencode',
+      status: 'failed',
+      exitCode: 7,
+      session_id: 'ses-opencode-default',
+      stdout: expect.stringContaining('Partial failure output'),
+      stderr: expect.stringContaining('OpenCode failed for openai/gpt-5.4'),
+      agentOutput: {
+        message: 'Partial failure output',
+        session_id: 'ses-opencode-default',
+        tokens: { total: 42 },
+        cost: 0,
+      },
     });
   });
 });

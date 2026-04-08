@@ -236,12 +236,22 @@ describe('ai-cli app', () => {
     const stderr = vi.fn();
 
     const exitCode = await runCli(['models'], { stdout, stderr });
+    const payload = JSON.parse(stdout.mock.calls[0][0]);
 
     expect(exitCode).toBe(0);
-    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"aliases"'));
-    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"claude-ultra"'));
-    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"gpt-5.4"'));
-    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"forge"'));
+    expect(payload.aliases).toEqual(expect.any(Array));
+    expect(payload.claude).toContain('sonnet');
+    expect(payload.codex).toContain('gpt-5.4');
+    expect(payload.forge).toEqual(['forge']);
+    expect(payload.opencode).toEqual(['opencode']);
+    expect(payload.dynamicModelBackends).toEqual({
+      opencode: {
+        explicitPrefix: 'oc-',
+        explicitPattern: 'oc-<provider/model>',
+        discoveryCommand: 'opencode models',
+        modelsAreDynamic: true,
+      },
+    });
     expect(stderr).not.toHaveBeenCalled();
   });
 
@@ -270,6 +280,12 @@ describe('ai-cli app', () => {
       forge: {
         configuredCommand: 'forge',
         resolvedPath: '/tmp/bin/forge',
+        available: true,
+        lookup: 'path',
+      },
+      opencode: {
+        configuredCommand: 'opencode',
+        resolvedPath: '/tmp/bin/opencode',
         available: true,
         lookup: 'path',
       },
@@ -307,6 +323,8 @@ describe('ai-cli app', () => {
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('gpt-5.2-codex'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('gemini-2.5-pro'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('forge'));
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('opencode'));
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('oc-openai/gpt-5.4'));
     expect(stderr).not.toHaveBeenCalled();
   });
 
@@ -355,6 +373,7 @@ describe('ai-cli app', () => {
 
     expect(exitCode).toBe(0);
     expect(stdout).toHaveBeenCalledWith(DOCTOR_HELP_TEXT);
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('OpenCode'));
     expect(stderr).not.toHaveBeenCalled();
   });
 
@@ -366,6 +385,7 @@ describe('ai-cli app', () => {
 
     expect(exitCode).toBe(0);
     expect(stdout).toHaveBeenCalledWith(DOCTOR_HELP_TEXT);
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('OpenCode'));
     expect(stderr).not.toHaveBeenCalled();
   });
 

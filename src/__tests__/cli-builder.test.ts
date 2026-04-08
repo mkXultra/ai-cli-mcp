@@ -23,6 +23,7 @@ const DEFAULT_CLI_PATHS = {
   codex: '/usr/bin/codex',
   gemini: '/usr/bin/gemini',
   forge: '/usr/bin/forge',
+  opencode: '/usr/bin/opencode',
 };
 
 describe('cli-builder', () => {
@@ -102,6 +103,15 @@ describe('cli-builder', () => {
     it('should reject reasoning_effort for forge explicitly', () => {
       expect(() => getReasoningEffort('forge', 'high')).toThrow(
         'reasoning_effort is not supported for forge.'
+      );
+    });
+
+    it('should reject reasoning_effort for opencode explicitly', () => {
+      expect(() => getReasoningEffort('opencode', 'high')).toThrow(
+        'reasoning_effort is not supported for opencode.'
+      );
+      expect(() => getReasoningEffort('oc-openai/gpt-5.4', 'high')).toThrow(
+        'reasoning_effort is not supported for opencode.'
       );
     });
   });
@@ -409,43 +419,129 @@ describe('cli-builder', () => {
       });
     });
 
-    describe('forge agent', () => {
-      it('should build forge command without model flags', () => {
+    describe('opencode agent', () => {
+      it('should build default opencode command without --model', () => {
         const cmd = buildCliCommand({
           prompt: 'test',
           workFolder: '/tmp',
-          model: 'forge',
+          model: 'opencode',
           cliPaths: DEFAULT_CLI_PATHS,
         });
 
-        expect(cmd.agent).toBe('forge');
-        expect(cmd.cliPath).toBe('/usr/bin/forge');
-        expect(cmd.resolvedModel).toBe('forge');
-        expect(cmd.args).toEqual(['-C', '/tmp', '-p', 'test']);
+        expect(cmd.agent).toBe('opencode');
+        expect(cmd.cliPath).toBe('/usr/bin/opencode');
+        expect(cmd.cwd).toBe('/tmp');
+        expect(cmd.args).toEqual(['run', '--format', 'json', '--dir', '/tmp', 'test']);
+        expect(cmd.args).not.toContain('--model');
       });
 
-      it('should map session_id to --conversation-id for forge', () => {
+      it('should route valid explicit OpenCode model syntax', () => {
         const cmd = buildCliCommand({
           prompt: 'test',
           workFolder: '/tmp',
-          model: 'forge',
-          session_id: 'forge-conv-123',
+          model: 'oc-openai/gpt-5.4',
           cliPaths: DEFAULT_CLI_PATHS,
         });
 
-        expect(cmd.args).toEqual(['-C', '/tmp', '--conversation-id', 'forge-conv-123', '-p', 'test']);
+        expect(cmd.agent).toBe('opencode');
+        expect(cmd.resolvedModel).toBe('oc-openai/gpt-5.4');
+        expect(cmd.args).toEqual([
+          'run',
+          '--format',
+          'json',
+          '--dir',
+          '/tmp',
+          '--model',
+          'openai/gpt-5.4',
+          'test',
+        ]);
       });
 
-      it('should reject reasoning_effort for forge in command building', () => {
+      it.each([
+        'oc-',
+        'oc-openai',
+        'oc-/gpt-5.4',
+        'oc-openai/',
+      ])('should reject invalid explicit OpenCode syntax: %s', (model) => {
         expect(() =>
           buildCliCommand({
             prompt: 'test',
             workFolder: '/tmp',
-            model: 'forge',
+            model,
+            cliPaths: DEFAULT_CLI_PATHS,
+          })
+        ).toThrow('Invalid OpenCode model. Expected exact syntax oc-<provider/model>.');
+      });
+
+      it.each([' oc-openai/gpt-5.4', 'oc-openai/gpt-5.4 '])(
+        'should reject explicit OpenCode models with surrounding whitespace: %s',
+        (model) => {
+          expect(() =>
+            buildCliCommand({
+              prompt: 'test',
+              workFolder: '/tmp',
+              model,
+              cliPaths: DEFAULT_CLI_PATHS,
+            })
+          ).toThrow('Invalid OpenCode model. Expected exact syntax oc-<provider/model>.');
+        }
+      );
+
+      it('should reject reasoning_effort for OpenCode in command building', () => {
+        expect(() =>
+          buildCliCommand({
+            prompt: 'test',
+            workFolder: '/tmp',
+            model: 'opencode',
             reasoning_effort: 'high',
             cliPaths: DEFAULT_CLI_PATHS,
           })
-        ).toThrow('reasoning_effort is not supported for forge.');
+        ).toThrow('reasoning_effort is not supported for opencode.');
+      });
+
+      it('should build resumed default OpenCode command', () => {
+        const cmd = buildCliCommand({
+          prompt: 'resume prompt',
+          workFolder: '/tmp',
+          model: 'opencode',
+          session_id: 'ses-123',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.args).toEqual([
+          'run',
+          '--format',
+          'json',
+          '--dir',
+          '/tmp',
+          '--session',
+          'ses-123',
+          'resume prompt',
+        ]);
+        expect(cmd.args).not.toContain('--model');
+      });
+
+      it('should build resumed explicit OpenCode command', () => {
+        const cmd = buildCliCommand({
+          prompt: 'resume prompt',
+          workFolder: '/tmp',
+          model: 'oc-openai/gpt-5.4',
+          session_id: 'ses-456',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.args).toEqual([
+          'run',
+          '--format',
+          'json',
+          '--dir',
+          '/tmp',
+          '--session',
+          'ses-456',
+          '--model',
+          'openai/gpt-5.4',
+          'resume prompt',
+        ]);
       });
     });
   });

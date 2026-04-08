@@ -1,18 +1,15 @@
 import { debugLog } from './cli-utils.js';
 
-/**
- * Parse Codex NDJSON output to extract the last agent message and token count
- */
 export function parseCodexOutput(stdout: string): any {
   if (!stdout) return null;
-  
+
   try {
     const lines = stdout.trim().split('\n');
     let lastMessage = null;
     let tokenCount = null;
     let threadId = null;
     const tools: any[] = [];
-    
+
     for (const line of lines) {
       if (line.trim()) {
         try {
@@ -24,14 +21,13 @@ export function parseCodexOutput(stdout: string): any {
           } else if (parsed.msg?.type === 'agent_message') {
             lastMessage = parsed.msg.message;
           } else if (parsed.item?.type === 'reasoning') {
-            // Ignore reasoning-only items for message selection.
           } else if (parsed.msg?.type === 'token_count') {
             tokenCount = parsed.msg;
           } else if (parsed.type === 'item.completed' && parsed.item?.type === 'mcp_tool_call') {
             tools.push({
               server: parsed.item.server,
               tool: parsed.item.tool,
-              input: parsed.item.arguments, // Map arguments to input to match common patterns
+              input: parsed.item.arguments,
               output: parsed.item.result
             });
           } else if (parsed.type === 'item.completed' && parsed.item?.type === 'command_execution') {
@@ -43,12 +39,11 @@ export function parseCodexOutput(stdout: string): any {
             });
           }
         } catch (e) {
-          // Skip invalid JSON lines
           debugLog(`[Debug] Skipping invalid JSON line: ${line}`);
         }
       }
     }
-    
+
     if (lastMessage || tokenCount || threadId || tools.length > 0) {
       return {
         message: lastMessage,
@@ -60,28 +55,23 @@ export function parseCodexOutput(stdout: string): any {
   } catch (e) {
     debugLog(`[Debug] Failed to parse Codex NDJSON output: ${e}`);
   }
-  
+
   return null;
 }
 
-/**
- * Parse Claude Output (supports both JSON and stream-json/NDJSON)
- */
 export function parseClaudeOutput(stdout: string): any {
   if (!stdout) return null;
 
-  // First try parsing as a single JSON object (backward compatibility)
   try {
     return JSON.parse(stdout);
   } catch (e) {
-    // If not valid single JSON, proceed to parse as NDJSON
   }
 
   try {
     const lines = stdout.trim().split('\n');
     let lastMessage = null;
     let sessionId = null;
-    const toolsMap = new Map<string, any>(); // Map by tool_use id for matching results
+    const toolsMap = new Map<string, any>();
 
     for (const line of lines) {
       if (!line.trim()) continue;
@@ -89,36 +79,31 @@ export function parseClaudeOutput(stdout: string): any {
       try {
         const parsed = JSON.parse(line);
 
-        // Extract session ID from any message that has it
         if (parsed.session_id) {
           sessionId = parsed.session_id;
         }
 
-        // Extract final result message
         if (parsed.type === 'result' && parsed.result) {
           lastMessage = parsed.result;
         }
 
-        // Extract tool usage from assistant messages
         if (parsed.type === 'assistant' && parsed.message?.content) {
           for (const content of parsed.message.content) {
             if (content.type === 'tool_use') {
               toolsMap.set(content.id, {
                 tool: content.name,
                 input: content.input,
-                output: null // Will be filled when tool_result is found
+                output: null
               });
             }
           }
         }
 
-        // Match tool results from user messages
         if (parsed.type === 'user' && parsed.message?.content) {
           for (const content of parsed.message.content) {
             if (content.type === 'tool_result' && content.tool_use_id) {
               const tool = toolsMap.get(content.tool_use_id);
               if (tool) {
-                // Extract text from content array
                 if (Array.isArray(content.content)) {
                   const textContent = content.content.find((c: any) => c.type === 'text');
                   tool.output = textContent?.text || null;
@@ -135,12 +120,11 @@ export function parseClaudeOutput(stdout: string): any {
       }
     }
 
-    // Convert Map to array
     const tools = Array.from(toolsMap.values());
 
     if (lastMessage || sessionId || tools.length > 0) {
       return {
-        message: lastMessage, // This is the final result text
+        message: lastMessage,
         session_id: sessionId,
         tools: tools.length > 0 ? tools : undefined
       };
@@ -150,13 +134,10 @@ export function parseClaudeOutput(stdout: string): any {
     debugLog(`[Debug] Failed to parse Claude NDJSON output: ${e}`);
     return null;
   }
-  
+
   return null;
 }
 
-/**
- * Parse Gemini JSON output
- */
 export function parseGeminiOutput(stdout: string): any {
   if (!stdout) return null;
 
@@ -168,9 +149,6 @@ export function parseGeminiOutput(stdout: string): any {
   }
 }
 
-/**
- * Parse Forge output framed by Initialize/Continue/Finished markers.
- */
 export function parseForgeOutput(stdout: string): any {
   if (!stdout) return null;
 
@@ -227,4 +205,72 @@ export function parseForgeOutput(stdout: string): any {
     message: lastMessage,
     session_id: lastConversationId,
   };
+}
+
+export function parseOpenCodeOutput(stdout: string): any {
+  if (!stdout) {
+    return null;
+  }
+
+  let sessionId: string | null = null;
+  let currentStepBuffer = '';
+  let latestCompletedStep: {
+    message: string;
+    session_id?: string;
+    tokens?: any;
+    cost?: number;
+  } | null = null;
+  let hasStepFinish = false;
+  let hasParseableAssistantText = false;
+
+  for (const line of stdout.split('\n')) {
+    if (!line.trim()) {
+      continue;
+    }
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(line);
+    } catch {
+      continue;
+    }
+
+    if (typeof parsed.sessionID === 'string' && parsed.sessionID) {
+      sessionId = parsed.sessionID;
+    }
+
+    if (parsed.type === 'step_start') {
+      currentStepBuffer = '';
+      continue;
+    }
+
+    if (parsed.type === 'text' && parsed.part?.type === 'text' && typeof parsed.part.text === 'string') {
+      currentStepBuffer += parsed.part.text;
+      hasParseableAssistantText = true;
+      continue;
+    }
+
+    if (parsed.type === 'step_finish') {
+      hasStepFinish = true;
+      latestCompletedStep = {
+        message: currentStepBuffer,
+        session_id: sessionId || undefined,
+        tokens: parsed.part?.tokens,
+        cost: parsed.part?.cost,
+      };
+    }
+  }
+
+  if (hasStepFinish && latestCompletedStep) {
+    return latestCompletedStep;
+  }
+
+  if (hasParseableAssistantText) {
+    return {
+      message: currentStepBuffer,
+      session_id: sessionId || undefined,
+    };
+  }
+
+  return null;
 }

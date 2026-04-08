@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import {
+  chmodSync,
   closeSync,
   existsSync,
   mkdirSync,
@@ -15,8 +16,8 @@ import {
 import { join, basename, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
-import { findClaudeCli, findCodexCli, findForgeCli, findGeminiCli } from './cli-utils.js';
-import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput } from './parsers.js';
+import { findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli } from './cli-utils.js';
+import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput } from './parsers.js';
 import { buildProcessResult } from './process-result.js';
 import type { AgentType, ProcessListItem } from './process-service.js';
 
@@ -31,6 +32,12 @@ interface StoredProcess {
   stdoutPath: string;
   stderrPath: string;
   status: 'running' | 'completed' | 'failed';
+  exitCode?: number;
+}
+
+interface StoredExitStatus {
+  status: 'completed' | 'failed';
+  exitCode?: number;
 }
 
 interface CliProcessServiceOptions {
@@ -70,6 +77,30 @@ function normalizeCwdForStorage(cwd: string): string {
     .join('');
 }
 
+function parseAgentOutput(agent: AgentType, stdout: string, stderr: string): any {
+  if (agent === 'codex') {
+    return parseCodexOutput(`${stdout}\n${stderr}`);
+  }
+
+  if (!stdout) {
+    return null;
+  }
+
+  if (agent === 'claude') {
+    return parseClaudeOutput(stdout);
+  }
+  if (agent === 'gemini') {
+    return parseGeminiOutput(stdout);
+  }
+  if (agent === 'forge') {
+    return parseForgeOutput(stdout);
+  }
+  if (agent === 'opencode') {
+    return parseOpenCodeOutput(stdout);
+  }
+  return null;
+}
+
 export class CliProcessService {
   private readonly stateDir: string;
   private readonly cliPaths: BuildCliCommandOptions['cliPaths'];
@@ -81,6 +112,7 @@ export class CliProcessService {
       codex: findCodexCli(),
       gemini: findGeminiCli(),
       forge: findForgeCli(),
+      opencode: findOpencodeCli(),
     };
     mkdirSync(this.stateDir, { recursive: true });
   }
@@ -95,6 +127,10 @@ export class CliProcessService {
       reasoning_effort: options.reasoning_effort,
       cliPaths: this.cliPaths,
     });
+
+    if (cmd.agent === 'opencode') {
+      return this.startDetachedOpenCodeProcess(cmd, options.model);
+    }
 
     const stdoutPath = this.resolveStdoutPathForPidPlaceholder();
     const stderrPath = this.resolveStderrPathForPidPlaceholder();
@@ -172,25 +208,13 @@ export class CliProcessService {
     const refreshed = this.refreshStatus(storedProcess);
     const stdout = this.readTextFileSafe(refreshed.stdoutPath);
     const stderr = this.readTextFileSafe(refreshed.stderrPath);
-
-    let agentOutput: any = null;
-    if (refreshed.toolType === 'codex') {
-      agentOutput = parseCodexOutput(`${stdout}\n${stderr}`);
-    } else if (stdout) {
-      if (refreshed.toolType === 'claude') {
-        agentOutput = parseClaudeOutput(stdout);
-      } else if (refreshed.toolType === 'gemini') {
-        agentOutput = parseGeminiOutput(stdout);
-      } else if (refreshed.toolType === 'forge') {
-        agentOutput = parseForgeOutput(stdout);
-      }
-    }
+    const agentOutput = parseAgentOutput(refreshed.toolType, stdout, stderr);
 
     return buildProcessResult({
       pid,
       agent: refreshed.toolType,
       status: refreshed.status,
-      exitCode: undefined,
+      exitCode: refreshed.exitCode,
       startTime: refreshed.startTime,
       workFolder: refreshed.workFolder,
       prompt: refreshed.prompt,
@@ -277,6 +301,59 @@ export class CliProcessService {
     };
   }
 
+  private async startDetachedOpenCodeProcess(
+    cmd: Awaited<ReturnType<typeof buildCliCommand>>,
+    model: string | undefined,
+  ): Promise<{ pid: number; status: 'started'; agent: AgentType; message: string }> {
+    const cwdKey = this.resolveCwdKey(cmd.cwd);
+    const wrapperPath = this.ensureOpenCodeWrapperScript();
+
+    const childProcess = spawn(wrapperPath, [this.stateDir, cwdKey, cmd.cliPath, ...cmd.args], {
+      cwd: cmd.cwd,
+      detached: true,
+      stdio: 'ignore',
+    });
+
+    const pid = childProcess.pid;
+    childProcess.unref();
+
+    if (!pid) {
+      throw new Error(`Failed to start ${cmd.agent} CLI process`);
+    }
+
+    const processDir = this.resolveProcessDir(cmd.cwd, pid);
+    mkdirSync(processDir, { recursive: true });
+    const stdoutPath = this.resolveStdoutPath(processDir);
+    const stderrPath = this.resolveStderrPath(processDir);
+    if (!existsSync(stdoutPath)) {
+      writeFileSync(stdoutPath, '');
+    }
+    if (!existsSync(stderrPath)) {
+      writeFileSync(stderrPath, '');
+    }
+
+    const storedProcess: StoredProcess = {
+      pid,
+      prompt: cmd.prompt,
+      workFolder: cmd.cwd,
+      cwdKey,
+      model,
+      toolType: cmd.agent,
+      startTime: new Date().toISOString(),
+      stdoutPath,
+      stderrPath,
+      status: 'running',
+    };
+    this.writeProcess(storedProcess);
+
+    return {
+      pid,
+      status: 'started',
+      agent: cmd.agent,
+      message: `${cmd.agent} process started successfully`,
+    };
+  }
+
   private readAllProcesses(): StoredProcess[] {
     const cwdsDir = this.resolveCwdsDir();
     if (!existsSync(cwdsDir)) {
@@ -320,11 +397,45 @@ export class CliProcessService {
   }
 
   private refreshStatus(process: StoredProcess): StoredProcess {
-    if (process.status === 'running' && !isProcessRunning(process.pid)) {
+    if (process.status !== 'running') {
+      return process;
+    }
+
+    const persistedExitStatus = this.readExitStatus(process);
+    if (persistedExitStatus) {
+      process.status = persistedExitStatus.status;
+      process.exitCode = persistedExitStatus.exitCode;
+      this.writeProcess(process);
+      return process;
+    }
+
+    if (!isProcessRunning(process.pid)) {
       process.status = 'completed';
       this.writeProcess(process);
     }
     return process;
+  }
+
+  private readExitStatus(process: StoredProcess): StoredExitStatus | null {
+    if (process.toolType !== 'opencode') {
+      return null;
+    }
+
+    const exitMetaPath = this.resolveExitStatusPath(this.resolveStoredProcessDir(process));
+    if (!existsSync(exitMetaPath)) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(readFileSync(exitMetaPath, 'utf-8')) as StoredExitStatus;
+      if (parsed.status === 'completed' || parsed.status === 'failed') {
+        return parsed;
+      }
+    } catch {
+      return null;
+    }
+
+    return null;
   }
 
   private readTextFileSafe(filePath: string): string {
@@ -365,12 +476,55 @@ export class CliProcessService {
     return join(processDir, 'stderr.log');
   }
 
+  private resolveExitStatusPath(processDir: string): string {
+    return join(processDir, 'exit-status.json');
+  }
+
+  private resolveOpenCodeWrapperPath(): string {
+    return join(this.stateDir, 'opencode-detached-wrapper.sh');
+  }
+
   private resolveStdoutPathForPidPlaceholder(): string {
     return join(this.stateDir, `pending-${Date.now()}-${Math.random().toString(36).slice(2)}.stdout.log`);
   }
 
   private resolveStderrPathForPidPlaceholder(): string {
     return join(this.stateDir, `pending-${Date.now()}-${Math.random().toString(36).slice(2)}.stderr.log`);
+  }
+
+  private ensureOpenCodeWrapperScript(): string {
+    const wrapperPath = this.resolveOpenCodeWrapperPath();
+    if (existsSync(wrapperPath)) {
+      return wrapperPath;
+    }
+
+    writeFileSync(
+      wrapperPath,
+      `#!/bin/sh
+set +e
+state_dir="$1"
+cwd_key="$2"
+shift 2
+pid="$$"
+process_dir="$state_dir/cwds/$cwd_key/$pid"
+stdout_path="$process_dir/stdout.log"
+stderr_path="$process_dir/stderr.log"
+exit_meta_path="$process_dir/exit-status.json"
+mkdir -p "$process_dir"
+: > "$stdout_path"
+: > "$stderr_path"
+"$@" >> "$stdout_path" 2>> "$stderr_path"
+exit_code="$?"
+status="completed"
+if [ "$exit_code" -ne 0 ]; then
+  status="failed"
+fi
+printf '{\n  "status": "%s",\n  "exitCode": %s\n}\n' "$status" "$exit_code" > "$exit_meta_path"
+exit "$exit_code"
+`,
+    );
+    chmodSync(wrapperPath, 0o755);
+    return wrapperPath;
   }
 
   private renamePlaceholderFile(fromPath: string, toPath: string): void {

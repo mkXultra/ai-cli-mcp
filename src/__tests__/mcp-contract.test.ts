@@ -3,6 +3,7 @@ import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { cleanupSharedMock, getSharedMock } from './utils/persistent-mock.js';
+import { createOpenCodeMock } from './utils/opencode-mock.js';
 import { createTestClient, MCPTestClient } from './utils/mcp-client.js';
 
 function parseToolJson(content: any): any {
@@ -109,6 +110,13 @@ describe('MCP Contract Tests', () => {
       'session_id',
       'workFolder',
     ]);
+    expect(runTool.description).toContain('OpenCode');
+    expect(runTool.inputSchema.properties.model.description).toContain('opencode');
+    expect(runTool.inputSchema.properties.model.description).toContain('oc-<provider/model>');
+    expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('OpenCode do not support reasoning_effort');
+    expect(runTool.inputSchema.properties.session_id.description).toBe(
+      'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, and OpenCode. OpenCode resumes in-place via --session and may also be combined with explicit oc-<provider/model> selection.'
+    );
 
     const getResultTool = tools.find((tool: any) => tool.name === 'get_result');
     expect(getResultTool.inputSchema.required).toEqual(['pid']);
@@ -468,6 +476,177 @@ printf '%s\n' '{"type":"system","session_id":"session-verbose-1"}'
         reasoning_effort: 'high',
       })
     ).rejects.toThrow(/reasoning_effort is not supported for forge/i);
+  });
+
+  it('covers OpenCode end-to-end through the MCP process path', async () => {
+    await client.disconnect();
+
+    const opencodeArgsLogPath = join(testDir, 'opencode-args.log');
+    const { scriptPath: openCodeMockPath } = createOpenCodeMock(testDir, {
+      argsLogPath: opencodeArgsLogPath,
+      defaultSessionId: 'ses-opencode-contract',
+    });
+
+    client = createTestClient({
+      debug: false,
+      env: {
+        OPENCODE_CLI_NAME: openCodeMockPath,
+      },
+    });
+    await client.connect();
+
+    const initialRunResponse = await client.callTool('run', {
+      prompt: 'opencode-initial-prompt',
+      workFolder: testDir,
+      model: 'opencode',
+    });
+    const initialRunData = parseToolJson(initialRunResponse);
+
+    expect(initialRunData).toEqual({
+      pid: expect.any(Number),
+      status: 'started',
+      agent: 'opencode',
+      message: expect.any(String),
+    });
+
+    const initialWaitResponse = await client.callTool('wait', { pids: [initialRunData.pid], timeout: 5 });
+    const initialWaitData = parseToolJson(initialWaitResponse);
+
+    expect(initialWaitData).toHaveLength(1);
+    expect(initialWaitData[0]).toMatchObject({
+      pid: initialRunData.pid,
+      agent: 'opencode',
+      status: 'completed',
+      exitCode: 0,
+      model: 'opencode',
+      session_id: 'ses-opencode-contract',
+      agentOutput: {
+        message: 'Initial: opencode-initial-prompt',
+        session_id: 'ses-opencode-contract',
+        tokens: { total: 11833 },
+        cost: 0,
+      },
+    });
+
+    const resumedDefaultRunResponse = await client.callTool('run', {
+      prompt: 'opencode-resume-default',
+      workFolder: testDir,
+      model: 'opencode',
+      session_id: 'ses-opencode-contract',
+    });
+    const resumedDefaultRunData = parseToolJson(resumedDefaultRunResponse);
+
+    const resumedDefaultWaitResponse = await client.callTool('wait', { pids: [resumedDefaultRunData.pid], timeout: 5 });
+    const resumedDefaultWaitData = parseToolJson(resumedDefaultWaitResponse);
+
+    expect(resumedDefaultWaitData).toHaveLength(1);
+    expect(resumedDefaultWaitData[0]).toMatchObject({
+      pid: resumedDefaultRunData.pid,
+      agent: 'opencode',
+      status: 'completed',
+      exitCode: 0,
+      model: 'opencode',
+      session_id: 'ses-opencode-contract',
+      agentOutput: {
+        message: 'Resumed: opencode-resume-default',
+        session_id: 'ses-opencode-contract',
+        tokens: { total: 11833 },
+        cost: 0,
+      },
+    });
+
+    const resumedExplicitRunResponse = await client.callTool('run', {
+      prompt: 'opencode-resume-explicit',
+      workFolder: testDir,
+      model: 'oc-openai/gpt-5.4',
+      session_id: 'ses-opencode-contract',
+    });
+    const resumedExplicitRunData = parseToolJson(resumedExplicitRunResponse);
+
+    const resumedExplicitWaitResponse = await client.callTool('wait', { pids: [resumedExplicitRunData.pid], timeout: 5 });
+    const resumedExplicitWaitData = parseToolJson(resumedExplicitWaitResponse);
+
+    expect(resumedExplicitWaitData).toHaveLength(1);
+    expect(resumedExplicitWaitData[0]).toMatchObject({
+      pid: resumedExplicitRunData.pid,
+      agent: 'opencode',
+      status: 'completed',
+      exitCode: 0,
+      model: 'oc-openai/gpt-5.4',
+      session_id: 'ses-opencode-contract',
+      agentOutput: {
+        message: 'Resumed model openai/gpt-5.4: opencode-resume-explicit',
+        session_id: 'ses-opencode-contract',
+        tokens: { total: 11833 },
+        cost: 0,
+      },
+    });
+
+    const failedRunResponse = await client.callTool('run', {
+      prompt: 'please fail',
+      workFolder: testDir,
+      model: 'oc-openai/gpt-5.4',
+    });
+    const failedRunData = parseToolJson(failedRunResponse);
+
+    const compactFailedWait = parseToolJson(await client.callTool('wait', { pids: [failedRunData.pid], timeout: 5 }));
+    expect(compactFailedWait).toHaveLength(1);
+    expect(compactFailedWait[0]).toMatchObject({
+      pid: failedRunData.pid,
+      agent: 'opencode',
+      status: 'failed',
+      exitCode: 7,
+      model: 'oc-openai/gpt-5.4',
+      session_id: 'ses-opencode-contract',
+      stdout: expect.stringContaining('Partial failure output'),
+      stderr: expect.stringContaining('OpenCode failed for openai/gpt-5.4'),
+    });
+    expect(compactFailedWait[0]).not.toHaveProperty('agentOutput');
+
+    const verboseFailedResult = parseToolJson(await client.callTool('get_result', { pid: failedRunData.pid, verbose: true }));
+    expect(verboseFailedResult).toMatchObject({
+      pid: failedRunData.pid,
+      agent: 'opencode',
+      status: 'failed',
+      exitCode: 7,
+      model: 'oc-openai/gpt-5.4',
+      session_id: 'ses-opencode-contract',
+      stdout: expect.stringContaining('Partial failure output'),
+      stderr: expect.stringContaining('OpenCode failed for openai/gpt-5.4'),
+      agentOutput: {
+        message: 'Partial failure output',
+        session_id: 'ses-opencode-contract',
+        tokens: { total: 42 },
+        cost: 0,
+      },
+    });
+
+    const openCodeInvocations = readFileSync(opencodeArgsLogPath, 'utf-8').trim().split('\n');
+    expect(openCodeInvocations).toHaveLength(4);
+    expect(openCodeInvocations[0]).toContain('run --format json');
+    expect(openCodeInvocations[0]).toContain(`--dir ${testDir}`);
+    expect(openCodeInvocations[0]).not.toContain('--session');
+    expect(openCodeInvocations[0]).not.toContain('--model');
+
+    expect(openCodeInvocations[1]).toContain(`--dir ${testDir}`);
+    expect(openCodeInvocations[1]).toContain('--session ses-opencode-contract');
+    expect(openCodeInvocations[1]).not.toContain('--model');
+
+    expect(openCodeInvocations[2]).toContain(`--dir ${testDir}`);
+    expect(openCodeInvocations[2]).toContain('--session ses-opencode-contract');
+    expect(openCodeInvocations[2]).toContain('--model openai/gpt-5.4');
+
+    expect(openCodeInvocations[3]).toContain(`--dir ${testDir}`);
+    expect(openCodeInvocations[3]).toContain('--model openai/gpt-5.4');
+
+    await expect(
+      client.callTool('run', {
+        prompt: 'opencode-invalid-reasoning',
+        workFolder: testDir,
+        model: 'opencode',
+        reasoning_effort: 'high',
+      })
+    ).rejects.toThrow(/reasoning_effort is not supported for opencode/i);
   });
 
   it('keeps key invalid-input errors stable', async () => {

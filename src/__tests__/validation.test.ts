@@ -321,5 +321,49 @@ describe('Argument Validation Tests', () => {
         })
       ).rejects.toThrow(/reasoning_effort/i);
     });
+
+    it.each([
+      'oc-',
+      'oc-openai',
+      'oc-/gpt-5.4',
+      'oc-openai/',
+      ' oc-openai/gpt-5.4',
+      'oc-openai/gpt-5.4 ',
+    ])('should reject malformed OpenCode model syntax at runtime: %s', async (model) => {
+      await setupServer();
+      const handler = handlers.get('callTool')!;
+
+      await expect(
+        handler({
+          params: {
+            name: 'run',
+            arguments: {
+              prompt: 'test',
+              workFolder: '/tmp',
+              model,
+            }
+          }
+        })
+      ).rejects.toThrow('Invalid OpenCode model. Expected exact syntax oc-<provider/model>.');
+    });
+
+    it('should reject reasoning_effort for OpenCode runtime requests', async () => {
+      await setupServer();
+      const handler = handlers.get('callTool')!;
+
+      await expect(
+        handler({
+          params: {
+            name: 'run',
+            arguments: {
+              prompt: 'test',
+              workFolder: '/tmp',
+              model: 'opencode',
+              reasoning_effort: 'high',
+            }
+          }
+        })
+      ).rejects.toThrow('reasoning_effort is not supported for opencode.');
+    });
   });
 });

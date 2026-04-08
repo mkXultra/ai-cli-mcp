@@ -45,6 +45,10 @@ function hasMeaningfulParsedOutput(agentOutput: any): boolean {
   });
 }
 
+function shouldPreserveRawFailureOutput(context: ProcessResultContext): boolean {
+  return context.agent === 'opencode' && context.status === 'failed';
+}
+
 export function buildProcessResult(context: ProcessResultContext, agentOutput: any, verbose = false): any {
   const response: any = {
     pid: context.pid,
@@ -65,14 +69,19 @@ export function buildProcessResult(context: ProcessResultContext, agentOutput: a
   }
 
   const shapedAgentOutput = verbose ? agentOutput : compactAgentOutput(agentOutput);
+  const preserveRawFailureOutput = shouldPreserveRawFailureOutput(context);
 
-  if (hasMeaningfulParsedOutput(shapedAgentOutput)) {
+  if (hasMeaningfulParsedOutput(shapedAgentOutput) && (verbose || !preserveRawFailureOutput)) {
     response.agentOutput = shapedAgentOutput;
   }
 
-  if (!response.agentOutput) {
+  if (!response.agentOutput || preserveRawFailureOutput) {
     response.stdout = context.stdout;
     response.stderr = context.stderr;
+  }
+
+  if (verbose && preserveRawFailureOutput && hasMeaningfulParsedOutput(shapedAgentOutput)) {
+    response.agentOutput = shapedAgentOutput;
   }
 
   return response;
