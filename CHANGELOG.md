@@ -1,3 +1,10 @@
+# [2.15.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.14.1...v2.15.0) (2026-04-09)
+
+
+### Features
+
+* OpenCode CLIを新しいAIバックエンドとして追加 ([0677c57](https://github.com/mkXultra/ai-cli-mcp/commit/0677c57659b36fd1083cd96166c2c608c45038b3))
+
 ## [2.14.1](https://github.com/mkXultra/ai-cli-mcp/compare/v2.14.0...v2.14.1) (2026-04-07)
 
 
