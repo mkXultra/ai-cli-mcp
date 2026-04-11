@@ -314,7 +314,8 @@ describe('cli-builder', () => {
         expect(cmd.agent).toBe('codex');
         expect(cmd.cliPath).toBe('/usr/bin/codex');
         expect(cmd.args).toContain('exec');
-        expect(cmd.args).toContain('--full-auto');
+        expect(cmd.args).toContain('--dangerously-bypass-approvals-and-sandbox');
+        expect(cmd.args).not.toContain('--full-auto');
         expect(cmd.args).toContain('--json');
         expect(cmd.args).toContain('--model');
         expect(cmd.args).toContain('gpt-5.2-codex');
