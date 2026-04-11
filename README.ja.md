@@ -18,7 +18,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 このMCPサーバーは、LLMがAI CLIツールと対話するためのツールを提供します。MCPクライアントと統合することで、LLMは以下のことが可能になります：
 
 - すべての権限確認をスキップしてClaude CLIを実行（`--dangerously-skip-permissions` を使用）
-- 自動承認モードでCodex CLIを実行（`--full-auto` を使用）
+- 承認とサンドボックスをバイパスしてCodex CLIを実行（`--dangerously-bypass-approvals-and-sandbox` を使用）
 - 自動承認モードでGemini CLIを実行（`-y` を使用）
 - Forge CLI を非対話モードで実行（`forge -C <workFolder> -p <prompt>` を使用）
 - OpenCode を非対話 JSON モードで実行（`opencode run --format json --dir <workFolder> <prompt>` を使用）

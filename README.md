@@ -20,7 +20,7 @@ Did you notice that Cursor sometimes struggles with complex, multi-step edits or
 This MCP server provides tools that can be used by LLMs to interact with AI CLI tools. When integrated with MCP clients, it allows LLMs to:
 
 - Run Claude CLI with all permissions bypassed (using `--dangerously-skip-permissions`)
-- Execute Codex CLI with automatic approval mode (using `--full-auto`)
+- Execute Codex CLI with approvals and sandbox bypassed (using `--dangerously-bypass-approvals-and-sandbox`)
 - Execute Gemini CLI with automatic approval mode (using `-y`)
 - Execute Forge CLI in non-interactive mode (using `forge -C <workFolder> -p <prompt>`)
 - Execute OpenCode in non-interactive JSON mode (using `opencode run --format json --dir <workFolder> <prompt>`)
