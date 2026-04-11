@@ -1,3 +1,10 @@
+# [2.16.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.15.0...v2.16.0) (2026-04-11)
+
+
+### Features
+
+* peekコマンドを追加 — 実行中エージェントの自然言語メッセージをワンショット観測 ([c12fd4c](https://github.com/mkXultra/ai-cli-mcp/commit/c12fd4cbe374a05b5223191e10fb2144b5d86bd0))
+
 # [2.15.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.14.1...v2.15.0) (2026-04-09)
 
 
