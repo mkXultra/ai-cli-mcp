@@ -1,3 +1,10 @@
+# [2.17.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.16.0...v2.17.0) (2026-04-11)
+
+
+### Features
+
+* CodexのCLIフラグを--dangerously-bypass-approvals-and-sandboxに更新 ([5eb15f0](https://github.com/mkXultra/ai-cli-mcp/commit/5eb15f0138b54572c64ed11a1c7d44718afa65e0))
+
 # [2.16.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.15.0...v2.16.0) (2026-04-11)
 
 
