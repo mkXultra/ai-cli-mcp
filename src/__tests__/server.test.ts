@@ -497,14 +497,15 @@ describe('ClaudeCodeServer Unit Tests', () => {
       const handler = listToolsCall[1];
       const result = await handler();
       
-      expect(result.tools).toHaveLength(6);
+      expect(result.tools).toHaveLength(7);
       expect(result.tools[0].name).toBe('run');
       expect(result.tools[0].description).toContain('AI Agent Runner');
       expect(result.tools[1].name).toBe('list_processes');
       expect(result.tools[2].name).toBe('get_result');
       expect(result.tools[3].name).toBe('wait');
-      expect(result.tools[4].name).toBe('kill_process');
-      expect(result.tools[5].name).toBe('cleanup_processes');
+      expect(result.tools[4].name).toBe('peek');
+      expect(result.tools[5].name).toBe('kill_process');
+      expect(result.tools[6].name).toBe('cleanup_processes');
     });
 
     it('should handle CallToolRequest', async () => {

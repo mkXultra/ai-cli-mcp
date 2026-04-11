@@ -5,11 +5,13 @@ import {
   existsSync,
   mkdirSync,
   openSync,
+  readSync,
   readFileSync,
   readdirSync,
   realpathSync,
   renameSync,
   rmSync,
+  statSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -17,8 +19,17 @@ import { join, basename, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
 import { findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli } from './cli-utils.js';
-import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput } from './parsers.js';
+import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekMessageExtractor } from './parsers.js';
 import { buildProcessResult } from './process-result.js';
+import {
+  appendPeekMessages,
+  buildNotFoundPeekProcess,
+  observedDurationSec,
+  validatePeekPids,
+  validatePeekTimeSec,
+  type PeekProcessResult,
+  type PeekResponse,
+} from './peek.js';
 import type { AgentType, ProcessListItem } from './process-service.js';
 
 interface StoredProcess {
@@ -244,6 +255,97 @@ export class CliProcessService {
     }
   }
 
+  async peekProcesses(pids: number[], peekTimeSec = 10): Promise<PeekResponse> {
+    const targetPids = validatePeekPids(pids);
+    const targetPeekTimeSec = validatePeekTimeSec(peekTimeSec);
+    const processes: PeekProcessResult[] = [];
+    const observers: Array<{
+      process: StoredProcess;
+      result: PeekProcessResult;
+      stdoutExtractor: PeekMessageExtractor;
+      stderrExtractor: PeekMessageExtractor;
+      stdoutOffset: number;
+      stderrOffset: number;
+    }> = [];
+
+    for (const pid of targetPids) {
+      let process: StoredProcess;
+      try {
+        process = this.refreshStatus(this.readProcess(pid));
+      } catch {
+        processes.push(buildNotFoundPeekProcess(pid));
+        continue;
+      }
+
+      const result: PeekProcessResult = {
+        pid,
+        agent: process.toolType,
+        status: process.status,
+        messages: [],
+        truncated: false,
+        error: null,
+      };
+      processes.push(result);
+      observers.push({
+        process,
+        result,
+        stdoutExtractor: new PeekMessageExtractor(process.toolType),
+        stderrExtractor: new PeekMessageExtractor(process.toolType),
+        stdoutOffset: this.fileSizeSafe(process.stdoutPath),
+        stderrOffset: this.fileSizeSafe(process.stderrPath),
+      });
+    }
+
+    const startedAt = new Date();
+    const startedAtMs = Date.now();
+    const deadlineMs = startedAtMs + targetPeekTimeSec * 1000;
+
+    while (Date.now() <= deadlineMs) {
+      const observedAt = new Date().toISOString();
+      let allTerminal = true;
+
+      for (const observer of observers) {
+        const stdoutRead = this.readTextFromOffset(observer.process.stdoutPath, observer.stdoutOffset);
+        observer.stdoutOffset = stdoutRead.offset;
+        appendPeekMessages(observer.result, observer.stdoutExtractor.push(stdoutRead.text, observedAt));
+
+        const stderrRead = this.readTextFromOffset(observer.process.stderrPath, observer.stderrOffset);
+        observer.stderrOffset = stderrRead.offset;
+        appendPeekMessages(observer.result, observer.stderrExtractor.push(stderrRead.text, observedAt));
+
+        observer.process = this.refreshStatus(this.readProcess(observer.process.pid));
+        observer.result.status = observer.process.status;
+        if (observer.process.status === 'running') {
+          allTerminal = false;
+        }
+      }
+
+      if (allTerminal) {
+        break;
+      }
+
+      const remainingMs = deadlineMs - Date.now();
+      if (remainingMs <= 0) {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, Math.min(50, remainingMs)));
+    }
+
+    const flushTs = new Date().toISOString();
+    for (const observer of observers) {
+      observer.process = this.refreshStatus(this.readProcess(observer.process.pid));
+      observer.result.status = observer.process.status;
+      appendPeekMessages(observer.result, observer.stdoutExtractor.flush(flushTs));
+      appendPeekMessages(observer.result, observer.stderrExtractor.flush(flushTs));
+    }
+
+    return {
+      peek_started_at: startedAt.toISOString(),
+      observed_duration_sec: observedDurationSec(startedAtMs),
+      processes,
+    };
+  }
+
   async killProcess(pid: number): Promise<{ pid: number; status: string; message: string }> {
     const process = this.readProcess(pid);
     const refreshed = this.refreshStatus(process);
@@ -443,6 +545,37 @@ export class CliProcessService {
       return '';
     }
     return readFileSync(filePath, 'utf-8');
+  }
+
+  private fileSizeSafe(filePath: string): number {
+    if (!existsSync(filePath)) {
+      return 0;
+    }
+    return statSync(filePath).size;
+  }
+
+  private readTextFromOffset(filePath: string, offset: number): { text: string; offset: number } {
+    if (!existsSync(filePath)) {
+      return { text: '', offset };
+    }
+
+    const size = statSync(filePath).size;
+    if (size <= offset) {
+      return { text: '', offset: size };
+    }
+
+    const fd = openSync(filePath, 'r');
+    try {
+      const length = size - offset;
+      const buffer = Buffer.alloc(length);
+      const bytesRead = readSync(fd, buffer, 0, length, offset);
+      return {
+        text: buffer.subarray(0, bytesRead).toString('utf-8'),
+        offset: size,
+      };
+    } finally {
+      closeSync(fd);
+    }
   }
 
   private resolveCwdsDir(): string {

@@ -96,6 +96,7 @@ describe('MCP Contract Tests', () => {
       'get_result',
       'kill_process',
       'list_processes',
+      'peek',
       'run',
       'wait',
     ]);
@@ -132,6 +133,14 @@ describe('MCP Contract Tests', () => {
       'timeout',
       'verbose',
     ]);
+
+    const peekTool = tools.find((tool: any) => tool.name === 'peek');
+    expect(peekTool.inputSchema.required).toEqual(['pids']);
+    expect(Object.keys(peekTool.inputSchema.properties).sort()).toEqual([
+      'peek_time_sec',
+      'pids',
+    ]);
+    expect(peekTool.description).toContain('One-shot');
   });
 
   it('preserves the stdio MCP smoke flow and response shapes', async () => {

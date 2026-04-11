@@ -1,5 +1,131 @@
 import { debugLog } from './cli-utils.js';
 
+export interface PeekMessage {
+  ts: string;
+  text: string;
+}
+
+type PeekAgent = 'claude' | 'codex' | string | null;
+
+function isGeminiAssistantMessageEvent(parsed: any): boolean {
+  return parsed.type === 'message' && parsed.role === 'assistant' && typeof parsed.content === 'string';
+}
+
+const GEMINI_STREAM_EVENT_TYPES = new Set([
+  'init',
+  'message',
+  'tool_use',
+  'tool_result',
+  'result',
+  'error',
+  'stats',
+]);
+
+function isGeminiStreamJsonEvent(parsed: any): boolean {
+  return parsed && typeof parsed === 'object' && !Array.isArray(parsed) && GEMINI_STREAM_EVENT_TYPES.has(parsed.type);
+}
+
+function extractPeekMessagesFromParsedEvent(agent: PeekAgent, parsed: any, observedAt: string): PeekMessage[] {
+  if (agent === 'codex') {
+    if (parsed.item?.type === 'agent_message' && typeof parsed.item.text === 'string' && parsed.item.text.trim()) {
+      return [{ ts: observedAt, text: parsed.item.text }];
+    }
+    if (parsed.msg?.type === 'agent_message' && typeof parsed.msg.message === 'string' && parsed.msg.message.trim()) {
+      return [{ ts: observedAt, text: parsed.msg.message }];
+    }
+    return [];
+  }
+
+  if (agent === 'claude' && parsed.type === 'assistant' && Array.isArray(parsed.message?.content)) {
+    return parsed.message.content
+      .filter((content: any) => content?.type === 'text' && typeof content.text === 'string' && content.text.trim())
+      .map((content: any) => ({ ts: observedAt, text: content.text }));
+  }
+
+  if (agent === 'opencode' && parsed.type === 'text' && parsed.part?.type === 'text' && typeof parsed.part.text === 'string' && parsed.part.text.trim()) {
+    return [{ ts: observedAt, text: parsed.part.text }];
+  }
+
+  return [];
+}
+
+export class PeekMessageExtractor {
+  private pending = '';
+  private geminiAssistantBuffer = '';
+
+  constructor(private readonly agent: PeekAgent) {}
+
+  push(chunk: string, observedAt = new Date().toISOString()): PeekMessage[] {
+    if (!chunk) {
+      return [];
+    }
+
+    const lines = `${this.pending}${chunk}`.split(/\r?\n/);
+    this.pending = lines.pop() || '';
+    return this.extractLines(lines, observedAt);
+  }
+
+  flush(observedAt = new Date().toISOString()): PeekMessage[] {
+    const messages: PeekMessage[] = [];
+
+    if (this.pending) {
+      const line = this.pending;
+      this.pending = '';
+      messages.push(...this.extractLines([line], observedAt));
+    }
+
+    messages.push(...this.flushGeminiAssistantBuffer(observedAt));
+    return messages;
+  }
+
+  private extractLines(lines: string[], observedAt: string): PeekMessage[] {
+    const messages: PeekMessage[] = [];
+
+    for (const line of lines) {
+      if (!line.trim()) {
+        continue;
+      }
+
+      try {
+        messages.push(...this.extractParsedEvent(JSON.parse(line), observedAt));
+      } catch {
+        debugLog(`[Debug] Skipping invalid peek JSON line: ${line}`);
+        messages.push(...this.flushGeminiAssistantBuffer(observedAt));
+      }
+    }
+
+    return messages;
+  }
+
+  private extractParsedEvent(parsed: any, observedAt: string): PeekMessage[] {
+    if (this.agent !== 'gemini') {
+      return extractPeekMessagesFromParsedEvent(this.agent, parsed, observedAt);
+    }
+
+    if (isGeminiAssistantMessageEvent(parsed)) {
+      this.geminiAssistantBuffer += parsed.content;
+      return [];
+    }
+
+    return this.flushGeminiAssistantBuffer(observedAt);
+  }
+
+  private flushGeminiAssistantBuffer(observedAt: string): PeekMessage[] {
+    if (this.agent !== 'gemini' || !this.geminiAssistantBuffer) {
+      return [];
+    }
+
+    const text = this.geminiAssistantBuffer;
+    this.geminiAssistantBuffer = '';
+
+    if (!text.trim()) {
+      return [];
+    }
+
+    return [{ ts: observedAt, text }];
+  }
+}
+
 export function parseCodexOutput(stdout: string): any {
   if (!stdout) return null;
 
@@ -142,11 +268,105 @@ export function parseGeminiOutput(stdout: string): any {
   if (!stdout) return null;
 
   try {
-    return JSON.parse(stdout);
+    const parsed = JSON.parse(stdout.trim());
+    if (!isGeminiStreamJsonEvent(parsed)) {
+      return parsed;
+    }
   } catch (e) {
     debugLog(`[Debug] Failed to parse Gemini JSON output: ${e}`);
-    return null;
   }
+
+  let sessionId: string | null = null;
+  let assistantBuffer = '';
+  let lastMessage: string | null = null;
+  let stats: any = null;
+  const toolsById = new Map<string, any>();
+  const toolsWithoutId: any[] = [];
+  const flushAssistantMessage = () => {
+    if (assistantBuffer.trim()) {
+      lastMessage = assistantBuffer;
+    }
+    assistantBuffer = '';
+  };
+
+  for (const line of stdout.split('\n')) {
+    if (!line.trim()) {
+      continue;
+    }
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(line);
+    } catch (e) {
+      debugLog(`[Debug] Skipping invalid Gemini stream-json line: ${line}`);
+      flushAssistantMessage();
+      continue;
+    }
+
+    if (parsed.type === 'init' && typeof parsed.session_id === 'string' && parsed.session_id) {
+      sessionId = parsed.session_id;
+      continue;
+    }
+
+    if (isGeminiAssistantMessageEvent(parsed)) {
+      assistantBuffer += parsed.content;
+      continue;
+    }
+
+    flushAssistantMessage();
+
+    if (parsed.type === 'result') {
+      if (parsed.stats) {
+        stats = parsed.stats;
+      }
+      continue;
+    }
+
+    if (parsed.type === 'tool_use') {
+      const tool = {
+        tool: parsed.tool_name || parsed.name || 'tool_use',
+        input: parsed.parameters ?? parsed.input ?? null,
+        output: null,
+        status: null,
+      };
+      if (typeof parsed.tool_id === 'string' && parsed.tool_id) {
+        toolsById.set(parsed.tool_id, tool);
+      } else {
+        toolsWithoutId.push(tool);
+      }
+      continue;
+    }
+
+    if (parsed.type === 'tool_result') {
+      const toolId = typeof parsed.tool_id === 'string' ? parsed.tool_id : '';
+      const tool = toolId ? toolsById.get(toolId) : null;
+      if (tool) {
+        tool.output = parsed.output ?? parsed.result ?? null;
+        tool.status = parsed.status ?? null;
+      } else {
+        toolsWithoutId.push({
+          tool: 'tool_result',
+          input: null,
+          output: parsed.output ?? parsed.result ?? null,
+          status: parsed.status ?? null,
+        });
+      }
+    }
+  }
+
+  flushAssistantMessage();
+  const tools = [...toolsById.values(), ...toolsWithoutId];
+
+  if (lastMessage || sessionId || stats || tools.length > 0) {
+    return {
+      message: lastMessage,
+      session_id: sessionId,
+      stats: stats || undefined,
+      tools: tools.length > 0 ? tools : undefined,
+    };
+  }
+
+  return null;
 }
 
 export function parseForgeOutput(stdout: string): any {

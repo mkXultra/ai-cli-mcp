@@ -124,6 +124,7 @@ ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --session-id ses_123 --prompt 
 ai-cli ps
 ai-cli result 12345
 ai-cli result 12345 --verbose
+ai-cli peek 12345 --time 10
 ai-cli wait 12345 --timeout 300
 ai-cli wait 12345 --verbose
 ai-cli kill 12345
@@ -178,6 +179,7 @@ macOSでは、これらのツールを初めて実行する際にフォルダへ
 - `run`
 - `ps`
 - `result`
+- `peek`
 - `wait`
 - `kill`
 - `cleanup`
@@ -194,6 +196,8 @@ ai-cli run --cwd "$PWD" --model codex-ultra --prompt "fix failing tests"
 ai-cli run --cwd "$PWD" --model opencode --session-id ses_existing --prompt "この OpenCode セッションを継続して"
 ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --prompt "明示的な OpenCode モデルで実行"
 ai-cli ps
+ai-cli peek 12345 --time 10
+ai-cli peek 12345 12346 --time 10
 ai-cli wait 12345
 ai-cli wait 12345 --verbose
 ai-cli result 12345
@@ -271,6 +275,60 @@ Claude CLI、Codex CLI、Gemini CLI、Forge CLI、または OpenCode を使用�
 - `pids` (array of numbers, 必須): 待機するプロセスIDのリスト（`run` ツールから返されたもの）。
 - `timeout` (number, 任意): 最大待機時間（秒）。デフォルトは180秒（3分）です。
 - `verbose` (boolean, 任意): `true` の場合、各結果項目を full 形で返します。デフォルトは `false` です。
+
+### `peek`
+
+実行中の子エージェントを短時間だけ観測し、その `peek` 呼び出しの観測ウィンドウ内で ai-cli-mcp が受理した自然言語メッセージだけを返します。履歴APIではなく、欠落のないストリーミングでもなく、シェルの `stdout` / `stderr` tail でもありません。別々の `peek` 呼び出しの間に出たメッセージは取得できない場合があります。v1 では `--follow` はありません。
+
+CLI v1:
+
+```bash
+ai-cli peek 123 --time 10
+ai-cli peek 123 456 --time 10
+```
+
+**引数:**
+- `pids` (array of numbers, 必須): `run` が返したプロセスIDを 1..32 件指定します。重複したPIDはサーバー側で重複排除され、最初に出た順序が維持されます。未知または管理外のPIDは、呼び出し全体の失敗ではなく、プロセスごとに `not_found` として返されます。
+- `peek_time_sec` (number, 任意): 観測時間（秒）の正の整数です。デフォルトは10秒、最大60秒です。`0`、負数、小数は無効です。
+
+**観測とフィルタリング:**
+- `peek_started_at` と `messages[].ts` は、ai-cli-mcp サーバー側の UTC RFC3339 タイムスタンプです。`peek_started_at` は検証とリスナー登録後に観測ウィンドウが始まった時刻、`messages[].ts` は ai-cli-mcp がメッセージを観測して受理した時刻です。
+- 観測ウィンドウは `peek_time_sec` が経過するか、対象プロセスがすべて終端状態になった時点で終了します。
+- 観測開始前のメッセージは返しません。同じPIDへの同時 `peek` は可能で、それぞれ独立した観測ウィンドウを持つため、メッセージが重複して返ることがあります。
+- 返すのは認識済みの自然言語メッセージだけです。Codex の `agent_message` text、Claude assistant の text content、OpenCode の `type: "text"` かつ `part.type` が `"text"` のイベント、Gemini stream-json の `role` が `"assistant"` の `message` イベントを含めます。raw `stdout` / `stderr`、raw JSONL、reasoning、`tool_use`、`tool_result`、コマンドの `stdout` / `stderr`、command execution メタデータ、token usage、verbose メタデータは除外します。
+- 未知のイベント形状はデフォルトで拒否します。Forge など、自然言語抽出がまだ明示対応されていない管理対象エージェントは、実際のプロセス状態を返しつつ、`messages: []`、`truncated: false`、`error: null` にします。
+- 各PIDごとに、観測ウィンドウ内で最初に観測された50件までを保持します。それ以降のメッセージを捨てた場合は `truncated` が `true` になります。
+- `status` は `running`、`completed`、`failed`、`not_found` のいずれかで、観測ウィンドウ終了時点の状態を表します。
+- `agent` は `claude`、`codex`、`gemini`、`forge`、`opencode`、将来追加される追跡済みエージェント文字列、または `null` です。`null` はプロセスが見つからない、またはエージェント種別を判断できない場合を表します。
+
+レスポンス例:
+
+```json
+{
+  "peek_started_at": "2026-04-11T12:34:56.789Z",
+  "observed_duration_sec": 10.01,
+  "processes": [
+    {
+      "pid": 123,
+      "agent": "codex",
+      "status": "running",
+      "messages": [
+        { "ts": "2026-04-11T12:34:59.120Z", "text": "I'm checking the implementation." }
+      ],
+      "truncated": false,
+      "error": null
+    },
+    {
+      "pid": 999,
+      "agent": null,
+      "status": "not_found",
+      "messages": [],
+      "truncated": false,
+      "error": "process not found"
+    }
+  ]
+}
+```
 
 ### `list_processes`
 

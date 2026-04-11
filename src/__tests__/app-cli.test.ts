@@ -3,6 +3,7 @@ import {
   CLI_HELP_TEXT,
   DOCTOR_HELP_TEXT,
   MODELS_HELP_TEXT,
+  PEEK_HELP_TEXT,
   RESULT_HELP_TEXT,
   RUN_HELP_TEXT,
   WAIT_HELP_TEXT,
@@ -199,6 +200,64 @@ describe('ai-cli app', () => {
     expect(waitForProcesses).not.toHaveBeenCalled();
   });
 
+  it('dispatches peek with deduped pid arguments and time', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+    const peekProcesses = vi.fn().mockResolvedValue({
+      peek_started_at: '2026-04-11T12:34:56.789Z',
+      observed_duration_sec: 0.01,
+      processes: [],
+    });
+
+    const exitCode = await runCli(
+      ['peek', '123', '456', '123', '--time', '5'],
+      {
+        stdout,
+        stderr,
+        peekProcesses,
+      }
+    );
+
+    expect(exitCode).toBe(0);
+    expect(peekProcesses).toHaveBeenCalledWith([123, 456], 5);
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"peek_started_at"'));
+    expect(stderr).not.toHaveBeenCalled();
+  });
+
+  it('defaults peek time and rejects --follow', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+    const peekProcesses = vi.fn().mockResolvedValue({
+      peek_started_at: '2026-04-11T12:34:56.789Z',
+      observed_duration_sec: 0.01,
+      processes: [],
+    });
+
+    const defaultExitCode = await runCli(['peek', '123'], { stdout, stderr, peekProcesses });
+    expect(defaultExitCode).toBe(0);
+    expect(peekProcesses).toHaveBeenCalledWith([123], 10);
+
+    const followExitCode = await runCli(['peek', '123', '--follow'], { stdout, stderr, peekProcesses });
+    expect(followExitCode).toBe(1);
+    expect(stderr).toHaveBeenCalledWith('peek does not support --follow in v1\n');
+  });
+
+  it('rejects invalid peek time values', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+    const peekProcesses = vi.fn();
+
+    const exitCode = await runCli(['peek', '123', '--time', '1.5'], {
+      stdout,
+      stderr,
+      peekProcesses,
+    });
+
+    expect(exitCode).toBe(1);
+    expect(stderr).toHaveBeenCalledWith(expect.stringContaining('peek_time_sec must be a positive integer'));
+    expect(peekProcesses).not.toHaveBeenCalled();
+  });
+
   it('dispatches ps, result, and kill', async () => {
     const stdout = vi.fn();
     const stderr = vi.fn();
@@ -351,6 +410,18 @@ describe('ai-cli app', () => {
     expect(stdout).toHaveBeenCalledWith(WAIT_HELP_TEXT);
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('compact shape'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('--verbose'));
+    expect(stderr).not.toHaveBeenCalled();
+  });
+
+  it('prints detailed help for peek --help', async () => {
+    const stdout = vi.fn();
+    const stderr = vi.fn();
+
+    const exitCode = await runCli(['peek', '--help'], { stdout, stderr });
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toHaveBeenCalledWith(PEEK_HELP_TEXT);
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('No --follow mode'));
     expect(stderr).not.toHaveBeenCalled();
   });
 

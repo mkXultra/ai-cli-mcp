@@ -1,6 +1,15 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
-import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput } from './parsers.js';
+import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekMessageExtractor } from './parsers.js';
+import {
+  appendPeekMessages,
+  buildNotFoundPeekProcess,
+  observedDurationSec,
+  validatePeekPids,
+  validatePeekTimeSec,
+  type PeekProcessResult,
+  type PeekResponse,
+} from './peek.js';
 import { buildProcessResult } from './process-result.js';
 
 export type AgentType = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode';
@@ -215,6 +224,103 @@ export class ProcessService {
         clearTimeout(timeoutHandle);
       }
     }
+  }
+
+  async peekProcesses(pids: number[], peekTimeSec = 10): Promise<PeekResponse> {
+    const targetPids = validatePeekPids(pids);
+    const targetPeekTimeSec = validatePeekTimeSec(peekTimeSec);
+    const processes: PeekProcessResult[] = [];
+    const observers: Array<{
+      entry: TrackedProcess;
+      result: PeekProcessResult;
+      stdoutExtractor: PeekMessageExtractor;
+      stderrExtractor: PeekMessageExtractor;
+      onStdout: (data: Buffer | string) => void;
+      onStderr: (data: Buffer | string) => void;
+    }> = [];
+
+    for (const pid of targetPids) {
+      const entry = this.processManager.get(pid);
+      if (!entry) {
+        processes.push(buildNotFoundPeekProcess(pid));
+        continue;
+      }
+
+      const result: PeekProcessResult = {
+        pid,
+        agent: entry.toolType,
+        status: entry.status,
+        messages: [],
+        truncated: false,
+        error: null,
+      };
+      processes.push(result);
+
+      const stdoutExtractor = new PeekMessageExtractor(entry.toolType);
+      const stderrExtractor = new PeekMessageExtractor(entry.toolType);
+      const onStdout = (data: Buffer | string) => {
+        appendPeekMessages(result, stdoutExtractor.push(data.toString(), new Date().toISOString()));
+      };
+      const onStderr = (data: Buffer | string) => {
+        appendPeekMessages(result, stderrExtractor.push(data.toString(), new Date().toISOString()));
+      };
+
+      if (entry.status === 'running') {
+        entry.process.stdout?.on('data', onStdout);
+        entry.process.stderr?.on('data', onStderr);
+      }
+
+      observers.push({ entry, result, stdoutExtractor, stderrExtractor, onStdout, onStderr });
+    }
+
+    const startedAt = new Date();
+    const startedAtMs = Date.now();
+    const runningObservers = observers.filter((observer) => observer.entry.status === 'running');
+    const terminalPromise = Promise.all(runningObservers.map((observer) => this.waitForProcessTerminal(observer.entry)));
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<void>((resolve) => {
+      timeoutHandle = setTimeout(resolve, targetPeekTimeSec * 1000);
+      timeoutHandle.unref?.();
+    });
+
+    try {
+      await Promise.race([terminalPromise, timeoutPromise]);
+    } finally {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
+
+      const flushTs = new Date().toISOString();
+      for (const observer of observers) {
+        observer.entry.process.stdout?.off('data', observer.onStdout);
+        observer.entry.process.stderr?.off('data', observer.onStderr);
+        appendPeekMessages(observer.result, observer.stdoutExtractor.flush(flushTs));
+        appendPeekMessages(observer.result, observer.stderrExtractor.flush(flushTs));
+        observer.result.status = observer.entry.status;
+      }
+    }
+
+    return {
+      peek_started_at: startedAt.toISOString(),
+      observed_duration_sec: observedDurationSec(startedAtMs),
+      processes,
+    };
+  }
+
+  private waitForProcessTerminal(processEntry: TrackedProcess): Promise<void> {
+    if (processEntry.status !== 'running') {
+      return Promise.resolve();
+    }
+
+    return new Promise<void>((resolve) => {
+      const done = () => {
+        processEntry.process.off('close', done);
+        processEntry.process.off('error', done);
+        resolve();
+      };
+      processEntry.process.once('close', done);
+      processEntry.process.once('error', done);
+    });
   }
 
   killProcess(pid: number): { pid: number; status: string; message: string } {
