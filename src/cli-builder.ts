@@ -219,7 +219,7 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
     args.push('--skip-git-repo-check', '--full-auto', '--json', prompt);
   } else if (agent === 'gemini') {
     cliPath = options.cliPaths.gemini;
-    args = ['-y', '--output-format', 'json'];
+    args = ['-y', '--output-format', 'stream-json'];
 
     if (options.session_id && typeof options.session_id === 'string') {
       args.push('-r', options.session_id);

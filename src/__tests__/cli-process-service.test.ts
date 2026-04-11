@@ -122,6 +122,74 @@ describe('CliProcessService', () => {
     expect(readFileSync(join(processDir, 'meta.json'), 'utf-8')).toContain('"status": "completed"');
   });
 
+  it('peeks only appended natural-language messages from detached logs', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
+    tempDirs.push(root);
+    const scriptPath = join(root, 'mock-claude-peek');
+    writeFileSync(
+      scriptPath,
+      `#!/bin/bash
+printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"old cli message"}]}}'
+sleep 2
+printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"new cli message"},{"type":"tool_use","id":"tool-1","name":"Read","input":{"file_path":"/tmp/a"}}]}}'
+printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tool-1","content":"secret"}]}}'
+`
+    );
+    chmodSync(scriptPath, 0o755);
+    const stateDir = join(root, 'state');
+    const workFolder = join(root, 'work');
+    mkdirSync(workFolder, { recursive: true });
+
+    const service = new CliProcessService({
+      stateDir,
+      cliPaths: {
+        claude: scriptPath,
+        codex: scriptPath,
+        gemini: scriptPath,
+        forge: scriptPath,
+        opencode: scriptPath,
+      },
+    });
+
+    const runResult = await service.startProcess({
+      prompt: 'hello peek',
+      cwd: workFolder,
+    });
+
+    const processDir = join(stateDir, 'cwds', encodeCwd(realpathSync(workFolder)), String(runResult.pid));
+    const stdoutPath = join(processDir, 'stdout.log');
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < 5000 && !readFileSync(stdoutPath, 'utf-8').includes('old cli message')) {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    expect(readFileSync(stdoutPath, 'utf-8')).toContain('old cli message');
+
+    const peekResult = await service.peekProcesses([runResult.pid, runResult.pid, 999999], 3);
+
+    expect(peekResult.processes).toHaveLength(2);
+    expect(peekResult.processes[0]).toMatchObject({
+      pid: runResult.pid,
+      agent: 'claude',
+      status: 'completed',
+      messages: [
+        {
+          ts: expect.any(String),
+          text: 'new cli message',
+        },
+      ],
+      truncated: false,
+      error: null,
+    });
+    expect(peekResult.processes[1]).toEqual({
+      pid: 999999,
+      agent: null,
+      status: 'not_found',
+      messages: [],
+      truncated: false,
+      error: 'process not found',
+    });
+  });
+
   it('returns compact results by default and full results when verbose is true', async () => {
     const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
     tempDirs.push(root);

@@ -388,7 +388,7 @@ describe('cli-builder', () => {
         expect(cmd.cliPath).toBe('/usr/bin/gemini');
         expect(cmd.args).toContain('-y');
         expect(cmd.args).toContain('--output-format');
-        expect(cmd.args).toContain('json');
+        expect(cmd.args).toContain('stream-json');
         expect(cmd.args).toContain('--model');
         expect(cmd.args).toContain('gemini-2.5-pro');
       });

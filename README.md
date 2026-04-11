@@ -121,6 +121,7 @@ ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --session-id ses_123 --prompt 
 ai-cli ps
 ai-cli result 12345
 ai-cli result 12345 --verbose
+ai-cli peek 12345 --time 10
 ai-cli wait 12345 --timeout 300
 ai-cli wait 12345 --verbose
 ai-cli kill 12345
@@ -175,6 +176,7 @@ macOS might ask for folder permissions the first time any of these tools run. If
 - `run`
 - `ps`
 - `result`
+- `peek`
 - `wait`
 - `kill`
 - `cleanup`
@@ -191,6 +193,8 @@ ai-cli run --cwd "$PWD" --model codex-ultra --prompt "fix failing tests"
 ai-cli run --cwd "$PWD" --model opencode --session-id ses_existing --prompt "continue this OpenCode session"
 ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --prompt "run with an explicit OpenCode backend model"
 ai-cli ps
+ai-cli peek 12345 --time 10
+ai-cli peek 12345 12346 --time 10
 ai-cli wait 12345
 ai-cli wait 12345 --verbose
 ai-cli result 12345
@@ -268,6 +272,60 @@ By default, each returned result item uses the compact shape shared with `get_re
 - `pids` (array of numbers, required): List of process IDs to wait for (returned by the `run` tool).
 - `timeout` (number, optional): Maximum wait time in seconds. Defaults to 180 (3 minutes).
 - `verbose` (boolean, optional): If `true`, each result item uses the full result shape. Defaults to `false`.
+
+### `peek`
+
+Starts a one-shot short observation window for running child agents and returns only natural-language agent messages observed during that specific call. It is not a history API, not gapless streaming, and not shell stdout/stderr tailing. Separate `peek` calls may miss messages emitted between calls; `--follow` is intentionally not part of v1.
+
+CLI v1:
+
+```bash
+ai-cli peek 123 --time 10
+ai-cli peek 123 456 --time 10
+```
+
+**Arguments:**
+- `pids` (array of numbers, required): 1..32 process IDs returned by `run`. Duplicate PIDs are deduplicated server-side, preserving first occurrence order. Unknown or unmanaged PIDs are returned per process as `not_found`, not as a whole-call failure.
+- `peek_time_sec` (number, optional): Positive integer observation length in seconds. Defaults to 10 and is capped at 60. `0`, negative values, and fractional values are invalid.
+
+**Observation and filtering:**
+- `peek_started_at` and `messages[].ts` are ai-cli-mcp server-side UTC RFC3339 timestamps. `peek_started_at` is when the observation window starts after validation and listener registration; `messages[].ts` is when ai-cli-mcp observed and accepted the message.
+- The window ends when `peek_time_sec` elapses or all target processes reach a terminal state, whichever comes first.
+- Messages emitted before the window starts are not returned. Concurrent `peek` calls for the same PID are allowed; each has an independent window and may return overlapping messages.
+- Only recognized natural-language agent messages are returned: Codex `agent_message` text, Claude assistant text content, OpenCode `type: "text"` events where `part.type` is `"text"`, and Gemini stream-json `message` events where `role` is `"assistant"`. Raw stdout/stderr, raw JSONL, reasoning, `tool_use`, `tool_result`, command stdout/stderr, command execution metadata, token usage, and verbose metadata are excluded.
+- Unknown event shapes are denied by default. Managed agents without supported natural-language extraction, such as Forge until explicitly supported, return their real process status with `messages: []`, `truncated: false`, and `error: null`.
+- Each PID keeps the first 50 messages observed in the window. If later messages are dropped, `truncated` is `true`.
+- `status` is one of `running`, `completed`, `failed`, or `not_found`, and reflects state when the observation window closes.
+- `agent` is `claude`, `codex`, `gemini`, `forge`, `opencode`, a future tracked string value, or `null` when the process is not found or the agent cannot be determined.
+
+Example response:
+
+```json
+{
+  "peek_started_at": "2026-04-11T12:34:56.789Z",
+  "observed_duration_sec": 10.01,
+  "processes": [
+    {
+      "pid": 123,
+      "agent": "codex",
+      "status": "running",
+      "messages": [
+        { "ts": "2026-04-11T12:34:59.120Z", "text": "I'm checking the implementation." }
+      ],
+      "truncated": false,
+      "error": null
+    },
+    {
+      "pid": 999,
+      "agent": null,
+      "status": "not_found",
+      "messages": [],
+      "truncated": false,
+      "error": "process not found"
+    }
+  ]
+}
+```
 
 ### `list_processes`
 

@@ -118,6 +118,190 @@ describe('Process Management Tests', () => {
       expect(response.message).toBe('claude process started successfully');
     });
 
+    it('should peek only natural-language messages observed after registration', async () => {
+      const { handlers } = await setupServer();
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.pid = 12345;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.kill = vi.fn();
+
+      mockSpawn.mockReturnValue(mockProcess);
+
+      const callToolHandler = handlers.get('callTool')!;
+      await callToolHandler!({
+        params: {
+          name: 'run',
+          arguments: {
+            prompt: 'test prompt',
+            workFolder: '/tmp'
+          }
+        }
+      });
+
+      mockProcess.stdout.emit('data', '{"type":"assistant","message":{"content":[{"type":"text","text":"old message"}]}}\n');
+
+      const peekPromise = callToolHandler!({
+        params: {
+          name: 'peek',
+          arguments: {
+            pids: [12345, 12345, 99999],
+            peek_time_sec: 1,
+          }
+        }
+      });
+
+      setTimeout(() => {
+        mockProcess.stdout.emit('data', '{"type":"assistant","message":{"content":[{"type":"text","text":"new message"},{"type":"tool_use","id":"tool-1","name":"Read","input":{"file_path":"/tmp/a"}}]}}\n');
+        mockProcess.stdout.emit('data', '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tool-1","content":"secret"}]}}\n');
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await peekPromise;
+      const response = JSON.parse(result.content[0].text);
+
+      expect(response.processes).toHaveLength(2);
+      expect(response.processes[0]).toMatchObject({
+        pid: 12345,
+        agent: 'claude',
+        status: 'completed',
+        messages: [
+          {
+            ts: expect.any(String),
+            text: 'new message',
+          },
+        ],
+        truncated: false,
+        error: null,
+      });
+      expect(response.processes[1]).toEqual({
+        pid: 99999,
+        agent: null,
+        status: 'not_found',
+        messages: [],
+        truncated: false,
+        error: 'process not found',
+      });
+    });
+
+    it('should peek OpenCode text events and exclude OpenCode tool output', async () => {
+      const { handlers } = await setupServer();
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.pid = 12346;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.kill = vi.fn();
+
+      mockSpawn.mockReturnValue(mockProcess);
+
+      const callToolHandler = handlers.get('callTool')!;
+      await callToolHandler!({
+        params: {
+          name: 'run',
+          arguments: {
+            prompt: 'opencode peek prompt',
+            workFolder: '/tmp',
+            model: 'opencode',
+          }
+        }
+      });
+
+      const peekPromise = callToolHandler!({
+        params: {
+          name: 'peek',
+          arguments: {
+            pids: [12346],
+            peek_time_sec: 1,
+          }
+        }
+      });
+
+      setTimeout(() => {
+        mockProcess.stdout.emit('data', '{"type":"text","timestamp":1775918783605,"sessionID":"ses-1","part":{"type":"text","text":"OpenCode visible text"}}\n');
+        mockProcess.stdout.emit('data', '{"type":"tool_use","timestamp":1775918783606,"sessionID":"ses-1","part":{"type":"tool","state":{"output":"secret command output"},"metadata":{"output":"secret metadata output"}}}\n');
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await peekPromise;
+      const response = JSON.parse(result.content[0].text);
+
+      expect(response.processes).toHaveLength(1);
+      expect(response.processes[0]).toMatchObject({
+        pid: 12346,
+        agent: 'opencode',
+        status: 'completed',
+        messages: [
+          {
+            ts: expect.any(String),
+            text: 'OpenCode visible text',
+          },
+        ],
+        truncated: false,
+        error: null,
+      });
+    });
+
+    it('should peek Gemini assistant message events and exclude tool output', async () => {
+      const { handlers } = await setupServer();
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.pid = 12347;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.kill = vi.fn();
+
+      mockSpawn.mockReturnValue(mockProcess);
+
+      const callToolHandler = handlers.get('callTool')!;
+      await callToolHandler!({
+        params: {
+          name: 'run',
+          arguments: {
+            prompt: 'gemini peek prompt',
+            workFolder: '/tmp',
+            model: 'gemini-2.5-pro',
+          }
+        }
+      });
+
+      const peekPromise = callToolHandler!({
+        params: {
+          name: 'peek',
+          arguments: {
+            pids: [12347],
+            peek_time_sec: 1,
+          }
+        }
+      });
+
+      setTimeout(() => {
+        mockProcess.stdout.emit('data', '{"type":"message","timestamp":"2026-04-11T14:44:42.294Z","role":"user","content":"hidden user text"}\n');
+        mockProcess.stdout.emit('data', '{"type":"message","timestamp":"2026-04-11T14:44:53.820Z","role":"assistant","content":"Visible Gemini text","delta":true}\n');
+        mockProcess.stdout.emit('data', '{"type":"tool_result","timestamp":"2026-04-11T14:45:03.011Z","status":"success","output":"secret command output"}\n');
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await peekPromise;
+      const response = JSON.parse(result.content[0].text);
+
+      expect(response.processes).toHaveLength(1);
+      expect(response.processes[0]).toMatchObject({
+        pid: 12347,
+        agent: 'gemini',
+        status: 'completed',
+        messages: [
+          {
+            ts: expect.any(String),
+            text: 'Visible Gemini text',
+          },
+        ],
+        truncated: false,
+        error: null,
+      });
+    });
+
     it('should handle process with model parameter', async () => {
       const { handlers } = await setupServer();
       

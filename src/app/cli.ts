@@ -2,12 +2,14 @@ import { runMcpServer } from './mcp.js';
 import { CliProcessService } from '../cli-process-service.js';
 import { getCliDoctorStatus } from '../cli-utils.js';
 import { getModelsPayload } from '../model-catalog.js';
+import { validatePeekPids, validatePeekTimeSec } from '../peek.js';
 
 export const CLI_HELP_TEXT = `Usage: ai-cli <command> [options]
 
 Commands:
   run       Start an AI CLI process in the background
   wait      Wait for one or more pids
+  peek      Observe new natural-language agent messages for a short window
   ps        List tracked processes
   result    Get the current result for a pid
   kill      Terminate a tracked pid
@@ -55,6 +57,17 @@ Get the current output and status of a tracked process. By default this returns 
 
 Options:
   --verbose                    Return full metadata and detailed parsed output
+  --help, -h                   Show this help message
+`;
+
+export const PEEK_HELP_TEXT = `Usage: ai-cli peek <pid...> [options]
+
+Observe new natural-language agent messages for a short one-shot window.
+In v1, message extraction is supported for Codex, Claude, OpenCode, and Gemini; Forge returns status with messages: [].
+This is not a history API, gapless streaming, or stdout/stderr tailing. No --follow mode is available in v1.
+
+Options:
+  --time <seconds>             Observation window in seconds. Defaults to 10, maximum 60
   --help, -h                   Show this help message
 `;
 
@@ -118,6 +131,7 @@ interface CliDeps {
   listProcesses: () => Promise<any>;
   getProcessResult: (pid: number, verbose: boolean) => Promise<any>;
   waitForProcesses: (pids: number[], timeoutSeconds?: number, verbose?: boolean) => Promise<any>;
+  peekProcesses: (pids: number[], peekTimeSec?: number) => Promise<any>;
   killProcess: (pid: number) => Promise<any>;
   cleanupProcesses: () => Promise<any>;
   getDoctorStatus: () => any;
@@ -140,6 +154,7 @@ const defaultDeps: CliDeps = {
   listProcesses: () => getCliProcessService().listProcesses(),
   getProcessResult: (pid, verbose) => getCliProcessService().getProcessResult(pid, verbose),
   waitForProcesses: (pids, timeoutSeconds, verbose) => getCliProcessService().waitForProcesses(pids, timeoutSeconds, verbose),
+  peekProcesses: (pids, peekTimeSec) => getCliProcessService().peekProcesses(pids, peekTimeSec),
   killProcess: (pid) => getCliProcessService().killProcess(pid),
   cleanupProcesses: () => getCliProcessService().cleanupProcesses(),
   getDoctorStatus: () => getCliDoctorStatus(),
@@ -204,6 +219,10 @@ function hasHelpFlag(flags: Record<string, string>): boolean {
   return 'help' in flags || 'h' in flags;
 }
 
+function parsePeekCliPids(values: string[]): number[] {
+  return validatePeekPids(values.map((value) => Number(value)));
+}
+
 export async function runCli(argv: string[], deps: Partial<CliDeps> = {}): Promise<number> {
   const {
     stdout,
@@ -213,6 +232,7 @@ export async function runCli(argv: string[], deps: Partial<CliDeps> = {}): Promi
     listProcesses,
     getProcessResult,
     waitForProcesses,
+    peekProcesses,
     killProcess,
     cleanupProcesses,
     getDoctorStatus,
@@ -320,6 +340,34 @@ export async function runCli(argv: string[], deps: Partial<CliDeps> = {}): Promi
     }
 
     writeJson(stdout, await waitForProcesses(pids as number[], timeout, 'verbose' in flags));
+    return 0;
+  }
+
+  if (command === 'peek') {
+    const { positionals, flags } = parseArgs(argv.slice(1));
+    if (hasHelpFlag(flags)) {
+      stdout(PEEK_HELP_TEXT);
+      return 0;
+    }
+    if ('follow' in flags) {
+      stderr('peek does not support --follow in v1\n');
+      stdout(CLI_HELP_TEXT);
+      return 1;
+    }
+
+    let pids: number[];
+    let peekTimeSec: number;
+    try {
+      pids = parsePeekCliPids(positionals);
+      const timeRaw = getFirstFlag(flags, ['time']);
+      peekTimeSec = validatePeekTimeSec(timeRaw === undefined ? undefined : Number(timeRaw));
+    } catch (error: any) {
+      stderr(`${error.message}\n`);
+      stdout(CLI_HELP_TEXT);
+      return 1;
+    }
+
+    writeJson(stdout, await peekProcesses(pids, peekTimeSec));
     return 0;
   }
 

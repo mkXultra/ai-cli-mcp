@@ -10,6 +10,7 @@ import {
 import { spawn } from 'node:child_process';
 import { debugLog, findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli } from '../cli-utils.js';
 import { getModelParameterDescription, getSupportedModelsDescription } from '../model-catalog.js';
+import { validatePeekPids, validatePeekTimeSec } from '../peek.js';
 import { ProcessService } from '../process-service.js';
 
 // Server version - update this when releasing new versions
@@ -231,6 +232,25 @@ ${getSupportedModelsDescription()}
           },
         },
         {
+          name: 'peek',
+          description: 'One-shot short observation window for running child agents. Returns only natural-language agent messages observed during this call; not a history API, not gapless streaming, and not stdout/stderr tailing. In v1, message extraction is supported for Codex, Claude, OpenCode, and Gemini; Forge returns status with messages: [].',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              pids: {
+                type: 'array',
+                items: { type: 'number' },
+                description: 'Process IDs returned by run. Duplicates are deduplicated server-side, preserving first occurrence order. Unknown PIDs are returned per process as not_found.',
+              },
+              peek_time_sec: {
+                type: 'number',
+                description: 'Optional positive integer observation window in seconds. Defaults to 10; maximum is 60.',
+              },
+            },
+            required: ['pids'],
+          },
+        },
+        {
           name: 'kill_process',
           description: 'Terminate a running AI agent process by PID.',
           inputSchema: {
@@ -270,6 +290,8 @@ ${getSupportedModelsDescription()}
           return this.handleGetResult(toolArguments);
         case 'wait':
           return this.handleWait(toolArguments);
+        case 'peek':
+          return this.handlePeek(toolArguments);
         case 'kill_process':
           return this.handleKillProcess(toolArguments);
         case 'cleanup_processes':
@@ -356,6 +378,30 @@ ${getSupportedModelsDescription()}
     } catch (error: any) {
       const code = /not found/.test(error.message) ? ErrorCode.InvalidParams : ErrorCode.InternalError;
       throw new McpError(code, error.message);
+    }
+  }
+
+  private async handlePeek(toolArguments: any): Promise<ServerResult> {
+    let pids: number[];
+    let peekTimeSec: number;
+
+    try {
+      pids = validatePeekPids(toolArguments.pids);
+      peekTimeSec = validatePeekTimeSec(toolArguments.peek_time_sec);
+    } catch (error: any) {
+      throw new McpError(ErrorCode.InvalidParams, error.message);
+    }
+
+    try {
+      const response = await this.processService.peekProcesses(pids, peekTimeSec);
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(response, null, 2)
+        }]
+      };
+    } catch (error: any) {
+      throw new McpError(ErrorCode.InternalError, `Failed to peek processes: ${error.message}`);
     }
   }
 
