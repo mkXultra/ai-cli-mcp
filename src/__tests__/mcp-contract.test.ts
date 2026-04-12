@@ -137,6 +137,7 @@ describe('MCP Contract Tests', () => {
     const peekTool = tools.find((tool: any) => tool.name === 'peek');
     expect(peekTool.inputSchema.required).toEqual(['pids']);
     expect(Object.keys(peekTool.inputSchema.properties).sort()).toEqual([
+      'include_tool_calls',
       'peek_time_sec',
       'pids',
     ]);

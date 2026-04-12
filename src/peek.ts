@@ -1,4 +1,4 @@
-import type { PeekMessage } from './parsers.js';
+import type { PeekEvent, PeekMessage } from './parsers.js';
 import type { AgentType, ProcessStatus } from './process-service.js';
 
 export const DEFAULT_PEEK_TIME_SEC = 10;
@@ -13,7 +13,7 @@ export interface PeekProcessResult {
   pid: number;
   agent: PeekAgent;
   status: PeekStatus;
-  messages: PeekMessage[];
+  events: PeekEvent[];
   truncated: boolean;
   error: string | null;
 }
@@ -67,20 +67,27 @@ export function buildNotFoundPeekProcess(pid: number): PeekProcessResult {
     pid,
     agent: null,
     status: 'not_found',
-    messages: [],
+    events: [],
     truncated: false,
     error: 'process not found',
   };
 }
 
-export function appendPeekMessages(target: PeekProcessResult, messages: PeekMessage[]): void {
-  for (const message of messages) {
-    if (target.messages.length < PEEK_MESSAGE_CAP) {
-      target.messages.push(message);
+export function appendPeekEvents(target: PeekProcessResult, events: PeekEvent[]): void {
+  for (const event of events) {
+    if (target.events.length < PEEK_MESSAGE_CAP) {
+      target.events.push(event);
     } else {
       target.truncated = true;
     }
   }
+}
+
+export function appendPeekMessages(target: PeekProcessResult, messages: PeekMessage[]): void {
+  appendPeekEvents(
+    target,
+    messages.map((message) => ({ kind: 'message' as const, ...message })),
+  );
 }
 
 export function observedDurationSec(startedAtMs: number, endedAtMs = Date.now()): number {

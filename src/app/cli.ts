@@ -9,7 +9,7 @@ export const CLI_HELP_TEXT = `Usage: ai-cli <command> [options]
 Commands:
   run       Start an AI CLI process in the background
   wait      Wait for one or more pids
-  peek      Observe new natural-language agent messages for a short window
+  peek      Observe new agent events for a short window
   ps        List tracked processes
   result    Get the current result for a pid
   kill      Terminate a tracked pid
@@ -62,12 +62,13 @@ Options:
 
 export const PEEK_HELP_TEXT = `Usage: ai-cli peek <pid...> [options]
 
-Observe new natural-language agent messages for a short one-shot window.
-In v1, message extraction is supported for Codex, Claude, OpenCode, and Gemini; Forge returns status with messages: [].
+Observe new natural-language agent messages, and optionally tool calls, for a short one-shot window.
+In v1, message extraction is supported for Codex, Claude, OpenCode, and Gemini; Forge returns status with events: [].
 This is not a history API, gapless streaming, or stdout/stderr tailing. No --follow mode is available in v1.
 
 Options:
   --time <seconds>             Observation window in seconds. Defaults to 10, maximum 60
+  --include-tool-calls         Include normalized tool_call events without raw tool output
   --help, -h                   Show this help message
 `;
 
@@ -131,7 +132,7 @@ interface CliDeps {
   listProcesses: () => Promise<any>;
   getProcessResult: (pid: number, verbose: boolean) => Promise<any>;
   waitForProcesses: (pids: number[], timeoutSeconds?: number, verbose?: boolean) => Promise<any>;
-  peekProcesses: (pids: number[], peekTimeSec?: number) => Promise<any>;
+  peekProcesses: (pids: number[], peekTimeSec?: number, includeToolCalls?: boolean) => Promise<any>;
   killProcess: (pid: number) => Promise<any>;
   cleanupProcesses: () => Promise<any>;
   getDoctorStatus: () => any;
@@ -154,7 +155,7 @@ const defaultDeps: CliDeps = {
   listProcesses: () => getCliProcessService().listProcesses(),
   getProcessResult: (pid, verbose) => getCliProcessService().getProcessResult(pid, verbose),
   waitForProcesses: (pids, timeoutSeconds, verbose) => getCliProcessService().waitForProcesses(pids, timeoutSeconds, verbose),
-  peekProcesses: (pids, peekTimeSec) => getCliProcessService().peekProcesses(pids, peekTimeSec),
+  peekProcesses: (pids, peekTimeSec, includeToolCalls) => getCliProcessService().peekProcesses(pids, peekTimeSec, includeToolCalls),
   killProcess: (pid) => getCliProcessService().killProcess(pid),
   cleanupProcesses: () => getCliProcessService().cleanupProcesses(),
   getDoctorStatus: () => getCliDoctorStatus(),
@@ -367,7 +368,7 @@ export async function runCli(argv: string[], deps: Partial<CliDeps> = {}): Promi
       return 1;
     }
 
-    writeJson(stdout, await peekProcesses(pids, peekTimeSec));
+    writeJson(stdout, await peekProcesses(pids, peekTimeSec, 'include-tool-calls' in flags || 'include_tool_calls' in flags));
     return 0;
   }
 

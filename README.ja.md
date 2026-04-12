@@ -278,26 +278,29 @@ Claude CLI、Codex CLI、Gemini CLI、Forge CLI、または OpenCode を使用�
 
 ### `peek`
 
-実行中の子エージェントを短時間だけ観測し、その `peek` 呼び出しの観測ウィンドウ内で ai-cli-mcp が受理した自然言語メッセージだけを返します。履歴APIではなく、欠落のないストリーミングでもなく、シェルの `stdout` / `stderr` tail でもありません。別々の `peek` 呼び出しの間に出たメッセージは取得できない場合があります。v1 では `--follow` はありません。
+実行中の子エージェントを短時間だけ観測し、その `peek` 呼び出しの観測ウィンドウ内で ai-cli-mcp が受理した構造化イベントを返します。デフォルトでは自然言語メッセージイベントだけを返し、`include_tool_calls` または `--include-tool-calls` を指定すると正規化された tool-call イベントも含めます。履歴APIではなく、欠落のないストリーミングでもなく、シェルの `stdout` / `stderr` tail でもありません。別々の `peek` 呼び出しの間に出たイベントは取得できない場合があります。v1 では `--follow` はありません。
 
 CLI v1:
 
 ```bash
 ai-cli peek 123 --time 10
 ai-cli peek 123 456 --time 10
+ai-cli peek 123 --time 10 --include-tool-calls
 ```
 
 **引数:**
 - `pids` (array of numbers, 必須): `run` が返したプロセスIDを 1..32 件指定します。重複したPIDはサーバー側で重複排除され、最初に出た順序が維持されます。未知または管理外のPIDは、呼び出し全体の失敗ではなく、プロセスごとに `not_found` として返されます。
 - `peek_time_sec` (number, 任意): 観測時間（秒）の正の整数です。デフォルトは10秒、最大60秒です。`0`、負数、小数は無効です。
+- `include_tool_calls` (boolean, 任意): `true` の場合、各プロセスの `events` 配列にメッセージイベントに加えて正規化された `tool_call` イベントを含めます。デフォルトは `false` です。
 
 **観測とフィルタリング:**
-- `peek_started_at` と `messages[].ts` は、ai-cli-mcp サーバー側の UTC RFC3339 タイムスタンプです。`peek_started_at` は検証とリスナー登録後に観測ウィンドウが始まった時刻、`messages[].ts` は ai-cli-mcp がメッセージを観測して受理した時刻です。
+- `peek_started_at` と `events[].ts` は、ai-cli-mcp サーバー側の UTC RFC3339 タイムスタンプです。`peek_started_at` は検証とリスナー登録後に観測ウィンドウが始まった時刻、`events[].ts` は ai-cli-mcp がイベントを観測して受理した時刻です。
 - 観測ウィンドウは `peek_time_sec` が経過するか、対象プロセスがすべて終端状態になった時点で終了します。
-- 観測開始前のメッセージは返しません。同じPIDへの同時 `peek` は可能で、それぞれ独立した観測ウィンドウを持つため、メッセージが重複して返ることがあります。
-- 返すのは認識済みの自然言語メッセージだけです。Codex の `agent_message` text、Claude assistant の text content、OpenCode の `type: "text"` かつ `part.type` が `"text"` のイベント、Gemini stream-json の `role` が `"assistant"` の `message` イベントを含めます。raw `stdout` / `stderr`、raw JSONL、reasoning、`tool_use`、`tool_result`、コマンドの `stdout` / `stderr`、command execution メタデータ、token usage、verbose メタデータは除外します。
-- 未知のイベント形状はデフォルトで拒否します。Forge など、自然言語抽出がまだ明示対応されていない管理対象エージェントは、実際のプロセス状態を返しつつ、`messages: []`、`truncated: false`、`error: null` にします。
-- 各PIDごとに、観測ウィンドウ内で最初に観測された50件までを保持します。それ以降のメッセージを捨てた場合は `truncated` が `true` になります。
+- 観測開始前のイベントは返しません。同じPIDへの同時 `peek` は可能で、それぞれ独立した観測ウィンドウを持つため、イベントが重複して返ることがあります。
+- メッセージイベントは、Codex の `agent_message` text、Claude assistant の text content、OpenCode の `type: "text"` かつ `part.type` が `"text"` のイベント、Gemini stream-json の `role` が `"assistant"` の `message` イベントから認識します。
+- tool call を含める場合、Codex の command/MCP call、Claude の tool use/result、Gemini の tool use/result、OpenCode の完了済み tool use event を正規化した `tool_call` イベントとして返します。tool summary は tool 名と入力メタデータだけから作る短い1行文字列です。raw `stdout` / `stderr`、raw JSONL、tool result output、コマンド出力、`result.response`、stats、token usage、verbose メタデータは除外します。
+- 未知のイベント形状はデフォルトで拒否します。Forge など、まだ明示対応されていない管理対象エージェントは、実際のプロセス状態を返しつつ、`events: []`、`truncated: false`、`error: null` にします。
+- 各PIDごとに、観測ウィンドウ内で最初に観測された50件までを保持します。それ以降のイベントを捨てた場合は `truncated` が `true` になります。
 - `status` は `running`、`completed`、`failed`、`not_found` のいずれかで、観測ウィンドウ終了時点の状態を表します。
 - `agent` は `claude`、`codex`、`gemini`、`forge`、`opencode`、将来追加される追跡済みエージェント文字列、または `null` です。`null` はプロセスが見つからない、またはエージェント種別を判断できない場合を表します。
 
@@ -312,8 +315,9 @@ ai-cli peek 123 456 --time 10
       "pid": 123,
       "agent": "codex",
       "status": "running",
-      "messages": [
-        { "ts": "2026-04-11T12:34:59.120Z", "text": "I'm checking the implementation." }
+      "events": [
+        { "kind": "message", "ts": "2026-04-11T12:34:59.120Z", "text": "I'm checking the implementation." },
+        { "kind": "tool_call", "ts": "2026-04-11T12:35:00.000Z", "phase": "started", "id": "item_0", "tool": "command_execution", "summary": "/bin/sh -c 'echo hi'" }
       ],
       "truncated": false,
       "error": null
@@ -322,7 +326,7 @@ ai-cli peek 123 456 --time 10
       "pid": 999,
       "agent": null,
       "status": "not_found",
-      "messages": [],
+      "events": [],
       "truncated": false,
       "error": "process not found"
     }

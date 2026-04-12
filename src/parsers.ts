@@ -5,7 +5,46 @@ export interface PeekMessage {
   text: string;
 }
 
+export type PeekToolCallStatus = 'success' | 'failed' | 'cancelled' | 'unknown';
+
+export type PeekEvent =
+  | { kind: 'message'; ts: string; text: string }
+  | {
+      kind: 'tool_call';
+      ts: string;
+      phase: 'started' | 'completed';
+      tool: string;
+      summary: string;
+      id?: string;
+      status?: PeekToolCallStatus;
+      server?: string;
+      exit_code?: number;
+      duration_ms?: number;
+      summary_truncated?: boolean;
+    };
+
+type PeekToolCallEvent = Extract<PeekEvent, { kind: 'tool_call' }>;
+
 type PeekAgent = 'claude' | 'codex' | string | null;
+
+interface PeekEventExtractorOptions {
+  includeToolCalls?: boolean;
+}
+
+interface ToolSummary {
+  summary: string;
+  server?: string;
+  summary_truncated?: boolean;
+}
+
+interface ToolCallMemory {
+  tool: string;
+  server?: string;
+  summary: string;
+  summary_truncated?: boolean;
+}
+
+const PEEK_TOOL_SUMMARY_MAX_LENGTH = 200;
 
 function isGeminiAssistantMessageEvent(parsed: any): boolean {
   return parsed.type === 'message' && parsed.role === 'assistant' && typeof parsed.content === 'string';
@@ -25,37 +64,292 @@ function isGeminiStreamJsonEvent(parsed: any): boolean {
   return parsed && typeof parsed === 'object' && !Array.isArray(parsed) && GEMINI_STREAM_EVENT_TYPES.has(parsed.type);
 }
 
-function extractPeekMessagesFromParsedEvent(agent: PeekAgent, parsed: any, observedAt: string): PeekMessage[] {
+function oneLine(value: unknown): string {
+  return String(value ?? '').replace(/\s+/g, ' ').trim();
+}
+
+function boundedSummary(value: string): { summary: string; summary_truncated?: boolean } {
+  const summary = oneLine(value);
+  if (summary.length <= PEEK_TOOL_SUMMARY_MAX_LENGTH) {
+    return { summary };
+  }
+
+  return {
+    summary: `${summary.slice(0, PEEK_TOOL_SUMMARY_MAX_LENGTH - 3)}...`,
+    summary_truncated: true,
+  };
+}
+
+function normalizeMcpToolName(tool: string, explicitServer?: string): ToolSummary | null {
+  if (explicitServer) {
+    return {
+      server: explicitServer,
+      ...boundedSummary(`${explicitServer}.${tool}`),
+    };
+  }
+
+  const mcpDouble = tool.match(/^mcp__([^_]+)__(.+)$/);
+  if (mcpDouble) {
+    return {
+      server: mcpDouble[1],
+      ...boundedSummary(`${mcpDouble[1]}.${mcpDouble[2]}`),
+    };
+  }
+
+  const mcpSingle = tool.match(/^mcp_([^_]+)_(.+)$/);
+  if (mcpSingle) {
+    return {
+      server: mcpSingle[1],
+      ...boundedSummary(`${mcpSingle[1]}.${mcpSingle[2]}`),
+    };
+  }
+
+  const acmShort = tool.match(/^acm_(.+)$/);
+  if (acmShort) {
+    return {
+      server: 'acm',
+      ...boundedSummary(`acm.${acmShort[1]}`),
+    };
+  }
+
+  return null;
+}
+
+function buildToolSummary(tool: string, options: { server?: string; command?: unknown } = {}): ToolSummary {
+  if (typeof options.command === 'string' && options.command.trim()) {
+    return boundedSummary(options.command);
+  }
+
+  const mcpSummary = normalizeMcpToolName(tool, options.server);
+  if (mcpSummary) {
+    return mcpSummary;
+  }
+
+  return boundedSummary(tool || 'tool_call');
+}
+
+function normalizeToolStatus(rawStatus: unknown, exitCode?: number, defaultStatus: PeekToolCallStatus = 'unknown'): PeekToolCallStatus {
+  if (typeof exitCode === 'number') {
+    return exitCode === 0 ? 'success' : 'failed';
+  }
+
+  const status = typeof rawStatus === 'string' ? rawStatus.toLowerCase() : '';
+  if (['success', 'succeeded', 'ok', 'completed'].includes(status)) {
+    return 'success';
+  }
+  if (['failed', 'failure', 'error', 'errored'].includes(status)) {
+    return 'failed';
+  }
+  if (['cancelled', 'canceled'].includes(status)) {
+    return 'cancelled';
+  }
+  return defaultStatus;
+}
+
+function createToolCallEvent(params: {
+  ts: string;
+  phase: 'started' | 'completed';
+  tool: string;
+  id?: string;
+  server?: string;
+  command?: unknown;
+  status?: unknown;
+  defaultStatus?: PeekToolCallStatus;
+  exit_code?: number;
+  duration_ms?: number;
+}): PeekToolCallEvent {
+  const tool = params.tool || 'tool_call';
+  const summary = buildToolSummary(tool, { server: params.server, command: params.command });
+  const event: PeekToolCallEvent = {
+    kind: 'tool_call',
+    ts: params.ts,
+    phase: params.phase,
+    tool,
+    summary: summary.summary,
+  };
+
+  if (params.id) {
+    event.id = params.id;
+  }
+  if (summary.server) {
+    event.server = summary.server;
+  } else if (params.server) {
+    event.server = params.server;
+  }
+  if (summary.summary_truncated) {
+    event.summary_truncated = true;
+  }
+  if (params.phase === 'completed') {
+    event.status = normalizeToolStatus(params.status, params.exit_code, params.defaultStatus);
+    if (typeof params.exit_code === 'number') {
+      event.exit_code = params.exit_code;
+    }
+    if (typeof params.duration_ms === 'number' && Number.isFinite(params.duration_ms)) {
+      event.duration_ms = params.duration_ms;
+    }
+  }
+
+  return event;
+}
+
+function rememberToolCall(event: PeekEvent, memory: Map<string, ToolCallMemory>): void {
+  if (event.kind !== 'tool_call' || !event.id) {
+    return;
+  }
+
+  memory.set(event.id, {
+    tool: event.tool,
+    server: event.server,
+    summary: event.summary,
+    summary_truncated: event.summary_truncated,
+  });
+}
+
+function createRememberedCompletion(params: {
+  ts: string;
+  id?: string;
+  memory: Map<string, ToolCallMemory>;
+  fallbackTool: string;
+  status?: unknown;
+  defaultStatus?: PeekToolCallStatus;
+}): PeekEvent {
+  const remembered = params.id ? params.memory.get(params.id) : undefined;
+  const event = createToolCallEvent({
+    ts: params.ts,
+    phase: 'completed',
+    id: params.id,
+    tool: remembered?.tool || params.fallbackTool,
+    server: remembered?.server,
+    status: params.status,
+    defaultStatus: params.defaultStatus,
+  });
+
+  if (remembered) {
+    event.summary = remembered.summary;
+    if (remembered.summary_truncated) {
+      event.summary_truncated = true;
+    }
+  }
+
+  return event;
+}
+
+function extractPeekEventsFromParsedEvent(agent: PeekAgent, parsed: any, observedAt: string, includeToolCalls: boolean, memory: Map<string, ToolCallMemory>): PeekEvent[] {
   if (agent === 'codex') {
     if (parsed.item?.type === 'agent_message' && typeof parsed.item.text === 'string' && parsed.item.text.trim()) {
-      return [{ ts: observedAt, text: parsed.item.text }];
+      return [{ kind: 'message', ts: observedAt, text: parsed.item.text }];
     }
     if (parsed.msg?.type === 'agent_message' && typeof parsed.msg.message === 'string' && parsed.msg.message.trim()) {
-      return [{ ts: observedAt, text: parsed.msg.message }];
+      return [{ kind: 'message', ts: observedAt, text: parsed.msg.message }];
+    }
+    if (includeToolCalls && (parsed.type === 'item.started' || parsed.type === 'item.completed')) {
+      const item = parsed.item;
+      if (item?.type === 'command_execution') {
+        const event = createToolCallEvent({
+          ts: observedAt,
+          phase: parsed.type === 'item.started' ? 'started' : 'completed',
+          id: item.id,
+          tool: 'command_execution',
+          command: item.command,
+          status: item.status || item.error,
+          exit_code: typeof item.exit_code === 'number' ? item.exit_code : undefined,
+          defaultStatus: parsed.type === 'item.completed' ? 'success' : 'unknown',
+        });
+        rememberToolCall(event, memory);
+        return [event];
+      }
+      if (item?.type === 'mcp_tool_call') {
+        const event = createToolCallEvent({
+          ts: observedAt,
+          phase: parsed.type === 'item.started' ? 'started' : 'completed',
+          id: item.id,
+          tool: item.tool || 'mcp_tool_call',
+          server: item.server,
+          status: item.status || item.error,
+          defaultStatus: parsed.type === 'item.completed' ? 'success' : 'unknown',
+        });
+        rememberToolCall(event, memory);
+        return [event];
+      }
     }
     return [];
   }
 
-  if (agent === 'claude' && parsed.type === 'assistant' && Array.isArray(parsed.message?.content)) {
-    return parsed.message.content
-      .filter((content: any) => content?.type === 'text' && typeof content.text === 'string' && content.text.trim())
-      .map((content: any) => ({ ts: observedAt, text: content.text }));
+  if (agent === 'claude') {
+    if (parsed.type === 'assistant' && Array.isArray(parsed.message?.content)) {
+      const events: PeekEvent[] = [];
+      for (const content of parsed.message.content) {
+        if (content?.type === 'text' && typeof content.text === 'string' && content.text.trim()) {
+          events.push({ kind: 'message', ts: observedAt, text: content.text });
+        } else if (includeToolCalls && content?.type === 'tool_use') {
+          const event = createToolCallEvent({
+            ts: observedAt,
+            phase: 'started',
+            id: content.id,
+            tool: content.name || 'tool_use',
+            command: content.input?.command,
+          });
+          rememberToolCall(event, memory);
+          events.push(event);
+        }
+      }
+      return events;
+    }
+    if (includeToolCalls && parsed.type === 'user' && Array.isArray(parsed.message?.content)) {
+      const events: PeekEvent[] = [];
+      for (const content of parsed.message.content) {
+        if (content?.type === 'tool_result') {
+          events.push(createRememberedCompletion({
+            ts: observedAt,
+            id: content.tool_use_id,
+            memory,
+            fallbackTool: 'tool_result',
+            status: content.is_error === true ? 'failed' : undefined,
+            defaultStatus: content.is_error === true ? 'failed' : 'success',
+          }));
+        }
+      }
+      return events;
+    }
+    return [];
   }
 
   if (agent === 'opencode' && parsed.type === 'text' && parsed.part?.type === 'text' && typeof parsed.part.text === 'string' && parsed.part.text.trim()) {
-    return [{ ts: observedAt, text: parsed.part.text }];
+    return [{ kind: 'message', ts: observedAt, text: parsed.part.text }];
+  }
+
+  if (agent === 'opencode' && includeToolCalls && parsed.type === 'tool_use' && parsed.part?.type === 'tool') {
+    const state = parsed.part.state || {};
+    const start = state.time?.start;
+    const end = state.time?.end;
+    const event = createToolCallEvent({
+      ts: observedAt,
+      phase: state.status === 'running' || state.status === 'pending' ? 'started' : 'completed',
+      id: parsed.part.callID,
+      tool: parsed.part.tool || 'tool_use',
+      command: state.input?.command,
+      status: state.status,
+      defaultStatus: state.status === 'completed' ? 'success' : 'unknown',
+      duration_ms: typeof start === 'number' && typeof end === 'number' ? end - start : undefined,
+    });
+    rememberToolCall(event, memory);
+    return [event];
   }
 
   return [];
 }
 
-export class PeekMessageExtractor {
+export class PeekEventExtractor {
   private pending = '';
   private geminiAssistantBuffer = '';
+  private readonly includeToolCalls: boolean;
+  private readonly toolMemory = new Map<string, ToolCallMemory>();
 
-  constructor(private readonly agent: PeekAgent) {}
+  constructor(private readonly agent: PeekAgent, options: PeekEventExtractorOptions = {}) {
+    this.includeToolCalls = options.includeToolCalls === true;
+  }
 
-  push(chunk: string, observedAt = new Date().toISOString()): PeekMessage[] {
+  push(chunk: string, observedAt = new Date().toISOString()): PeekEvent[] {
     if (!chunk) {
       return [];
     }
@@ -65,21 +359,21 @@ export class PeekMessageExtractor {
     return this.extractLines(lines, observedAt);
   }
 
-  flush(observedAt = new Date().toISOString()): PeekMessage[] {
-    const messages: PeekMessage[] = [];
+  flush(observedAt = new Date().toISOString()): PeekEvent[] {
+    const events: PeekEvent[] = [];
 
     if (this.pending) {
       const line = this.pending;
       this.pending = '';
-      messages.push(...this.extractLines([line], observedAt));
+      events.push(...this.extractLines([line], observedAt));
     }
 
-    messages.push(...this.flushGeminiAssistantBuffer(observedAt));
-    return messages;
+    events.push(...this.flushGeminiAssistantBuffer(observedAt));
+    return events;
   }
 
-  private extractLines(lines: string[], observedAt: string): PeekMessage[] {
-    const messages: PeekMessage[] = [];
+  private extractLines(lines: string[], observedAt: string): PeekEvent[] {
+    const events: PeekEvent[] = [];
 
     for (const line of lines) {
       if (!line.trim()) {
@@ -87,30 +381,58 @@ export class PeekMessageExtractor {
       }
 
       try {
-        messages.push(...this.extractParsedEvent(JSON.parse(line), observedAt));
+        events.push(...this.extractParsedEvent(JSON.parse(line), observedAt));
       } catch {
         debugLog(`[Debug] Skipping invalid peek JSON line: ${line}`);
-        messages.push(...this.flushGeminiAssistantBuffer(observedAt));
+        events.push(...this.flushGeminiAssistantBuffer(observedAt));
       }
     }
 
-    return messages;
+    return events;
   }
 
-  private extractParsedEvent(parsed: any, observedAt: string): PeekMessage[] {
-    if (this.agent !== 'gemini') {
-      return extractPeekMessagesFromParsedEvent(this.agent, parsed, observedAt);
+  private extractParsedEvent(parsed: any, observedAt: string): PeekEvent[] {
+    if (this.agent === 'gemini') {
+      const events = this.extractGeminiParsedEvent(parsed, observedAt);
+      return events;
     }
 
+    return extractPeekEventsFromParsedEvent(this.agent, parsed, observedAt, this.includeToolCalls, this.toolMemory);
+  }
+
+  private extractGeminiParsedEvent(parsed: any, observedAt: string): PeekEvent[] {
     if (isGeminiAssistantMessageEvent(parsed)) {
       this.geminiAssistantBuffer += parsed.content;
       return [];
     }
 
-    return this.flushGeminiAssistantBuffer(observedAt);
+    const events = this.flushGeminiAssistantBuffer(observedAt);
+
+    if (this.includeToolCalls && parsed.type === 'tool_use') {
+      const event = createToolCallEvent({
+        ts: observedAt,
+        phase: 'started',
+        id: parsed.tool_id,
+        tool: parsed.tool_name || parsed.name || 'tool_use',
+        command: parsed.parameters?.command,
+      });
+      rememberToolCall(event, this.toolMemory);
+      events.push(event);
+    } else if (this.includeToolCalls && parsed.type === 'tool_result') {
+      events.push(createRememberedCompletion({
+        ts: observedAt,
+        id: parsed.tool_id,
+        memory: this.toolMemory,
+        fallbackTool: parsed.tool_name || parsed.name || 'tool_result',
+        status: parsed.status,
+        defaultStatus: 'unknown',
+      }));
+    }
+
+    return events;
   }
 
-  private flushGeminiAssistantBuffer(observedAt: string): PeekMessage[] {
+  private flushGeminiAssistantBuffer(observedAt: string): PeekEvent[] {
     if (this.agent !== 'gemini' || !this.geminiAssistantBuffer) {
       return [];
     }
@@ -122,7 +444,29 @@ export class PeekMessageExtractor {
       return [];
     }
 
-    return [{ ts: observedAt, text }];
+    return [{ kind: 'message', ts: observedAt, text }];
+  }
+}
+
+export class PeekMessageExtractor {
+  private readonly extractor: PeekEventExtractor;
+
+  constructor(agent: PeekAgent) {
+    this.extractor = new PeekEventExtractor(agent, { includeToolCalls: false });
+  }
+
+  push(chunk: string, observedAt = new Date().toISOString()): PeekMessage[] {
+    return this.toMessages(this.extractor.push(chunk, observedAt));
+  }
+
+  flush(observedAt = new Date().toISOString()): PeekMessage[] {
+    return this.toMessages(this.extractor.flush(observedAt));
+  }
+
+  private toMessages(events: PeekEvent[]): PeekMessage[] {
+    return events
+      .filter((event): event is Extract<PeekEvent, { kind: 'message' }> => event.kind === 'message')
+      .map((event) => ({ ts: event.ts, text: event.text }));
   }
 }
 

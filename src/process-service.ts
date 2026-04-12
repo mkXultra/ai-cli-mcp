@@ -1,8 +1,8 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
-import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekMessageExtractor } from './parsers.js';
+import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekEventExtractor } from './parsers.js';
 import {
-  appendPeekMessages,
+  appendPeekEvents,
   buildNotFoundPeekProcess,
   observedDurationSec,
   validatePeekPids,
@@ -226,15 +226,15 @@ export class ProcessService {
     }
   }
 
-  async peekProcesses(pids: number[], peekTimeSec = 10): Promise<PeekResponse> {
+  async peekProcesses(pids: number[], peekTimeSec = 10, includeToolCalls = false): Promise<PeekResponse> {
     const targetPids = validatePeekPids(pids);
     const targetPeekTimeSec = validatePeekTimeSec(peekTimeSec);
     const processes: PeekProcessResult[] = [];
     const observers: Array<{
       entry: TrackedProcess;
       result: PeekProcessResult;
-      stdoutExtractor: PeekMessageExtractor;
-      stderrExtractor: PeekMessageExtractor;
+      stdoutExtractor: PeekEventExtractor;
+      stderrExtractor: PeekEventExtractor;
       onStdout: (data: Buffer | string) => void;
       onStderr: (data: Buffer | string) => void;
     }> = [];
@@ -250,19 +250,19 @@ export class ProcessService {
         pid,
         agent: entry.toolType,
         status: entry.status,
-        messages: [],
+        events: [],
         truncated: false,
         error: null,
       };
       processes.push(result);
 
-      const stdoutExtractor = new PeekMessageExtractor(entry.toolType);
-      const stderrExtractor = new PeekMessageExtractor(entry.toolType);
+      const stdoutExtractor = new PeekEventExtractor(entry.toolType, { includeToolCalls });
+      const stderrExtractor = new PeekEventExtractor(entry.toolType, { includeToolCalls });
       const onStdout = (data: Buffer | string) => {
-        appendPeekMessages(result, stdoutExtractor.push(data.toString(), new Date().toISOString()));
+        appendPeekEvents(result, stdoutExtractor.push(data.toString(), new Date().toISOString()));
       };
       const onStderr = (data: Buffer | string) => {
-        appendPeekMessages(result, stderrExtractor.push(data.toString(), new Date().toISOString()));
+        appendPeekEvents(result, stderrExtractor.push(data.toString(), new Date().toISOString()));
       };
 
       if (entry.status === 'running') {
@@ -294,8 +294,8 @@ export class ProcessService {
       for (const observer of observers) {
         observer.entry.process.stdout?.off('data', observer.onStdout);
         observer.entry.process.stderr?.off('data', observer.onStderr);
-        appendPeekMessages(observer.result, observer.stdoutExtractor.flush(flushTs));
-        appendPeekMessages(observer.result, observer.stderrExtractor.flush(flushTs));
+        appendPeekEvents(observer.result, observer.stdoutExtractor.flush(flushTs));
+        appendPeekEvents(observer.result, observer.stderrExtractor.flush(flushTs));
         observer.result.status = observer.entry.status;
       }
     }

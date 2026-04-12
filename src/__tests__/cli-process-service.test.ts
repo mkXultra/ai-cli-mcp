@@ -171,8 +171,9 @@ printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_
       pid: runResult.pid,
       agent: 'claude',
       status: 'completed',
-      messages: [
+      events: [
         {
+          kind: 'message',
           ts: expect.any(String),
           text: 'new cli message',
         },
@@ -184,7 +185,7 @@ printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_
       pid: 999999,
       agent: null,
       status: 'not_found',
-      messages: [],
+      events: [],
       truncated: false,
       error: 'process not found',
     });
