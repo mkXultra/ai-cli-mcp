@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseCodexOutput, parseClaudeOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekMessageExtractor } from '../parsers.js';
+import { parseCodexOutput, parseClaudeOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekEventExtractor, PeekMessageExtractor } from '../parsers.js';
 
 describe('parseCodexOutput', () => {
   it('should parse basic Codex output with message and session_id', () => {
@@ -187,6 +187,160 @@ describe('PeekMessageExtractor', () => {
     const extractor = new PeekMessageExtractor('codex');
     expect(extractor.push('{"type":"item.completed","item":{"type":"agent_message","text":"pending"}}', ts)).toEqual([]);
     expect(extractor.flush(ts)).toEqual([{ ts, text: 'pending' }]);
+  });
+});
+
+describe('PeekEventExtractor', () => {
+  const ts = '2026-04-12T02:10:00.000Z';
+
+  it('emits only message events when include_tool_calls is false', () => {
+    const extractor = new PeekEventExtractor('codex', { includeToolCalls: false });
+    const output = [
+      '{"type":"item.started","item":{"id":"item_0","type":"command_execution","command":"echo secret","status":"in_progress"}}',
+      '{"type":"item.completed","item":{"id":"item_0","type":"command_execution","command":"echo secret","aggregated_output":"secret output\\n","exit_code":0,"status":"completed"}}',
+      '{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"Visible Codex message"}}',
+    ].join('\n') + '\n';
+
+    expect(extractor.push(output, ts)).toEqual([
+      { kind: 'message', ts, text: 'Visible Codex message' },
+    ]);
+  });
+
+  it('emits Codex command and MCP tool_call events without raw output when include_tool_calls is true', () => {
+    const extractor = new PeekEventExtractor('codex', { includeToolCalls: true });
+    const output = [
+      '{"type":"item.started","item":{"id":"cmd_0","type":"command_execution","command":"/bin/sh -c \\"echo secret\\"","status":"in_progress"}}',
+      '{"type":"item.completed","item":{"id":"cmd_0","type":"command_execution","command":"/bin/sh -c \\"echo secret\\"","aggregated_output":"secret output\\n","exit_code":0,"status":"completed"}}',
+      '{"type":"item.started","item":{"id":"mcp_0","type":"mcp_tool_call","server":"acm","tool":"list_processes","arguments":{},"status":"in_progress"}}',
+      '{"type":"item.completed","item":{"id":"mcp_0","type":"mcp_tool_call","server":"acm","tool":"list_processes","arguments":{},"result":{"content":[{"type":"text","text":"secret result"}]},"status":"completed"}}',
+    ].join('\n') + '\n';
+
+    expect(extractor.push(output, ts)).toEqual([
+      {
+        kind: 'tool_call',
+        ts,
+        phase: 'started',
+        id: 'cmd_0',
+        tool: 'command_execution',
+        summary: '/bin/sh -c "echo secret"',
+      },
+      {
+        kind: 'tool_call',
+        ts,
+        phase: 'completed',
+        id: 'cmd_0',
+        tool: 'command_execution',
+        summary: '/bin/sh -c "echo secret"',
+        status: 'success',
+        exit_code: 0,
+      },
+      {
+        kind: 'tool_call',
+        ts,
+        phase: 'started',
+        id: 'mcp_0',
+        tool: 'list_processes',
+        server: 'acm',
+        summary: 'acm.list_processes',
+      },
+      {
+        kind: 'tool_call',
+        ts,
+        phase: 'completed',
+        id: 'mcp_0',
+        tool: 'list_processes',
+        server: 'acm',
+        summary: 'acm.list_processes',
+        status: 'success',
+      },
+    ]);
+  });
+
+  it('emits Claude MCP tool_call events paired by id', () => {
+    const extractor = new PeekEventExtractor('claude', { includeToolCalls: true });
+    const output = [
+      '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"toolu_1","name":"mcp__acm__list_processes","input":{}}]}}',
+      '{"type":"user","message":{"content":[{"tool_use_id":"toolu_1","type":"tool_result","content":[{"type":"text","text":"secret result"}]}]}}',
+      '{"type":"assistant","message":{"content":[{"type":"text","text":"Done."}]}}',
+    ].join('\n') + '\n';
+
+    expect(extractor.push(output, ts)).toEqual([
+      {
+        kind: 'tool_call',
+        ts,
+        phase: 'started',
+        id: 'toolu_1',
+        tool: 'mcp__acm__list_processes',
+        server: 'acm',
+        summary: 'acm.list_processes',
+      },
+      {
+        kind: 'tool_call',
+        ts,
+        phase: 'completed',
+        id: 'toolu_1',
+        tool: 'mcp__acm__list_processes',
+        server: 'acm',
+        summary: 'acm.list_processes',
+        status: 'success',
+      },
+      { kind: 'message', ts, text: 'Done.' },
+    ]);
+  });
+
+  it('emits Gemini MCP tool_call events and joined assistant message events', () => {
+    const extractor = new PeekEventExtractor('gemini', { includeToolCalls: true });
+    const output = [
+      '{"type":"tool_use","timestamp":"2026-04-12T02:56:29.992Z","tool_name":"mcp_acm_list_processes","tool_id":"mcp_1","parameters":{}}',
+      '{"type":"tool_result","timestamp":"2026-04-12T02:56:30.059Z","tool_id":"mcp_1","status":"success","output":"secret result"}',
+      '{"type":"message","timestamp":"2026-04-12T02:56:32.855Z","role":"assistant","content":"The tool ","delta":true}',
+      '{"type":"message","timestamp":"2026-04-12T02:56:32.902Z","role":"assistant","content":"succeeded.","delta":true}',
+      '{"type":"result","timestamp":"2026-04-12T02:56:32.954Z","status":"success","stats":{"tool_calls":1}}',
+    ].join('\n') + '\n';
+
+    expect(extractor.push(output, ts)).toEqual([
+      {
+        kind: 'tool_call',
+        ts,
+        phase: 'started',
+        id: 'mcp_1',
+        tool: 'mcp_acm_list_processes',
+        server: 'acm',
+        summary: 'acm.list_processes',
+      },
+      {
+        kind: 'tool_call',
+        ts,
+        phase: 'completed',
+        id: 'mcp_1',
+        tool: 'mcp_acm_list_processes',
+        server: 'acm',
+        summary: 'acm.list_processes',
+        status: 'success',
+      },
+      { kind: 'message', ts, text: 'The tool succeeded.' },
+    ]);
+  });
+
+  it('emits OpenCode completed MCP tool_call events from tool_use state', () => {
+    const extractor = new PeekEventExtractor('opencode', { includeToolCalls: true });
+    const output = [
+      '{"type":"tool_use","timestamp":1775962663837,"sessionID":"ses-1","part":{"id":"part-1","type":"tool","tool":"acm_list_processes","callID":"call_1","state":{"status":"completed","input":{},"output":"secret result","metadata":{"truncated":false},"time":{"start":1775962663834,"end":1775962663837}}}}',
+    ].join('\n') + '\n';
+
+    expect(extractor.push(output, ts)).toEqual([
+      {
+        kind: 'tool_call',
+        ts,
+        phase: 'completed',
+        id: 'call_1',
+        tool: 'acm_list_processes',
+        server: 'acm',
+        summary: 'acm.list_processes',
+        status: 'success',
+        duration_ms: 3,
+      },
+    ]);
   });
 });
 

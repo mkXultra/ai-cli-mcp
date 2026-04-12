@@ -275,26 +275,29 @@ By default, each returned result item uses the compact shape shared with `get_re
 
 ### `peek`
 
-Starts a one-shot short observation window for running child agents and returns only natural-language agent messages observed during that specific call. It is not a history API, not gapless streaming, and not shell stdout/stderr tailing. Separate `peek` calls may miss messages emitted between calls; `--follow` is intentionally not part of v1.
+Starts a one-shot short observation window for running child agents and returns structured events observed during that specific call. By default this includes only natural-language message events; pass `include_tool_calls` or `--include-tool-calls` to also include normalized tool-call events. It is not a history API, not gapless streaming, and not shell stdout/stderr tailing. Separate `peek` calls may miss events emitted between calls; `--follow` is intentionally not part of v1.
 
 CLI v1:
 
 ```bash
 ai-cli peek 123 --time 10
 ai-cli peek 123 456 --time 10
+ai-cli peek 123 --time 10 --include-tool-calls
 ```
 
 **Arguments:**
 - `pids` (array of numbers, required): 1..32 process IDs returned by `run`. Duplicate PIDs are deduplicated server-side, preserving first occurrence order. Unknown or unmanaged PIDs are returned per process as `not_found`, not as a whole-call failure.
 - `peek_time_sec` (number, optional): Positive integer observation length in seconds. Defaults to 10 and is capped at 60. `0`, negative values, and fractional values are invalid.
+- `include_tool_calls` (boolean, optional): When `true`, each process `events` array includes normalized `tool_call` events in addition to message events. Defaults to `false`.
 
 **Observation and filtering:**
-- `peek_started_at` and `messages[].ts` are ai-cli-mcp server-side UTC RFC3339 timestamps. `peek_started_at` is when the observation window starts after validation and listener registration; `messages[].ts` is when ai-cli-mcp observed and accepted the message.
+- `peek_started_at` and `events[].ts` are ai-cli-mcp server-side UTC RFC3339 timestamps. `peek_started_at` is when the observation window starts after validation and listener registration; `events[].ts` is when ai-cli-mcp observed and accepted the event.
 - The window ends when `peek_time_sec` elapses or all target processes reach a terminal state, whichever comes first.
-- Messages emitted before the window starts are not returned. Concurrent `peek` calls for the same PID are allowed; each has an independent window and may return overlapping messages.
-- Only recognized natural-language agent messages are returned: Codex `agent_message` text, Claude assistant text content, OpenCode `type: "text"` events where `part.type` is `"text"`, and Gemini stream-json `message` events where `role` is `"assistant"`. Raw stdout/stderr, raw JSONL, reasoning, `tool_use`, `tool_result`, command stdout/stderr, command execution metadata, token usage, and verbose metadata are excluded.
-- Unknown event shapes are denied by default. Managed agents without supported natural-language extraction, such as Forge until explicitly supported, return their real process status with `messages: []`, `truncated: false`, and `error: null`.
-- Each PID keeps the first 50 messages observed in the window. If later messages are dropped, `truncated` is `true`.
+- Events emitted before the window starts are not returned. Concurrent `peek` calls for the same PID are allowed; each has an independent window and may return overlapping events.
+- Message events are recognized from Codex `agent_message` text, Claude assistant text content, OpenCode `type: "text"` events where `part.type` is `"text"`, and Gemini stream-json `message` events where `role` is `"assistant"`.
+- When tool calls are included, `tool_call` events are normalized for Codex command/MCP calls, Claude tool use/results, Gemini tool use/results, and OpenCode completed tool use events. Tool summaries are bounded one-line strings derived from tool names and input metadata only. Raw stdout/stderr, raw JSONL, tool result output, command output, `result.response`, stats, token usage, and verbose metadata are excluded.
+- Unknown event shapes are denied by default. Managed agents without supported extraction, such as Forge until explicitly supported, return their real process status with `events: []`, `truncated: false`, and `error: null`.
+- Each PID keeps the first 50 events observed in the window. If later events are dropped, `truncated` is `true`.
 - `status` is one of `running`, `completed`, `failed`, or `not_found`, and reflects state when the observation window closes.
 - `agent` is `claude`, `codex`, `gemini`, `forge`, `opencode`, a future tracked string value, or `null` when the process is not found or the agent cannot be determined.
 
@@ -309,8 +312,9 @@ Example response:
       "pid": 123,
       "agent": "codex",
       "status": "running",
-      "messages": [
-        { "ts": "2026-04-11T12:34:59.120Z", "text": "I'm checking the implementation." }
+      "events": [
+        { "kind": "message", "ts": "2026-04-11T12:34:59.120Z", "text": "I'm checking the implementation." },
+        { "kind": "tool_call", "ts": "2026-04-11T12:35:00.000Z", "phase": "started", "id": "item_0", "tool": "command_execution", "summary": "/bin/sh -c 'echo hi'" }
       ],
       "truncated": false,
       "error": null
@@ -319,7 +323,7 @@ Example response:
       "pid": 999,
       "agent": null,
       "status": "not_found",
-      "messages": [],
+      "events": [],
       "truncated": false,
       "error": "process not found"
     }

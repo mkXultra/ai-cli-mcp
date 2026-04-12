@@ -210,7 +210,7 @@ describe('ai-cli app', () => {
     });
 
     const exitCode = await runCli(
-      ['peek', '123', '456', '123', '--time', '5'],
+      ['peek', '123', '456', '123', '--time', '5', '--include-tool-calls'],
       {
         stdout,
         stderr,
@@ -219,7 +219,7 @@ describe('ai-cli app', () => {
     );
 
     expect(exitCode).toBe(0);
-    expect(peekProcesses).toHaveBeenCalledWith([123, 456], 5);
+    expect(peekProcesses).toHaveBeenCalledWith([123, 456], 5, true);
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"peek_started_at"'));
     expect(stderr).not.toHaveBeenCalled();
   });
@@ -235,7 +235,7 @@ describe('ai-cli app', () => {
 
     const defaultExitCode = await runCli(['peek', '123'], { stdout, stderr, peekProcesses });
     expect(defaultExitCode).toBe(0);
-    expect(peekProcesses).toHaveBeenCalledWith([123], 10);
+    expect(peekProcesses).toHaveBeenCalledWith([123], 10, false);
 
     const followExitCode = await runCli(['peek', '123', '--follow'], { stdout, stderr, peekProcesses });
     expect(followExitCode).toBe(1);

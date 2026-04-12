@@ -233,7 +233,7 @@ ${getSupportedModelsDescription()}
         },
         {
           name: 'peek',
-          description: 'One-shot short observation window for running child agents. Returns only natural-language agent messages observed during this call; not a history API, not gapless streaming, and not stdout/stderr tailing. In v1, message extraction is supported for Codex, Claude, OpenCode, and Gemini; Forge returns status with messages: [].',
+          description: 'One-shot short observation window for running child agents. Returns only natural-language message events, and optionally normalized tool_call events, observed during this call; not a history API, not gapless streaming, and not stdout/stderr tailing. In v1, message extraction is supported for Codex, Claude, OpenCode, and Gemini; Forge returns status with events: []. Tool calls exclude raw tool output.',
           inputSchema: {
             type: 'object',
             properties: {
@@ -245,6 +245,10 @@ ${getSupportedModelsDescription()}
               peek_time_sec: {
                 type: 'number',
                 description: 'Optional positive integer observation window in seconds. Defaults to 10; maximum is 60.',
+              },
+              include_tool_calls: {
+                type: 'boolean',
+                description: 'Optional: include normalized tool_call events without raw tool output. Defaults to false.',
               },
             },
             required: ['pids'],
@@ -384,16 +388,21 @@ ${getSupportedModelsDescription()}
   private async handlePeek(toolArguments: any): Promise<ServerResult> {
     let pids: number[];
     let peekTimeSec: number;
+    let includeToolCalls: boolean;
 
     try {
       pids = validatePeekPids(toolArguments.pids);
       peekTimeSec = validatePeekTimeSec(toolArguments.peek_time_sec);
+      if (toolArguments.include_tool_calls !== undefined && typeof toolArguments.include_tool_calls !== 'boolean') {
+        throw new Error('include_tool_calls must be a boolean when provided');
+      }
+      includeToolCalls = toolArguments.include_tool_calls === true;
     } catch (error: any) {
       throw new McpError(ErrorCode.InvalidParams, error.message);
     }
 
     try {
-      const response = await this.processService.peekProcesses(pids, peekTimeSec);
+      const response = await this.processService.peekProcesses(pids, peekTimeSec, includeToolCalls);
       return {
         content: [{
           type: 'text',

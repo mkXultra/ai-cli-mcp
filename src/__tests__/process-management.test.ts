@@ -166,8 +166,9 @@ describe('Process Management Tests', () => {
         pid: 12345,
         agent: 'claude',
         status: 'completed',
-        messages: [
+        events: [
           {
+            kind: 'message',
             ts: expect.any(String),
             text: 'new message',
           },
@@ -179,7 +180,7 @@ describe('Process Management Tests', () => {
         pid: 99999,
         agent: null,
         status: 'not_found',
-        messages: [],
+        events: [],
         truncated: false,
         error: 'process not found',
       });
@@ -232,8 +233,9 @@ describe('Process Management Tests', () => {
         pid: 12346,
         agent: 'opencode',
         status: 'completed',
-        messages: [
+        events: [
           {
+            kind: 'message',
             ts: expect.any(String),
             text: 'OpenCode visible text',
           },
@@ -291,8 +293,9 @@ describe('Process Management Tests', () => {
         pid: 12347,
         agent: 'gemini',
         status: 'completed',
-        messages: [
+        events: [
           {
+            kind: 'message',
             ts: expect.any(String),
             text: 'Visible Gemini text',
           },
@@ -300,6 +303,85 @@ describe('Process Management Tests', () => {
         truncated: false,
         error: null,
       });
+    });
+
+    it('should include normalized tool_call events when requested', async () => {
+      const { handlers } = await setupServer();
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.pid = 12348;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.kill = vi.fn();
+
+      mockSpawn.mockReturnValue(mockProcess);
+
+      const callToolHandler = handlers.get('callTool')!;
+      await callToolHandler!({
+        params: {
+          name: 'run',
+          arguments: {
+            prompt: 'claude mcp peek prompt',
+            workFolder: '/tmp',
+            model: 'haiku',
+          }
+        }
+      });
+
+      const peekPromise = callToolHandler!({
+        params: {
+          name: 'peek',
+          arguments: {
+            pids: [12348],
+            peek_time_sec: 1,
+            include_tool_calls: true,
+          }
+        }
+      });
+
+      setTimeout(() => {
+        mockProcess.stdout.emit('data', '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"toolu_1","name":"mcp__acm__list_processes","input":{}}]}}\n');
+        mockProcess.stdout.emit('data', '{"type":"user","message":{"content":[{"tool_use_id":"toolu_1","type":"tool_result","content":[{"type":"text","text":"secret result"}]}]}}\n');
+        mockProcess.stdout.emit('data', '{"type":"assistant","message":{"content":[{"type":"text","text":"MCP succeeded."}]}}\n');
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await peekPromise;
+      const response = JSON.parse(result.content[0].text);
+
+      expect(response.processes).toHaveLength(1);
+      expect(response.processes[0]).toMatchObject({
+        pid: 12348,
+        agent: 'claude',
+        status: 'completed',
+        events: [
+          {
+            kind: 'tool_call',
+            phase: 'started',
+            id: 'toolu_1',
+            tool: 'mcp__acm__list_processes',
+            server: 'acm',
+            summary: 'acm.list_processes',
+          },
+          {
+            kind: 'tool_call',
+            phase: 'completed',
+            id: 'toolu_1',
+            tool: 'mcp__acm__list_processes',
+            server: 'acm',
+            summary: 'acm.list_processes',
+            status: 'success',
+          },
+          {
+            kind: 'message',
+            ts: expect.any(String),
+            text: 'MCP succeeded.',
+          },
+        ],
+        truncated: false,
+        error: null,
+      });
+      expect(JSON.stringify(response)).not.toContain('secret result');
     });
 
     it('should handle process with model parameter', async () => {

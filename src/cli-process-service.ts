@@ -19,10 +19,10 @@ import { join, basename, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
 import { findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli } from './cli-utils.js';
-import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekMessageExtractor } from './parsers.js';
+import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekEventExtractor } from './parsers.js';
 import { buildProcessResult } from './process-result.js';
 import {
-  appendPeekMessages,
+  appendPeekEvents,
   buildNotFoundPeekProcess,
   observedDurationSec,
   validatePeekPids,
@@ -255,15 +255,15 @@ export class CliProcessService {
     }
   }
 
-  async peekProcesses(pids: number[], peekTimeSec = 10): Promise<PeekResponse> {
+  async peekProcesses(pids: number[], peekTimeSec = 10, includeToolCalls = false): Promise<PeekResponse> {
     const targetPids = validatePeekPids(pids);
     const targetPeekTimeSec = validatePeekTimeSec(peekTimeSec);
     const processes: PeekProcessResult[] = [];
     const observers: Array<{
       process: StoredProcess;
       result: PeekProcessResult;
-      stdoutExtractor: PeekMessageExtractor;
-      stderrExtractor: PeekMessageExtractor;
+      stdoutExtractor: PeekEventExtractor;
+      stderrExtractor: PeekEventExtractor;
       stdoutOffset: number;
       stderrOffset: number;
     }> = [];
@@ -281,7 +281,7 @@ export class CliProcessService {
         pid,
         agent: process.toolType,
         status: process.status,
-        messages: [],
+        events: [],
         truncated: false,
         error: null,
       };
@@ -289,8 +289,8 @@ export class CliProcessService {
       observers.push({
         process,
         result,
-        stdoutExtractor: new PeekMessageExtractor(process.toolType),
-        stderrExtractor: new PeekMessageExtractor(process.toolType),
+        stdoutExtractor: new PeekEventExtractor(process.toolType, { includeToolCalls }),
+        stderrExtractor: new PeekEventExtractor(process.toolType, { includeToolCalls }),
         stdoutOffset: this.fileSizeSafe(process.stdoutPath),
         stderrOffset: this.fileSizeSafe(process.stderrPath),
       });
@@ -307,11 +307,11 @@ export class CliProcessService {
       for (const observer of observers) {
         const stdoutRead = this.readTextFromOffset(observer.process.stdoutPath, observer.stdoutOffset);
         observer.stdoutOffset = stdoutRead.offset;
-        appendPeekMessages(observer.result, observer.stdoutExtractor.push(stdoutRead.text, observedAt));
+        appendPeekEvents(observer.result, observer.stdoutExtractor.push(stdoutRead.text, observedAt));
 
         const stderrRead = this.readTextFromOffset(observer.process.stderrPath, observer.stderrOffset);
         observer.stderrOffset = stderrRead.offset;
-        appendPeekMessages(observer.result, observer.stderrExtractor.push(stderrRead.text, observedAt));
+        appendPeekEvents(observer.result, observer.stderrExtractor.push(stderrRead.text, observedAt));
 
         observer.process = this.refreshStatus(this.readProcess(observer.process.pid));
         observer.result.status = observer.process.status;
@@ -335,8 +335,8 @@ export class CliProcessService {
     for (const observer of observers) {
       observer.process = this.refreshStatus(this.readProcess(observer.process.pid));
       observer.result.status = observer.process.status;
-      appendPeekMessages(observer.result, observer.stdoutExtractor.flush(flushTs));
-      appendPeekMessages(observer.result, observer.stderrExtractor.flush(flushTs));
+      appendPeekEvents(observer.result, observer.stdoutExtractor.flush(flushTs));
+      appendPeekEvents(observer.result, observer.stderrExtractor.flush(flushTs));
     }
 
     return {
