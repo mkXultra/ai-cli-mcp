@@ -1,3 +1,10 @@
+# [2.18.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.17.0...v2.18.0) (2026-04-12)
+
+
+### Features
+
+* peekコマンドにtool_callイベントサポートを追加 ([c05b916](https://github.com/mkXultra/ai-cli-mcp/commit/c05b91677019714077d0803c4169a0b5205ff25f))
+
 # [2.17.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.16.0...v2.17.0) (2026-04-11)
 
 
