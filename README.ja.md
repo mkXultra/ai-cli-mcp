@@ -297,9 +297,9 @@ ai-cli peek 123 --time 10 --include-tool-calls
 - `peek_started_at` と `events[].ts` は、ai-cli-mcp サーバー側の UTC RFC3339 タイムスタンプです。`peek_started_at` は検証とリスナー登録後に観測ウィンドウが始まった時刻、`events[].ts` は ai-cli-mcp がイベントを観測して受理した時刻です。
 - 観測ウィンドウは `peek_time_sec` が経過するか、対象プロセスがすべて終端状態になった時点で終了します。
 - 観測開始前のイベントは返しません。同じPIDへの同時 `peek` は可能で、それぞれ独立した観測ウィンドウを持つため、イベントが重複して返ることがあります。
-- メッセージイベントは、Codex の `agent_message` text、Claude assistant の text content、OpenCode の `type: "text"` かつ `part.type` が `"text"` のイベント、Gemini stream-json の `role` が `"assistant"` の `message` イベントから認識します。
-- tool call を含める場合、Codex の command/MCP call、Claude の tool use/result、Gemini の tool use/result、OpenCode の完了済み tool use event を正規化した `tool_call` イベントとして返します。tool summary は tool 名と入力メタデータだけから作る短い1行文字列です。raw `stdout` / `stderr`、raw JSONL、tool result output、コマンド出力、`result.response`、stats、token usage、verbose メタデータは除外します。
-- 未知のイベント形状はデフォルトで拒否します。Forge など、まだ明示対応されていない管理対象エージェントは、実際のプロセス状態を返しつつ、`events: []`、`truncated: false`、`error: null` にします。
+- メッセージイベントは、Codex の `agent_message` text、Claude assistant の text content、OpenCode の `type: "text"` かつ `part.type` が `"text"` のイベント、Gemini stream-json の `role` が `"assistant"` の `message` イベント、Forge の `Summary:` または `Completed successfully:` で始まる plain-text 行から best-effort に認識します。
+- tool call を含める場合、Codex の command/MCP call、Claude の tool use/result、Gemini の tool use/result、OpenCode の完了済み tool use event、Forge の低精度な `Execute` / `Finished` marker を正規化した `tool_call` イベントとして返します。tool summary は tool 名と入力メタデータだけから作る短い1行文字列です。Forge のコマンド出力自体は tail せず、公開しません。raw `stdout` / `stderr`、raw JSONL、tool result output、コマンド出力、`result.response`、stats、token usage、verbose メタデータは除外します。
+- 未知のイベント形状はデフォルトで拒否します。まだ明示対応されていない管理対象エージェントは、実際のプロセス状態を返しつつ、`events: []`、`truncated: false`、`error: null` にします。
 - 各PIDごとに、観測ウィンドウ内で最初に観測された50件までを保持します。それ以降のイベントを捨てた場合は `truncated` が `true` になります。
 - `status` は `running`、`completed`、`failed`、`not_found` のいずれかで、観測ウィンドウ終了時点の状態を表します。
 - `agent` は `claude`、`codex`、`gemini`、`forge`、`opencode`、将来追加される追跡済みエージェント文字列、または `null` です。`null` はプロセスが見つからない、またはエージェント種別を判断できない場合を表します。

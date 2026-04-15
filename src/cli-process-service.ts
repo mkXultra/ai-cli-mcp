@@ -289,8 +289,8 @@ export class CliProcessService {
       observers.push({
         process,
         result,
-        stdoutExtractor: new PeekEventExtractor(process.toolType, { includeToolCalls }),
-        stderrExtractor: new PeekEventExtractor(process.toolType, { includeToolCalls }),
+        stdoutExtractor: new PeekEventExtractor(process.toolType, { includeToolCalls, source: 'stdout' }),
+        stderrExtractor: new PeekEventExtractor(process.toolType, { includeToolCalls, source: 'stderr' }),
         stdoutOffset: this.fileSizeSafe(process.stdoutPath),
         stderrOffset: this.fileSizeSafe(process.stderrPath),
       });
@@ -335,8 +335,9 @@ export class CliProcessService {
     for (const observer of observers) {
       observer.process = this.refreshStatus(this.readProcess(observer.process.pid));
       observer.result.status = observer.process.status;
-      appendPeekEvents(observer.result, observer.stdoutExtractor.flush(flushTs));
-      appendPeekEvents(observer.result, observer.stderrExtractor.flush(flushTs));
+      const terminal = observer.process.status !== 'running';
+      appendPeekEvents(observer.result, observer.stdoutExtractor.flush(flushTs, { terminal }));
+      appendPeekEvents(observer.result, observer.stderrExtractor.flush(flushTs, { terminal }));
     }
 
     return {

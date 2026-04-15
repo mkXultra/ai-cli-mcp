@@ -342,6 +342,172 @@ describe('PeekEventExtractor', () => {
       },
     ]);
   });
+
+  it('emits Forge message events from Summary and Completed successfully prefixes', () => {
+    const extractor = new PeekEventExtractor('forge');
+    const output = [
+      'Summary: Forge finished the task',
+      'Completed successfully: Built the project',
+      'Summary:   ',
+    ].join('\n') + '\n';
+
+    expect(extractor.push(output, ts)).toEqual([
+      { kind: 'message', ts, text: 'Forge finished the task' },
+      { kind: 'message', ts, text: 'Built the project' },
+    ]);
+  });
+
+  it('preserves long Forge Summary message text without truncation', () => {
+    const extractor = new PeekEventExtractor('forge');
+    const longText = 'x'.repeat(260);
+
+    expect(extractor.push(`Summary: ${longText}\n`, ts)).toEqual([
+      { kind: 'message', ts, text: longText },
+    ]);
+  });
+
+  it('emits Forge Execute tool_call starts when include_tool_calls is true', () => {
+    const extractor = new PeekEventExtractor('forge', { includeToolCalls: true });
+
+    expect(extractor.push("● [11:28:40] Execute [/bin/zsh] /bin/sh -c 'echo hi'\n", ts)).toEqual([
+      {
+        kind: 'tool_call',
+        ts,
+        phase: 'started',
+        id: 'forge_0',
+        tool: '/bin/zsh',
+        summary: "/bin/sh -c 'echo hi'",
+      },
+    ]);
+  });
+
+  it('falls back to shell for Forge Execute labels with spaces', () => {
+    const extractor = new PeekEventExtractor('forge', { includeToolCalls: true });
+
+    expect(extractor.push("● [11:28:40] Execute [local shell] /bin/sh -c 'echo hi'\n", ts)).toEqual([
+      {
+        kind: 'tool_call',
+        ts,
+        phase: 'started',
+        id: 'forge_0',
+        tool: 'shell',
+        summary: "/bin/sh -c 'echo hi'",
+      },
+    ]);
+  });
+
+  it('suppresses Forge tool_call events when include_tool_calls is false but keeps messages', () => {
+    const extractor = new PeekEventExtractor('forge', { includeToolCalls: false });
+    const output = [
+      "● [11:28:40] Execute [/bin/zsh] /bin/sh -c 'echo hi'",
+      'Summary: done',
+    ].join('\n') + '\n';
+
+    expect(extractor.push(output, ts)).toEqual([
+      { kind: 'message', ts, text: 'done' },
+    ]);
+  });
+
+  it('completes a pending Forge tool_call only on anchored Finished markers', () => {
+    const extractor = new PeekEventExtractor('forge', { includeToolCalls: true });
+    const output = [
+      "● [11:28:40] Execute [/bin/zsh] /bin/sh -c 'echo hi'",
+      'This line says Finished but is not a Forge marker',
+      '● [11:28:41] Finished abc123',
+    ].join('\n') + '\n';
+
+    expect(extractor.push(output, ts)).toEqual([
+      {
+        kind: 'tool_call',
+        ts,
+        phase: 'started',
+        id: 'forge_0',
+        tool: '/bin/zsh',
+        summary: "/bin/sh -c 'echo hi'",
+      },
+      {
+        kind: 'tool_call',
+        ts,
+        phase: 'completed',
+        id: 'forge_0',
+        tool: '/bin/zsh',
+        summary: "/bin/sh -c 'echo hi'",
+        status: 'unknown',
+      },
+    ]);
+  });
+
+  it('completes a pending Forge tool_call before starting a consecutive Execute marker', () => {
+    const extractor = new PeekEventExtractor('forge', { includeToolCalls: true });
+    const output = [
+      "● [11:28:40] Execute [/bin/zsh] /bin/sh -c 'echo one'",
+      "● [11:28:41] Execute [/bin/zsh] /bin/sh -c 'echo two'",
+    ].join('\n') + '\n';
+
+    expect(extractor.push(output, ts)).toEqual([
+      {
+        kind: 'tool_call',
+        ts,
+        phase: 'started',
+        id: 'forge_0',
+        tool: '/bin/zsh',
+        summary: "/bin/sh -c 'echo one'",
+      },
+      {
+        kind: 'tool_call',
+        ts,
+        phase: 'completed',
+        id: 'forge_0',
+        tool: '/bin/zsh',
+        summary: "/bin/sh -c 'echo one'",
+        status: 'unknown',
+      },
+      {
+        kind: 'tool_call',
+        ts,
+        phase: 'started',
+        id: 'forge_1',
+        tool: '/bin/zsh',
+        summary: "/bin/sh -c 'echo two'",
+      },
+    ]);
+  });
+
+  it('does not synthesize Forge completion on non-terminal flush', () => {
+    const extractor = new PeekEventExtractor('forge', { includeToolCalls: true });
+
+    expect(extractor.push("● [11:28:40] Execute [/bin/zsh] /bin/sh -c 'echo hi'\n", ts)).toHaveLength(1);
+    expect(extractor.flush(ts, { terminal: false })).toEqual([]);
+  });
+
+  it('synthesizes Forge completion with unknown status on terminal flush', () => {
+    const extractor = new PeekEventExtractor('forge', { includeToolCalls: true });
+
+    expect(extractor.push("● [11:28:40] Execute [/bin/zsh] /bin/sh -c 'echo hi'\n", ts)).toHaveLength(1);
+    expect(extractor.flush('2026-04-12T02:10:05.000Z', { terminal: true })).toEqual([
+      {
+        kind: 'tool_call',
+        ts: '2026-04-12T02:10:05.000Z',
+        phase: 'completed',
+        id: 'forge_0',
+        tool: '/bin/zsh',
+        summary: "/bin/sh -c 'echo hi'",
+        status: 'unknown',
+      },
+    ]);
+  });
+
+  it('treats Forge stderr as a no-op source', () => {
+    const extractor = new PeekEventExtractor('forge', { includeToolCalls: true, source: 'stderr' });
+    const output = [
+      'Summary: hidden',
+      "● [11:28:40] Execute [/bin/zsh] /bin/sh -c 'echo hidden'",
+      '● [11:28:41] Finished',
+    ].join('\n') + '\n';
+
+    expect(extractor.push(output, ts)).toEqual([]);
+    expect(extractor.flush(ts, { terminal: true })).toEqual([]);
+  });
 });
 
 describe('parseGeminiOutput', () => {

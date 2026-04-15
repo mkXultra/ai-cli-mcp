@@ -384,6 +384,92 @@ describe('Process Management Tests', () => {
       expect(JSON.stringify(response)).not.toContain('secret result');
     });
 
+    it('should peek Forge plain-text messages and low-precision tool calls without raw command output', async () => {
+      const { handlers } = await setupServer();
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.pid = 12349;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.kill = vi.fn();
+
+      mockSpawn.mockReturnValue(mockProcess);
+
+      const callToolHandler = handlers.get('callTool')!;
+      await callToolHandler!({
+        params: {
+          name: 'run',
+          arguments: {
+            prompt: 'forge peek prompt',
+            workFolder: '/tmp',
+            model: 'forge',
+          }
+        }
+      });
+
+      const peekPromise = callToolHandler!({
+        params: {
+          name: 'peek',
+          arguments: {
+            pids: [12349],
+            peek_time_sec: 1,
+            include_tool_calls: true,
+          }
+        }
+      });
+
+      setTimeout(() => {
+        mockProcess.stdout.emit('data', 'Summary: Forge started\n');
+        mockProcess.stdout.emit('data', "● [11:28:40] Execute [/bin/zsh] /bin/sh -c 'echo hi'\n");
+        mockProcess.stdout.emit('data', 'secret child output\n');
+        mockProcess.stderr.emit('data', 'Summary: stderr should be ignored\n');
+        mockProcess.stdout.emit('data', '● [11:28:41] Finished abc123\n');
+        mockProcess.stdout.emit('data', 'Completed successfully: Forge done\n');
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await peekPromise;
+      const response = JSON.parse(result.content[0].text);
+
+      expect(response.processes).toHaveLength(1);
+      expect(response.processes[0]).toMatchObject({
+        pid: 12349,
+        agent: 'forge',
+        status: 'completed',
+        events: [
+          {
+            kind: 'message',
+            ts: expect.any(String),
+            text: 'Forge started',
+          },
+          {
+            kind: 'tool_call',
+            phase: 'started',
+            id: 'forge_0',
+            tool: '/bin/zsh',
+            summary: "/bin/sh -c 'echo hi'",
+          },
+          {
+            kind: 'tool_call',
+            phase: 'completed',
+            id: 'forge_0',
+            tool: '/bin/zsh',
+            summary: "/bin/sh -c 'echo hi'",
+            status: 'unknown',
+          },
+          {
+            kind: 'message',
+            ts: expect.any(String),
+            text: 'Forge done',
+          },
+        ],
+        truncated: false,
+        error: null,
+      });
+      expect(JSON.stringify(response)).not.toContain('secret child output');
+      expect(JSON.stringify(response)).not.toContain('stderr should be ignored');
+    });
+
     it('should handle process with model parameter', async () => {
       const { handlers } = await setupServer();
       

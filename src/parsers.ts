@@ -29,6 +29,11 @@ type PeekAgent = 'claude' | 'codex' | string | null;
 
 interface PeekEventExtractorOptions {
   includeToolCalls?: boolean;
+  source?: 'stdout' | 'stderr';
+}
+
+interface PeekFlushOptions {
+  terminal?: boolean;
 }
 
 interface ToolSummary {
@@ -44,7 +49,16 @@ interface ToolCallMemory {
   summary_truncated?: boolean;
 }
 
+interface PendingForgeTool {
+  id: string;
+  tool: string;
+  summary: string;
+  summary_truncated?: boolean;
+}
+
 const PEEK_TOOL_SUMMARY_MAX_LENGTH = 200;
+const FORGE_EXECUTE_PATTERN = /^● \[[^\]]+\] Execute \[([^\]]*)\]\s+(.+)$/;
+const FORGE_FINISHED_PATTERN = /^● \[[^\]]+\] Finished(?:\s+\S+)?\s*$/;
 
 function isGeminiAssistantMessageEvent(parsed: any): boolean {
   return parsed.type === 'message' && parsed.role === 'assistant' && typeof parsed.content === 'string';
@@ -343,13 +357,21 @@ export class PeekEventExtractor {
   private pending = '';
   private geminiAssistantBuffer = '';
   private readonly includeToolCalls: boolean;
+  private readonly source: 'stdout' | 'stderr';
   private readonly toolMemory = new Map<string, ToolCallMemory>();
+  private forgePendingTool: PendingForgeTool | null = null;
+  private forgeToolSequence = 0;
 
   constructor(private readonly agent: PeekAgent, options: PeekEventExtractorOptions = {}) {
     this.includeToolCalls = options.includeToolCalls === true;
+    this.source = options.source || 'stdout';
   }
 
   push(chunk: string, observedAt = new Date().toISOString()): PeekEvent[] {
+    if (this.agent === 'forge' && this.source === 'stderr') {
+      return [];
+    }
+
     if (!chunk) {
       return [];
     }
@@ -359,20 +381,32 @@ export class PeekEventExtractor {
     return this.extractLines(lines, observedAt);
   }
 
-  flush(observedAt = new Date().toISOString()): PeekEvent[] {
+  flush(observedAt = new Date().toISOString(), options: PeekFlushOptions = {}): PeekEvent[] {
+    if (this.agent === 'forge' && this.source === 'stderr') {
+      this.pending = '';
+      return [];
+    }
+
     const events: PeekEvent[] = [];
 
     if (this.pending) {
-      const line = this.pending;
-      this.pending = '';
-      events.push(...this.extractLines([line], observedAt));
+      if (this.agent !== 'forge' || options.terminal === true) {
+        const line = this.pending;
+        this.pending = '';
+        events.push(...this.extractLines([line], observedAt));
+      }
     }
 
     events.push(...this.flushGeminiAssistantBuffer(observedAt));
+    events.push(...this.flushForgePendingTool(observedAt, options.terminal === true));
     return events;
   }
 
   private extractLines(lines: string[], observedAt: string): PeekEvent[] {
+    if (this.agent === 'forge') {
+      return this.extractForgeLines(lines, observedAt);
+    }
+
     const events: PeekEvent[] = [];
 
     for (const line of lines) {
@@ -389,6 +423,67 @@ export class PeekEventExtractor {
     }
 
     return events;
+  }
+
+  private extractForgeLines(lines: string[], observedAt: string): PeekEvent[] {
+    const events: PeekEvent[] = [];
+
+    for (const line of lines) {
+      if (!line.trim()) {
+        continue;
+      }
+
+      const summary = this.extractForgeMessage(line, 'Summary:');
+      if (summary !== null) {
+        events.push({ kind: 'message', ts: observedAt, text: summary });
+        continue;
+      }
+
+      const completed = this.extractForgeMessage(line, 'Completed successfully:');
+      if (completed !== null) {
+        events.push({ kind: 'message', ts: observedAt, text: completed });
+        continue;
+      }
+
+      if (this.includeToolCalls) {
+        const executeMatch = line.match(FORGE_EXECUTE_PATTERN);
+        if (executeMatch) {
+          events.push(...this.completeForgePendingTool(observedAt));
+          const [, rawTool, rawSummary] = executeMatch;
+          const tool = rawTool.trim() && !/\s/.test(rawTool.trim()) ? rawTool.trim() : 'shell';
+          const event = createToolCallEvent({
+            ts: observedAt,
+            phase: 'started',
+            id: `forge_${this.forgeToolSequence++}`,
+            tool,
+            command: rawSummary,
+          });
+          this.forgePendingTool = {
+            id: event.id!,
+            tool: event.tool,
+            summary: event.summary,
+            summary_truncated: event.summary_truncated,
+          };
+          events.push(event);
+          continue;
+        }
+
+        if (FORGE_FINISHED_PATTERN.test(line)) {
+          events.push(...this.completeForgePendingTool(observedAt));
+        }
+      }
+    }
+
+    return events;
+  }
+
+  private extractForgeMessage(line: string, prefix: string): string | null {
+    if (!line.startsWith(prefix)) {
+      return null;
+    }
+
+    const text = line.slice(prefix.length).trim();
+    return text || null;
   }
 
   private extractParsedEvent(parsed: any, observedAt: string): PeekEvent[] {
@@ -446,6 +541,36 @@ export class PeekEventExtractor {
 
     return [{ kind: 'message', ts: observedAt, text }];
   }
+
+  private completeForgePendingTool(observedAt: string): PeekEvent[] {
+    if (!this.forgePendingTool) {
+      return [];
+    }
+
+    const pending = this.forgePendingTool;
+    this.forgePendingTool = null;
+    const event = createToolCallEvent({
+      ts: observedAt,
+      phase: 'completed',
+      id: pending.id,
+      tool: pending.tool,
+      status: 'unknown',
+      defaultStatus: 'unknown',
+    });
+    event.summary = pending.summary;
+    if (pending.summary_truncated) {
+      event.summary_truncated = true;
+    }
+    return [event];
+  }
+
+  private flushForgePendingTool(observedAt: string, terminal: boolean): PeekEvent[] {
+    if (this.agent !== 'forge' || !terminal) {
+      return [];
+    }
+
+    return this.completeForgePendingTool(observedAt);
+  }
 }
 
 export class PeekMessageExtractor {
@@ -459,8 +584,8 @@ export class PeekMessageExtractor {
     return this.toMessages(this.extractor.push(chunk, observedAt));
   }
 
-  flush(observedAt = new Date().toISOString()): PeekMessage[] {
-    return this.toMessages(this.extractor.flush(observedAt));
+  flush(observedAt = new Date().toISOString(), options: PeekFlushOptions = {}): PeekMessage[] {
+    return this.toMessages(this.extractor.flush(observedAt, options));
   }
 
   private toMessages(events: PeekEvent[]): PeekMessage[] {

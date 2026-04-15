@@ -233,7 +233,7 @@ ${getSupportedModelsDescription()}
         },
         {
           name: 'peek',
-          description: 'One-shot short observation window for running child agents. Returns only natural-language message events, and optionally normalized tool_call events, observed during this call; not a history API, not gapless streaming, and not stdout/stderr tailing. In v1, message extraction is supported for Codex, Claude, OpenCode, and Gemini; Forge returns status with events: []. Tool calls exclude raw tool output.',
+          description: 'One-shot short observation window for running child agents. Returns only natural-language message events, and optionally normalized tool_call events, observed during this call; not a history API, not gapless streaming, and not stdout/stderr tailing. In v1, message extraction is supported for Codex, Claude, OpenCode, Gemini, and best-effort Forge Summary/Completed successfully lines. Forge tool calls are low-precision Execute/Finished markers and never include command output. Tool calls exclude raw tool output.',
           inputSchema: {
             type: 'object',
             properties: {
