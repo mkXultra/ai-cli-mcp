@@ -256,8 +256,8 @@ export class ProcessService {
       };
       processes.push(result);
 
-      const stdoutExtractor = new PeekEventExtractor(entry.toolType, { includeToolCalls });
-      const stderrExtractor = new PeekEventExtractor(entry.toolType, { includeToolCalls });
+      const stdoutExtractor = new PeekEventExtractor(entry.toolType, { includeToolCalls, source: 'stdout' });
+      const stderrExtractor = new PeekEventExtractor(entry.toolType, { includeToolCalls, source: 'stderr' });
       const onStdout = (data: Buffer | string) => {
         appendPeekEvents(result, stdoutExtractor.push(data.toString(), new Date().toISOString()));
       };
@@ -294,8 +294,9 @@ export class ProcessService {
       for (const observer of observers) {
         observer.entry.process.stdout?.off('data', observer.onStdout);
         observer.entry.process.stderr?.off('data', observer.onStderr);
-        appendPeekEvents(observer.result, observer.stdoutExtractor.flush(flushTs));
-        appendPeekEvents(observer.result, observer.stderrExtractor.flush(flushTs));
+        const terminal = observer.entry.status !== 'running';
+        appendPeekEvents(observer.result, observer.stdoutExtractor.flush(flushTs, { terminal }));
+        appendPeekEvents(observer.result, observer.stderrExtractor.flush(flushTs, { terminal }));
         observer.result.status = observer.entry.status;
       }
     }

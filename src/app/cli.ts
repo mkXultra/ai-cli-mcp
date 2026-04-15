@@ -63,7 +63,7 @@ Options:
 export const PEEK_HELP_TEXT = `Usage: ai-cli peek <pid...> [options]
 
 Observe new natural-language agent messages, and optionally tool calls, for a short one-shot window.
-In v1, message extraction is supported for Codex, Claude, OpenCode, and Gemini; Forge returns status with events: [].
+In v1, message extraction is supported for Codex, Claude, OpenCode, Gemini, and best-effort Forge Summary/Completed successfully lines. Forge tool calls are low-precision Execute/Finished markers and never include command output.
 This is not a history API, gapless streaming, or stdout/stderr tailing. No --follow mode is available in v1.
 
 Options:
