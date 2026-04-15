@@ -1,3 +1,10 @@
+# [2.19.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.18.0...v2.19.0) (2026-04-15)
+
+
+### Features
+
+* peekコマンドにForgeエージェントのベストエフォートサポートを追加 ([7c01958](https://github.com/mkXultra/ai-cli-mcp/commit/7c01958b0c9a8133da07c556b303481abd511b6b))
+
 # [2.18.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.17.0...v2.18.0) (2026-04-12)
 
 
