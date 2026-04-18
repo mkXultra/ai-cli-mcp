@@ -58,6 +58,9 @@ npm test
 # Run unit tests only
 npm run test:unit
 
+# Verify the published npm package contents
+npm run test:package
+
 # Run e2e tests (with mocks)
 npm run test:e2e
 

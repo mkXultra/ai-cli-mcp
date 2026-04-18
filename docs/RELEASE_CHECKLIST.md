@@ -41,9 +41,10 @@ BREAKING CHANGE: response structure has changed"
 Before merging to `develop`:
 
 - [ ] Tests pass locally (`npm test`)
+- [ ] Package smoke passes (`npm run test:package`)
 - [ ] Build succeeds (`npm run build`)
 - [ ] Release-time live E2E passes for the intended backends (`ACM_LIVE_E2E=1 ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live`, or `ACM_LIVE_E2E_AGENTS=all` for all backends; add `ACM_LIVE_E2E_SURFACE=all` to cover both ai-cli and MCP server surfaces)
-- [ ] Package contents look correct (`npm pack --dry-run`)
+- [ ] Package contents look correct (`npm pack --dry-run`, covered by `npm run test:package`)
 - [ ] Commit messages follow Conventional Commits format
 - [ ] PR has been reviewed (if applicable)
 

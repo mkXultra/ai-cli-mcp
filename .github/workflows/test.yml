@@ -18,3 +18,7 @@ jobs:
         run: npm ci
       - name: Test
         run: npm test
+      - name: Live E2E opt-in guard
+        run: npm run test:live
+      - name: Package smoke
+        run: npm run test:package

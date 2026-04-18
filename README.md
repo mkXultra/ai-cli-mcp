@@ -382,6 +382,9 @@ For development setup, testing, and contribution guidelines, see the [Developmen
 # Deterministic unit, parser, contract, and mocked e2e tests
 npm test
 
+# Published npm package contents smoke test
+npm run test:package
+
 # Release-time live E2E against real installed AI CLIs
 ACM_LIVE_E2E=1 ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live
 

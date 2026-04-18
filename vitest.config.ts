@@ -9,7 +9,9 @@ export default defineConfig({
       'node_modules/**',
       'dist/**',
       'src/__tests__/live-cli-e2e.test.ts',
+      'src/__tests__/package-smoke.test.ts',
       'dist/__tests__/live-cli-e2e.test.js',
+      'dist/__tests__/package-smoke.test.js',
     ],
     coverage: {
       provider: 'v8',

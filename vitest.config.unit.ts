@@ -22,6 +22,7 @@ export default defineConfig({
       'src/__tests__/e2e.test.ts',
       'src/__tests__/edge-cases.test.ts',
       'src/__tests__/live-cli-e2e.test.ts',
+      'src/__tests__/package-smoke.test.ts',
     ],
     mockReset: true,
     clearMocks: true,
