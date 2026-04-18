@@ -1,3 +1,22 @@
+# [2.20.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.19.0...v2.20.0) (2026-04-18)
+
+
+### Bug Fixes
+
+* derive mcp server version from package ([d055ae8](https://github.com/mkXultra/ai-cli-mcp/commit/d055ae8d7900e879633711d79b6ae9fff95ce7f1))
+* harden cli termination handling ([8497f22](https://github.com/mkXultra/ai-cli-mcp/commit/8497f2282f53e24d881825fbbe52c61b8f488166))
+* keep mcp doctor reachable with invalid cli env ([aee7783](https://github.com/mkXultra/ai-cli-mcp/commit/aee7783f09413118735e640a2b8745d0140bff31))
+* persist detached cli exit codes ([53cec30](https://github.com/mkXultra/ai-cli-mcp/commit/53cec30c60dd3a957a31403546989ffac25b26f9))
+* restrict npm package contents ([cf1de69](https://github.com/mkXultra/ai-cli-mcp/commit/cf1de6972592645ffdbaa149d23293cb99314066))
+* sync server manifest during release ([9c7059f](https://github.com/mkXultra/ai-cli-mcp/commit/9c7059fe35a114742205f0440308fbbbd7020951))
+
+
+### Features
+
+* expose doctor as mcp tool ([c33e1de](https://github.com/mkXultra/ai-cli-mcp/commit/c33e1de3ed768735501a3308ccb5b496e87e230a))
+* expose models as mcp tool ([4bae139](https://github.com/mkXultra/ai-cli-mcp/commit/4bae1391a9e5413c25cf393ecb186b387e11b5eb))
+* support new Claude effort levels ([ec66dc9](https://github.com/mkXultra/ai-cli-mcp/commit/ec66dc9cbb260eb2f0401185a1c9e83e670d0cd1))
+
 # [2.19.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.18.0...v2.19.0) (2026-04-15)
 
 
