@@ -1,3 +1,10 @@
+## [2.20.1](https://github.com/mkXultra/ai-cli-mcp/compare/v2.20.0...v2.20.1) (2026-04-18)
+
+
+### Bug Fixes
+
+* shorten mcp registry description ([9ca4b56](https://github.com/mkXultra/ai-cli-mcp/commit/9ca4b5647df24651334ad91dfa3af6fc911156c8))
+
 # [2.20.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.19.0...v2.20.0) (2026-04-18)
 
 
