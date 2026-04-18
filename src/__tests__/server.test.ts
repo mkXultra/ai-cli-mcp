@@ -65,7 +65,7 @@ describe('ClaudeCodeServer Unit Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
-    vi.unmock('../server.js');
+    vi.doUnmock('../server.js');
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     originalEnv = { ...process.env };

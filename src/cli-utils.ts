@@ -30,6 +30,12 @@ export interface CliPaths {
 }
 
 export interface CliDoctorStatus {
+  checks: {
+    binaryAvailability: boolean;
+    pathResolution: boolean;
+    loginState: boolean;
+    termsAcceptance: boolean;
+  };
   claude: CliBinaryStatus;
   codex: CliBinaryStatus;
   gemini: CliBinaryStatus;
@@ -219,6 +225,12 @@ function getCliBinaryStatus(name: CliBinaryName): CliBinaryStatus {
 
 export function getCliDoctorStatus(): CliDoctorStatus {
   return {
+    checks: {
+      binaryAvailability: true,
+      pathResolution: true,
+      loginState: false,
+      termsAcceptance: false,
+    },
     claude: getCliBinaryStatus('claude'),
     codex: getCliBinaryStatus('codex'),
     gemini: getCliBinaryStatus('gemini'),

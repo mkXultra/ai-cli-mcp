@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import {
+  appendFileSync,
   chmodSync,
   closeSync,
   existsSync,
@@ -53,6 +54,8 @@ interface CliProcessServiceOptions {
   stateDir?: string;
   cliPaths?: BuildCliCommandOptions['cliPaths'];
 }
+
+const SIGTERM_EXIT_CODE = 143;
 
 export interface CliRunOptions {
   cwd: string;
@@ -304,7 +307,15 @@ export class CliProcessService {
       };
     }
 
-    refreshed.status = 'failed';
+    const exitStatus = this.readExitStatus(refreshed);
+    if (exitStatus) {
+      refreshed.status = exitStatus.status;
+      refreshed.exitCode = exitStatus.exitCode;
+    } else {
+      refreshed.status = 'failed';
+      refreshed.exitCode = SIGTERM_EXIT_CODE;
+      this.writeExitStatus(refreshed, { status: 'failed', exitCode: SIGTERM_EXIT_CODE });
+    }
     this.writeProcess(refreshed);
 
     return {
@@ -443,7 +454,11 @@ export class CliProcessService {
     }
 
     if (!isProcessRunning(process.pid)) {
-      process.status = 'completed';
+      process.status = 'failed';
+      this.appendTextFileSafe(
+        process.stderrPath,
+        '\nProcess exited without exit-status metadata; marking as failed.\n',
+      );
       this.writeProcess(process);
     }
     return process;
@@ -467,6 +482,13 @@ export class CliProcessService {
     return null;
   }
 
+  private writeExitStatus(process: StoredProcess, exitStatus: StoredExitStatus): void {
+    writeFileSync(
+      this.resolveExitStatusPath(this.resolveStoredProcessDir(process)),
+      JSON.stringify(exitStatus, null, 2) + '\n',
+    );
+  }
+
   private readTextFileSafe(filePath: string): string {
     if (!existsSync(filePath)) {
       return '';
@@ -476,6 +498,13 @@ export class CliProcessService {
 
   private touchFile(filePath: string): void {
     closeSync(openSync(filePath, 'a'));
+  }
+
+  private appendTextFileSafe(filePath: string, text: string): void {
+    try {
+      appendFileSync(filePath, text);
+    } catch {
+    }
   }
 
   private fileSizeSafe(filePath: string): number {
@@ -545,7 +574,7 @@ export class CliProcessService {
   }
 
   private resolveDetachedWrapperPath(): string {
-    return join(this.stateDir, 'detached-runner-v1.sh');
+    return join(this.stateDir, 'detached-runner-v2.sh');
   }
 
   private ensureDetachedWrapperScript(): string {
@@ -569,13 +598,36 @@ exit_meta_path="$process_dir/exit-status.json"
 mkdir -p "$process_dir"
 : > "$stdout_path"
 : > "$stderr_path"
-"$@" >> "$stdout_path" 2>> "$stderr_path"
+write_exit_status() {
+  status="$1"
+  exit_code="$2"
+  tmp_exit_meta_path="$exit_meta_path.$$"
+  printf '{\n  "status": "%s",\n  "exitCode": %s\n}\n' "$status" "$exit_code" > "$tmp_exit_meta_path"
+  mv "$tmp_exit_meta_path" "$exit_meta_path"
+}
+handle_signal() {
+  signal="$1"
+  exit_code="$2"
+  if [ -n "\${child_pid:-}" ]; then
+    kill "-$signal" "$child_pid" 2>/dev/null || true
+    wait "$child_pid" 2>/dev/null
+  fi
+  write_exit_status "failed" "$exit_code"
+  exit "$exit_code"
+}
+trap 'handle_signal TERM 143' TERM
+trap 'handle_signal INT 130' INT
+trap 'handle_signal HUP 129' HUP
+"$@" >> "$stdout_path" 2>> "$stderr_path" &
+child_pid="$!"
+wait "$child_pid"
 exit_code="$?"
+trap - TERM INT HUP
 status="completed"
 if [ "$exit_code" -ne 0 ]; then
   status="failed"
 fi
-printf '{\n  "status": "%s",\n  "exitCode": %s\n}\n' "$status" "$exit_code" > "$exit_meta_path"
+write_exit_status "$status" "$exit_code"
 exit "$exit_code"
 `,
     );

@@ -40,6 +40,12 @@ describe('cli-utils doctor status', () => {
     const { getCliDoctorStatus } = await import('../cli-utils.js');
     const status = getCliDoctorStatus();
 
+    expect(status.checks).toEqual({
+      binaryAvailability: true,
+      pathResolution: true,
+      loginState: false,
+      termsAcceptance: false,
+    });
     expect(status.claude).toEqual({
       configuredCommand: 'claude',
       resolvedPath: '/mock/bin/claude',

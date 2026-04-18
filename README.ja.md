@@ -214,7 +214,7 @@ OpenCode のモデル指定は次の 2 つを受け付けます。
 
 `ai-cli models` は OpenCode を機械可読に `opencode: ["opencode"]` と `dynamicModelBackends.opencode` で公開します。実際に利用可能なバックエンドネイティブなモデル一覧は `opencode models` で確認してください。
 
-`doctor` は CLI バイナリの存在確認と path 解決だけを行います。ログイン状態や利用規約同意までは確認しません。
+`doctor` は CLI バイナリの利用可否と path 解決だけを確認します。JSON 出力には `checks` ブロックが含まれ、ログイン状態と利用規約同意は未確認として示されます。
 
 ## CLI の状態保存先
 
@@ -235,7 +235,7 @@ OpenCode のモデル指定は次の 2 つを受け付けます。
 
 ## Exit status の追跡
 
-detached 実行された `ai-cli` は、すべての対応バックエンドで自然終了時の exit status を `exit-status.json` に永続化します。非ゼロ終了は記録された `exitCode` 付きの `failed` として扱われ、ゼロ終了は `exitCode: 0` 付きの `completed` として扱われます。
+detached 実行された `ai-cli` は、すべての対応バックエンドで自然終了時の exit status を `exit-status.json` に永続化します。非ゼロ終了は記録された `exitCode` 付きの `failed` として扱われ、ゼロ終了は `exitCode: 0` 付きの `completed` として扱われます。`ai-cli kill` は SIGTERM による終了を failed exit として記録し、追跡中プロセスが exit metadata なしで消えた場合も成功とは見なさず `failed` として扱います。
 
 ## MCPクライアントへの接続
 

@@ -211,7 +211,7 @@ OpenCode model selection accepts either:
 
 `ai-cli models` exposes OpenCode machine-readably via `opencode: ["opencode"]` plus `dynamicModelBackends.opencode`, which points users to `opencode models` for backend-native discovery.
 
-`doctor` checks only binary existence and path resolution. It does not verify login state or terms acceptance.
+`doctor` checks only binary availability and path resolution. Its JSON output includes a `checks` block that marks login state and terms acceptance as unchecked.
 
 ## CLI State Storage
 
@@ -232,7 +232,7 @@ Use `ai-cli cleanup` to remove completed and failed runs. Running processes are 
 
 ## Exit Status Tracking
 
-Detached `ai-cli` runs persist natural exit status for all supported backends through `exit-status.json`. Non-zero exits are surfaced as `failed` with the recorded `exitCode`; zero exits are surfaced as `completed` with `exitCode: 0`.
+Detached `ai-cli` runs persist natural exit status for all supported backends through `exit-status.json`. Non-zero exits are surfaced as `failed` with the recorded `exitCode`; zero exits are surfaced as `completed` with `exitCode: 0`. `ai-cli kill` records SIGTERM termination as a failed exit, and a tracked process that disappears without exit metadata is treated as `failed` rather than assumed successful.
 
 ## Connecting to Your MCP Client
 

@@ -318,6 +318,12 @@ describe('ai-cli app', () => {
     const stdout = vi.fn();
     const stderr = vi.fn();
     const getDoctorStatus = vi.fn().mockReturnValue({
+      checks: {
+        binaryAvailability: true,
+        pathResolution: true,
+        loginState: false,
+        termsAcceptance: false,
+      },
       claude: {
         configuredCommand: 'claude',
         resolvedPath: '/tmp/bin/claude',
@@ -354,6 +360,7 @@ describe('ai-cli app', () => {
 
     expect(exitCode).toBe(0);
     expect(getDoctorStatus).toHaveBeenCalledTimes(1);
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"loginState": false'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"configuredCommand": "claude"'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"available": false'));
     expect(stderr).not.toHaveBeenCalled();

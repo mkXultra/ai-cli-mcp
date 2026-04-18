@@ -665,6 +665,7 @@ export function parseClaudeOutput(stdout: string): any {
   try {
     const lines = stdout.trim().split('\n');
     let lastMessage = null;
+    let assistantTextBuffer = '';
     let sessionId = null;
     const toolsMap = new Map<string, any>();
 
@@ -684,6 +685,9 @@ export function parseClaudeOutput(stdout: string): any {
 
         if (parsed.type === 'assistant' && parsed.message?.content) {
           for (const content of parsed.message.content) {
+            if (content.type === 'text' && typeof content.text === 'string') {
+              assistantTextBuffer += content.text;
+            }
             if (content.type === 'tool_use') {
               toolsMap.set(content.id, {
                 tool: content.name,
@@ -716,10 +720,12 @@ export function parseClaudeOutput(stdout: string): any {
     }
 
     const tools = Array.from(toolsMap.values());
+    const fallbackMessage = assistantTextBuffer.trim() ? assistantTextBuffer : null;
+    const message = lastMessage || fallbackMessage;
 
-    if (lastMessage || sessionId || tools.length > 0) {
+    if (message || sessionId || tools.length > 0) {
       return {
-        message: lastMessage,
+        message,
         session_id: sessionId,
         tools: tools.length > 0 ? tools : undefined
       };

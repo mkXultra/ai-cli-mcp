@@ -388,6 +388,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
       cwd: workFolder,
       model: 'sonnet',
     });
+    const processDir = join(stateDir, 'cwds', encodeCwd(realpathSync(workFolder)), String(runResult.pid));
 
     await new Promise((resolve) => setTimeout(resolve, 150));
 
@@ -400,6 +401,12 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
 
     const result = await service.getProcessResult(runResult.pid, false);
     expect(result.status).toBe('failed');
+    expect(result.exitCode).toBe(143);
+    expect(JSON.parse(readFileSync(join(processDir, 'exit-status.json'), 'utf-8'))).toEqual({
+      status: 'failed',
+      exitCode: 143,
+    });
+    expect(readFileSync(join(processDir, 'stderr.log'), 'utf-8')).not.toContain('exit-status metadata');
   });
 
   it('does not report termination until the process actually exits', async () => {
@@ -460,7 +467,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
     killSpy.mockRestore();
   });
 
-  it('lists processes without crashing when a tracked work folder has been deleted', async () => {
+  it('marks missing exit-status metadata as failed without crashing when a tracked work folder has been deleted', async () => {
     const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
     tempDirs.push(root);
     const stateDir = join(root, 'state');
@@ -511,10 +518,11 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
       {
         pid,
         agent: 'claude',
-        status: 'completed',
+        status: 'failed',
       },
     ]);
-    expect(JSON.parse(readFileSync(join(processDir, 'meta.json'), 'utf-8')).status).toBe('completed');
+    expect(JSON.parse(readFileSync(join(processDir, 'meta.json'), 'utf-8')).status).toBe('failed');
+    expect(readFileSync(join(processDir, 'stderr.log'), 'utf-8')).toContain('exit-status metadata');
     killSpy.mockRestore();
   });
 

@@ -107,6 +107,7 @@ Options:
 export const DOCTOR_HELP_TEXT = `Usage: ai-cli doctor
 
 Check whether supported AI CLI binaries are available, including OpenCode.
+This checks binary availability and path resolution only; it does not verify login state or terms acceptance.
 
 Options:
   --help, -h                   Show this help message

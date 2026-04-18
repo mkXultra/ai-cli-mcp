@@ -63,6 +63,7 @@ Properties:
 - Spawns a thin detached wrapper that runs the actual Claude/Codex/Gemini/Forge/OpenCode process
 - Redirects `stdout` and `stderr` to files
 - Persists natural process exit status to `exit-status.json`
+- Treats a stopped tracked process without exit metadata as `failed`
 
 ### `ai-cli wait`
 
@@ -121,6 +122,7 @@ Properties:
 
 - Scope is binary existence/path resolution only
 - It does not verify login or acceptance state
+- JSON output includes `checks` so callers can see which states were and were not verified
 
 ### `ai-cli models`
 
@@ -221,6 +223,8 @@ Approach:
 - Redirect `stderr` to a file
 - Persist enough metadata to support `wait`, `ps`, `result`, and `kill`
 - Persist natural process exit status to `exit-status.json`
+- Record `ai-cli kill` SIGTERM termination as a failed exit
+- Treat stopped tracked processes without exit metadata as failed rather than successful
 
 Why this approach:
 
