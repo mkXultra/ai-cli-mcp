@@ -9,10 +9,8 @@ import {
   readFileSync,
   readdirSync,
   realpathSync,
-  renameSync,
   rmSync,
   statSync,
-  unlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { join, basename, dirname } from 'node:path';
@@ -139,71 +137,7 @@ export class CliProcessService {
       cliPaths: this.cliPaths,
     });
 
-    if (cmd.agent === 'opencode') {
-      return this.startDetachedOpenCodeProcess(cmd, options.model);
-    }
-
-    const stdoutPath = this.resolveStdoutPathForPidPlaceholder();
-    const stderrPath = this.resolveStderrPathForPidPlaceholder();
-    let stdoutFd: number | undefined;
-    let stderrFd: number | undefined;
-
-    try {
-      stdoutFd = openSync(stdoutPath, 'w');
-      stderrFd = openSync(stderrPath, 'w');
-
-      const childProcess = spawn(cmd.cliPath, cmd.args, {
-        cwd: cmd.cwd,
-        detached: true,
-        stdio: ['ignore', stdoutFd, stderrFd],
-      });
-
-      const pid = childProcess.pid;
-      childProcess.unref();
-
-      if (!pid) {
-        throw new Error(`Failed to start ${cmd.agent} CLI process`);
-      }
-
-      const processDir = this.resolveProcessDir(cmd.cwd, pid);
-      mkdirSync(processDir, { recursive: true });
-      const finalStdoutPath = this.resolveStdoutPath(processDir);
-      const finalStderrPath = this.resolveStderrPath(processDir);
-      this.renamePlaceholderFile(stdoutPath, finalStdoutPath);
-      this.renamePlaceholderFile(stderrPath, finalStderrPath);
-
-      const storedProcess: StoredProcess = {
-        pid,
-        prompt: cmd.prompt,
-        workFolder: cmd.cwd,
-        cwdKey: this.resolveCwdKey(cmd.cwd),
-        model: options.model,
-        toolType: cmd.agent,
-        startTime: new Date().toISOString(),
-        stdoutPath: finalStdoutPath,
-        stderrPath: finalStderrPath,
-        status: 'running',
-      };
-      this.writeProcess(storedProcess);
-
-      return {
-        pid,
-        status: 'started',
-        agent: cmd.agent,
-        message: `${cmd.agent} process started successfully`,
-      };
-    } catch (error) {
-      this.removeFileIfExists(stdoutPath);
-      this.removeFileIfExists(stderrPath);
-      throw error;
-    } finally {
-      if (stdoutFd !== undefined) {
-        closeSync(stdoutFd);
-      }
-      if (stderrFd !== undefined) {
-        closeSync(stderrFd);
-      }
-    }
+    return this.startDetachedTrackedProcess(cmd, options.model);
   }
 
   async listProcesses(): Promise<ProcessListItem[]> {
@@ -404,12 +338,12 @@ export class CliProcessService {
     };
   }
 
-  private async startDetachedOpenCodeProcess(
+  private async startDetachedTrackedProcess(
     cmd: Awaited<ReturnType<typeof buildCliCommand>>,
     model: string | undefined,
   ): Promise<{ pid: number; status: 'started'; agent: AgentType; message: string }> {
     const cwdKey = this.resolveCwdKey(cmd.cwd);
-    const wrapperPath = this.ensureOpenCodeWrapperScript();
+    const wrapperPath = this.ensureDetachedWrapperScript();
 
     const childProcess = spawn(wrapperPath, [this.stateDir, cwdKey, cmd.cliPath, ...cmd.args], {
       cwd: cmd.cwd,
@@ -428,12 +362,8 @@ export class CliProcessService {
     mkdirSync(processDir, { recursive: true });
     const stdoutPath = this.resolveStdoutPath(processDir);
     const stderrPath = this.resolveStderrPath(processDir);
-    if (!existsSync(stdoutPath)) {
-      writeFileSync(stdoutPath, '');
-    }
-    if (!existsSync(stderrPath)) {
-      writeFileSync(stderrPath, '');
-    }
+    this.touchFile(stdoutPath);
+    this.touchFile(stderrPath);
 
     const storedProcess: StoredProcess = {
       pid,
@@ -520,10 +450,6 @@ export class CliProcessService {
   }
 
   private readExitStatus(process: StoredProcess): StoredExitStatus | null {
-    if (process.toolType !== 'opencode') {
-      return null;
-    }
-
     const exitMetaPath = this.resolveExitStatusPath(this.resolveStoredProcessDir(process));
     if (!existsSync(exitMetaPath)) {
       return null;
@@ -546,6 +472,10 @@ export class CliProcessService {
       return '';
     }
     return readFileSync(filePath, 'utf-8');
+  }
+
+  private touchFile(filePath: string): void {
+    closeSync(openSync(filePath, 'a'));
   }
 
   private fileSizeSafe(filePath: string): number {
@@ -614,20 +544,12 @@ export class CliProcessService {
     return join(processDir, 'exit-status.json');
   }
 
-  private resolveOpenCodeWrapperPath(): string {
-    return join(this.stateDir, 'opencode-detached-wrapper.sh');
+  private resolveDetachedWrapperPath(): string {
+    return join(this.stateDir, 'detached-runner-v1.sh');
   }
 
-  private resolveStdoutPathForPidPlaceholder(): string {
-    return join(this.stateDir, `pending-${Date.now()}-${Math.random().toString(36).slice(2)}.stdout.log`);
-  }
-
-  private resolveStderrPathForPidPlaceholder(): string {
-    return join(this.stateDir, `pending-${Date.now()}-${Math.random().toString(36).slice(2)}.stderr.log`);
-  }
-
-  private ensureOpenCodeWrapperScript(): string {
-    const wrapperPath = this.resolveOpenCodeWrapperPath();
+  private ensureDetachedWrapperScript(): string {
+    const wrapperPath = this.resolveDetachedWrapperPath();
     if (existsSync(wrapperPath)) {
       return wrapperPath;
     }
@@ -659,16 +581,6 @@ exit "$exit_code"
     );
     chmodSync(wrapperPath, 0o755);
     return wrapperPath;
-  }
-
-  private renamePlaceholderFile(fromPath: string, toPath: string): void {
-    renameSync(fromPath, toPath);
-  }
-
-  private removeFileIfExists(filePath: string): void {
-    if (existsSync(filePath)) {
-      unlinkSync(filePath);
-    }
   }
 
   private killPidOrGroup(pid: number, signal: NodeJS.Signals): void {

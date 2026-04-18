@@ -15,7 +15,6 @@ The package name stays `ai-cli-mcp` for now. We do not introduce a daemon. We ke
 - Introducing a long-running background daemon
 - Introducing a new public job identifier such as `run_id`
 - Making the CLI responsible for deep process orchestration beyond launching and observing AI CLI processes
-- Capturing exit codes in the first production CLI iteration
 
 ## Product Shape
 
@@ -61,9 +60,9 @@ Properties:
 
 - Returns MCP-like JSON including `pid`, `status`, `agent`, and `message`
 - Uses `pid` as the public identifier
-- Spawns the actual Claude/Codex/Gemini process directly
+- Spawns a thin detached wrapper that runs the actual Claude/Codex/Gemini/Forge/OpenCode process
 - Redirects `stdout` and `stderr` to files
-- Does not guarantee `exitCode` in the initial design
+- Persists natural process exit status to `exit-status.json`
 
 ### `ai-cli wait`
 
@@ -216,23 +215,19 @@ The first production CLI implementation uses direct process spawning with file r
 
 Approach:
 
-- Spawn the actual AI CLI process directly
+- Spawn a thin detached wrapper process
+- Let the wrapper run the actual AI CLI process
 - Redirect `stdout` to a file
 - Redirect `stderr` to a file
 - Persist enough metadata to support `wait`, `ps`, `result`, and `kill`
+- Persist natural process exit status to `exit-status.json`
 
 Why this approach:
 
-- Lighter than introducing a worker process
+- Lighter than introducing a long-running daemon
 - Keeps the CLI close to Unix process semantics
 - Avoids worker-child termination complexity
 - Keeps migration from the current MCP server relatively simple
-
-Tradeoff accepted in phase one:
-
-- `exitCode` is not guaranteed to be captured
-
-If this becomes a practical problem, a thin per-run wrapper/worker can be introduced later without changing the public CLI model.
 
 ## MCP Compatibility Plan
 
@@ -269,7 +264,6 @@ The following items are intentionally deferred:
 - state directory path
 - file naming scheme
 - metadata file schema
-- exit code capture for detached CLI runs
 - retention and cleanup policy
 - exact raw output access patterns
 - Windows-specific process handling details

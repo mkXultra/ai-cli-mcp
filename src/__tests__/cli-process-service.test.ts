@@ -5,8 +5,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CliProcessService } from '../cli-process-service.js';
 import { createOpenCodeMock } from './utils/opencode-mock.js';
 
-function createMockCliScript(dir: string, name: string, options: { ignoreSigterm?: boolean } = {}): string {
+function createMockCliScript(
+  dir: string,
+  name: string,
+  options: { ignoreSigterm?: boolean; exitCode?: number; stderr?: string } = {},
+): string {
   const scriptPath = join(dir, name);
+  const exitCode = options.exitCode ?? 0;
   writeFileSync(
     scriptPath,
     `#!/bin/bash
@@ -30,6 +35,8 @@ ${options.ignoreSigterm ? '  while true; do sleep 1; done\n' : '  sleep 5\n'}
 fi
 
 echo "Command executed successfully"
+${options.stderr ? `echo ${JSON.stringify(options.stderr)} >&2\n` : ''}
+exit ${exitCode}
 `
   );
   chmodSync(scriptPath, 0o755);
@@ -90,7 +97,7 @@ describe('CliProcessService', () => {
       pid: runResult.pid,
       agent: 'claude',
       status: 'completed',
-      exitCode: null,
+      exitCode: 0,
       model: 'sonnet',
       stdout: expect.any(String),
       stderr: expect.any(String),
@@ -111,7 +118,7 @@ describe('CliProcessService', () => {
       pid: runResult.pid,
       agent: 'claude',
       status: 'completed',
-      exitCode: null,
+      exitCode: 0,
       model: 'sonnet',
       stdout: expect.stringContaining('Command executed successfully'),
       stderr: expect.any(String),
@@ -120,6 +127,51 @@ describe('CliProcessService', () => {
     expect(result).not.toHaveProperty('workFolder');
     expect(result).not.toHaveProperty('prompt');
     expect(readFileSync(join(processDir, 'meta.json'), 'utf-8')).toContain('"status": "completed"');
+    expect(readFileSync(join(processDir, 'exit-status.json'), 'utf-8')).toContain('"exitCode": 0');
+  });
+
+  it('persists non-zero exit codes for detached non-OpenCode runs', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
+    tempDirs.push(root);
+    const scriptPath = createMockCliScript(root, 'mock-claude-fail', {
+      exitCode: 5,
+      stderr: 'mock cli failure',
+    });
+    const stateDir = join(root, 'state');
+    const workFolder = join(root, 'work');
+    mkdirSync(workFolder, { recursive: true });
+
+    const service = new CliProcessService({
+      stateDir,
+      cliPaths: {
+        claude: scriptPath,
+        codex: scriptPath,
+        gemini: scriptPath,
+        forge: scriptPath,
+        opencode: scriptPath,
+      },
+    });
+
+    const runResult = await service.startProcess({
+      prompt: 'fail please',
+      cwd: workFolder,
+      model: 'sonnet',
+    });
+
+    const processDir = join(stateDir, 'cwds', encodeCwd(realpathSync(workFolder)), String(runResult.pid));
+    const [waited] = await service.waitForProcesses([runResult.pid], 5);
+
+    expect(waited).toMatchObject({
+      pid: runResult.pid,
+      agent: 'claude',
+      status: 'failed',
+      exitCode: 5,
+      model: 'sonnet',
+      stdout: expect.stringContaining('Command executed successfully'),
+      stderr: expect.stringContaining('mock cli failure'),
+    });
+    expect(readFileSync(join(processDir, 'meta.json'), 'utf-8')).toContain('"status": "failed"');
+    expect(readFileSync(join(processDir, 'exit-status.json'), 'utf-8')).toContain('"exitCode": 5');
   });
 
   it('peeks only appended natural-language messages from detached logs', async () => {
@@ -231,7 +283,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
       pid: runResult.pid,
       agent: 'claude',
       status: 'completed',
-      exitCode: null,
+      exitCode: 0,
       model: null,
       session_id: 'session-cli-1',
       agentOutput: {
@@ -249,7 +301,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
       pid: runResult.pid,
       agent: 'claude',
       status: 'completed',
-      exitCode: null,
+      exitCode: 0,
       model: null,
       session_id: 'session-cli-1',
       agentOutput: {
@@ -268,7 +320,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
       pid: runResult.pid,
       agent: 'claude',
       status: 'completed',
-      exitCode: null,
+      exitCode: 0,
       model: null,
       startTime: expect.any(String),
       workFolder,
@@ -292,7 +344,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
       pid: runResult.pid,
       agent: 'claude',
       status: 'completed',
-      exitCode: null,
+      exitCode: 0,
       model: null,
       startTime: expect.any(String),
       workFolder,

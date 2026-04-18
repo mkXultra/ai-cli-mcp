@@ -226,13 +226,13 @@ Each PID directory contains:
 - `meta.json`
 - `stdout.log`
 - `stderr.log`
-- `exit-status.json` for detached OpenCode runs
+- `exit-status.json` for detached runs
 
 Use `ai-cli cleanup` to remove completed and failed runs. Running processes are preserved.
 
-## Known Limitation
+## Exit Status Tracking
 
-Detached `ai-cli` runs persist natural exit status for OpenCode-backed runs, including failed exit codes used to preserve raw OpenCode stdout/stderr in result output. Other detached backends still keep the pre-existing limitation: naturally finished runs may be surfaced as completed without a reliable persisted exit code until broader exit tracking is added.
+Detached `ai-cli` runs persist natural exit status for all supported backends through `exit-status.json`. Non-zero exits are surfaced as `failed` with the recorded `exitCode`; zero exits are surfaced as `completed` with `exitCode: 0`.
 
 ## Connecting to Your MCP Client
 

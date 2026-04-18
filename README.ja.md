@@ -229,13 +229,13 @@ OpenCode のモデル指定は次の 2 つを受け付けます。
 - `meta.json`
 - `stdout.log`
 - `stderr.log`
-- `exit-status.json`（detached な OpenCode 実行用）
+- `exit-status.json`（detached 実行用）
 
 完了済み・失敗済みの実行は `ai-cli cleanup` で削除できます。`running` のものは保持されます。
 
-## 既知の制約
+## Exit status の追跡
 
-detached 実行された `ai-cli` では、OpenCode バックエンドに限り自然終了時の exit status を永続化します。そのため OpenCode の失敗終了は非ゼロ exit code を含めて `failed` として扱われ、結果では生の `stdout` / `stderr` を保持します。一方、他の detached バックエンドでは従来どおり、より広い exit-status 追跡が追加されるまでは自然終了した実行が信頼できる exit code なしで `completed` と見なされる制約が残ります。
+detached 実行された `ai-cli` は、すべての対応バックエンドで自然終了時の exit status を `exit-status.json` に永続化します。非ゼロ終了は記録された `exitCode` 付きの `failed` として扱われ、ゼロ終了は `exitCode: 0` 付きの `completed` として扱われます。
 
 ## MCPクライアントへの接続
 
