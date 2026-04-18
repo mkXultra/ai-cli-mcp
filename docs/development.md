@@ -70,6 +70,9 @@ ACM_LIVE_E2E=1 npm run test:live
 # Select backends for live E2E. Use "all" for every supported backend.
 ACM_LIVE_E2E=1 ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live
 
+# Include both ai-cli and MCP server surfaces.
+ACM_LIVE_E2E=1 ACM_LIVE_E2E_SURFACE=all ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live
+
 # Watch mode for development
 npm run test:watch
 

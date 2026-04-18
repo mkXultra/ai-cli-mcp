@@ -24,7 +24,11 @@ export class MCPTestClient extends EventEmitter {
   }>();
   private buffer = '';
 
-  constructor(private serverPath: string, private env: Record<string, string> = {}) {
+  constructor(
+    private serverPath: string,
+    private env: NodeJS.ProcessEnv = {},
+    private requestTimeoutMs = 30000,
+  ) {
     super();
   }
 
@@ -95,17 +99,25 @@ export class MCPTestClient extends EventEmitter {
     };
 
     return new Promise((resolve, reject) => {
-      this.pendingRequests.set(id, { resolve, reject });
-      
-      this.server?.stdin?.write(JSON.stringify(request) + '\n');
-      
-      // Timeout after 30 seconds
-      setTimeout(() => {
+      const timeout = setTimeout(() => {
         if (this.pendingRequests.has(id)) {
           this.pendingRequests.delete(id);
           reject(new Error(`Request ${id} timed out`));
         }
-      }, 30000);
+      }, this.requestTimeoutMs);
+
+      this.pendingRequests.set(id, {
+        resolve: (response) => {
+          clearTimeout(timeout);
+          resolve(response);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          reject(error);
+        },
+      });
+
+      this.server?.stdin?.write(JSON.stringify(request) + '\n');
     });
   }
 
@@ -114,11 +126,11 @@ export class MCPTestClient extends EventEmitter {
       name,
       arguments: args,
     });
-    
+
     if (response.error) {
       throw new Error(`Tool call failed: ${response.error.message}`);
     }
-    
+
     return response.result?.content;
   }
 
@@ -141,7 +153,7 @@ export function createTestClient(options: {
   serverPath?: string;
   claudeCliName?: string;
   debug?: boolean;
-  env?: Record<string, string>;
+  env?: NodeJS.ProcessEnv;
 } = {}): MCPTestClient {
   const {
     serverPath = DEFAULT_SERVER_PATH,

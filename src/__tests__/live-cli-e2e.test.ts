@@ -9,9 +9,11 @@ import {
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { MCPTestClient } from './utils/mcp-client.js';
 
 type LiveAgent = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode';
+type LiveSurface = 'cli' | 'mcp' | 'all';
 
 const execFileAsync = promisify(execFile);
 const liveEnabled = process.env.ACM_LIVE_E2E === '1';
@@ -25,6 +27,7 @@ const commandTimeoutMs = parsePositiveNumber(
   (waitTimeoutSeconds + 60) * 1000,
 );
 const aiCliPath = resolve('dist/bin/ai-cli.js');
+const mcpServerPath = resolve('dist/server.js');
 const tempDirs: string[] = [];
 
 const defaultModels: Record<LiveAgent, string> = {
@@ -61,6 +64,14 @@ function parseSelectedAgents(): LiveAgent[] {
   return Array.from(new Set(values as LiveAgent[]));
 }
 
+function parseLiveSurface(): LiveSurface {
+  const raw = (process.env.ACM_LIVE_E2E_SURFACE || 'cli').trim().toLowerCase();
+  if (raw === 'cli' || raw === 'mcp' || raw === 'all') {
+    return raw;
+  }
+  throw new Error(`Invalid ACM_LIVE_E2E_SURFACE value: ${raw}`);
+}
+
 function modelForAgent(agent: LiveAgent): string {
   const envName = `ACM_LIVE_E2E_${agent.toUpperCase()}_MODEL`;
   return process.env[envName] || defaultModels[agent];
@@ -70,6 +81,12 @@ function makeTempDir(prefix: string): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
   tempDirs.push(dir);
   return dir;
+}
+
+function parseToolJson(content: any): any {
+  expect(content).toHaveLength(1);
+  expect(content[0].type).toBe('text');
+  return JSON.parse(content[0].text);
 }
 
 async function runAiCliJson(args: string[], env: NodeJS.ProcessEnv): Promise<any> {
@@ -166,110 +183,222 @@ afterAll(() => {
 if (liveEnabled) {
   describe('live ai-cli E2E against installed AI CLIs', () => {
     const selectedAgents = parseSelectedAgents();
+    const liveSurface = parseLiveSurface();
     const stateDir = makeTempDir('acm-live-state-');
     const env = {
       ...process.env,
       AI_CLI_STATE_DIR: stateDir,
     };
 
-    it('checks live prerequisites through ai-cli doctor and models', async () => {
-      const doctorStatus = await runAiCliJson(['doctor'], env);
+    if (liveSurface !== 'mcp') {
+      it('checks live prerequisites through ai-cli doctor and models', async () => {
+        const doctorStatus = await runAiCliJson(['doctor'], env);
 
-      expect(doctorStatus.checks).toEqual({
-        binaryAvailability: true,
-        pathResolution: true,
-        loginState: false,
-        termsAcceptance: false,
-      });
-      for (const agent of selectedAgents) {
-        assertSelectedAgentAvailable(doctorStatus, agent);
-      }
+        expect(doctorStatus.checks).toEqual({
+          binaryAvailability: true,
+          pathResolution: true,
+          loginState: false,
+          termsAcceptance: false,
+        });
+        for (const agent of selectedAgents) {
+          assertSelectedAgentAvailable(doctorStatus, agent);
+        }
 
-      const models = await runAiCliJson(['models'], env);
-      expect(models.aliases).toEqual(expect.any(Array));
-      expect(models.claude).toContain('haiku');
-      expect(models.codex).toContain('codex');
-      expect(models.gemini).toContain('gemini-2.5-flash');
-      expect(models.forge).toEqual(['forge']);
-      expect(models.opencode).toEqual(['opencode']);
-    });
-
-    it.each(selectedAgents)('runs the real %s CLI through ai-cli', async (agent) => {
-      const workDir = makeTempDir(`acm-live-${agent}-`);
-      const model = modelForAgent(agent);
-      const prompt = `Reply with exactly this token and nothing else: ${liveToken}`;
-
-      const runResult = await runAiCliJson([
-        'run',
-        '--cwd',
-        workDir,
-        '--model',
-        model,
-        '--prompt',
-        prompt,
-      ], env);
-
-      expect(runResult).toEqual({
-        pid: expect.any(Number),
-        status: 'started',
-        agent,
-        message: expect.any(String),
+        const models = await runAiCliJson(['models'], env);
+        expect(models.aliases).toEqual(expect.any(Array));
+        expect(models.claude).toContain('haiku');
+        expect(models.codex).toContain('codex');
+        expect(models.gemini).toContain('gemini-2.5-flash');
+        expect(models.forge).toEqual(['forge']);
+        expect(models.opencode).toEqual(['opencode']);
       });
 
-      const processList = await runAiCliJson(['ps'], env);
-      expect(processList).toContainEqual({
-        pid: runResult.pid,
-        agent,
-        status: expect.any(String),
+      it.each(selectedAgents)('runs the real %s CLI through ai-cli', async (agent) => {
+        const workDir = makeTempDir(`acm-live-${agent}-`);
+        const model = modelForAgent(agent);
+        const prompt = `Reply with exactly this token and nothing else: ${liveToken}`;
+
+        const runResult = await runAiCliJson([
+          'run',
+          '--cwd',
+          workDir,
+          '--model',
+          model,
+          '--prompt',
+          prompt,
+        ], env);
+
+        expect(runResult).toEqual({
+          pid: expect.any(Number),
+          status: 'started',
+          agent,
+          message: expect.any(String),
+        });
+
+        const processList = await runAiCliJson(['ps'], env);
+        expect(processList).toContainEqual({
+          pid: runResult.pid,
+          agent,
+          status: expect.any(String),
+        });
+
+        const peekResult = await runAiCliJson(['peek', String(runResult.pid), '--time', '1'], env);
+        expect(peekResult.processes).toHaveLength(1);
+        expect(peekResult.processes[0]).toMatchObject({
+          pid: runResult.pid,
+          agent,
+          status: expect.any(String),
+          events: expect.any(Array),
+        });
+
+        const waitResults = await runAiCliJson([
+          'wait',
+          String(runResult.pid),
+          '--timeout',
+          String(waitTimeoutSeconds),
+          '--verbose',
+        ], env);
+
+        expect(waitResults).toHaveLength(1);
+        assertCompletedLiveResult(waitResults[0], {
+          pid: runResult.pid,
+          agent,
+          model,
+        });
+
+        const result = await runAiCliJson(['result', String(runResult.pid), '--verbose'], env);
+        assertCompletedLiveResult(result, {
+          pid: runResult.pid,
+          agent,
+          model,
+        });
+
+        if (assertToken) {
+          expect(JSON.stringify(result)).toContain(liveToken);
+        }
+
+        const exitStatusPath = findExitStatusPath(stateDir, runResult.pid);
+        expect(exitStatusPath).toEqual(expect.any(String));
+        expect(JSON.parse(readFileSync(exitStatusPath!, 'utf-8'))).toEqual({
+          status: 'completed',
+          exitCode: 0,
+        });
+
+        const cleanupResult = await runAiCliJson(['cleanup'], env);
+        expect(cleanupResult.removed).toBeGreaterThanOrEqual(1);
+        const processListAfterCleanup = await runAiCliJson(['ps'], env);
+        expect(processListAfterCleanup.some((entry: any) => entry.pid === runResult.pid)).toBe(false);
       });
+    }
 
-      const peekResult = await runAiCliJson(['peek', String(runResult.pid), '--time', '1'], env);
-      expect(peekResult.processes).toHaveLength(1);
-      expect(peekResult.processes[0]).toMatchObject({
-        pid: runResult.pid,
-        agent,
-        status: expect.any(String),
-        events: expect.any(Array),
+    if (liveSurface !== 'cli') {
+      describe('MCP server live surface', () => {
+        let client: MCPTestClient;
+
+        beforeAll(async () => {
+          client = new MCPTestClient(mcpServerPath, {
+            ...env,
+            VITEST: '',
+            MCP_CLAUDE_DEBUG: '',
+          }, commandTimeoutMs);
+          await client.connect();
+        });
+
+        afterAll(async () => {
+          await client?.disconnect();
+        });
+
+        it('checks live prerequisites through MCP doctor and models', async () => {
+          const doctorStatus = parseToolJson(await client.callTool('doctor', {}));
+
+          expect(doctorStatus.checks).toEqual({
+            binaryAvailability: true,
+            pathResolution: true,
+            loginState: false,
+            termsAcceptance: false,
+          });
+          for (const agent of selectedAgents) {
+            assertSelectedAgentAvailable(doctorStatus, agent);
+          }
+
+          const models = parseToolJson(await client.callTool('models', {}));
+          expect(models.aliases).toEqual(expect.any(Array));
+          expect(models.claude).toContain('haiku');
+          expect(models.codex).toContain('codex');
+          expect(models.gemini).toContain('gemini-2.5-flash');
+          expect(models.forge).toEqual(['forge']);
+          expect(models.opencode).toEqual(['opencode']);
+        });
+
+        it.each(selectedAgents)('runs the real %s CLI through MCP', async (agent) => {
+          const workDir = makeTempDir(`acm-live-mcp-${agent}-`);
+          const model = modelForAgent(agent);
+          const prompt = `Reply with exactly this token and nothing else: ${liveToken}`;
+
+          const runResult = parseToolJson(await client.callTool('run', {
+            prompt,
+            workFolder: workDir,
+            model,
+          }));
+
+          expect(runResult).toEqual({
+            pid: expect.any(Number),
+            status: 'started',
+            agent,
+            message: expect.any(String),
+          });
+
+          const processList = parseToolJson(await client.callTool('list_processes', {}));
+          expect(processList).toContainEqual({
+            pid: runResult.pid,
+            agent,
+            status: expect.any(String),
+          });
+
+          const peekResult = parseToolJson(await client.callTool('peek', {
+            pids: [runResult.pid],
+            peek_time_sec: 1,
+          }));
+          expect(peekResult.processes).toHaveLength(1);
+          expect(peekResult.processes[0]).toMatchObject({
+            pid: runResult.pid,
+            agent,
+            status: expect.any(String),
+            events: expect.any(Array),
+          });
+
+          const waitResults = parseToolJson(await client.callTool('wait', {
+            pids: [runResult.pid],
+            timeout: waitTimeoutSeconds,
+            verbose: true,
+          }));
+
+          expect(waitResults).toHaveLength(1);
+          assertCompletedLiveResult(waitResults[0], {
+            pid: runResult.pid,
+            agent,
+            model,
+          });
+
+          const result = parseToolJson(await client.callTool('get_result', {
+            pid: runResult.pid,
+            verbose: true,
+          }));
+          assertCompletedLiveResult(result, {
+            pid: runResult.pid,
+            agent,
+            model,
+          });
+
+          if (assertToken) {
+            expect(JSON.stringify(result)).toContain(liveToken);
+          }
+
+          const cleanupResult = parseToolJson(await client.callTool('cleanup_processes', {}));
+          expect(cleanupResult.removedPids).toContain(runResult.pid);
+        });
       });
-
-      const waitResults = await runAiCliJson([
-        'wait',
-        String(runResult.pid),
-        '--timeout',
-        String(waitTimeoutSeconds),
-        '--verbose',
-      ], env);
-
-      expect(waitResults).toHaveLength(1);
-      assertCompletedLiveResult(waitResults[0], {
-        pid: runResult.pid,
-        agent,
-        model,
-      });
-
-      const result = await runAiCliJson(['result', String(runResult.pid), '--verbose'], env);
-      assertCompletedLiveResult(result, {
-        pid: runResult.pid,
-        agent,
-        model,
-      });
-
-      if (assertToken) {
-        expect(JSON.stringify(result)).toContain(liveToken);
-      }
-
-      const exitStatusPath = findExitStatusPath(stateDir, runResult.pid);
-      expect(exitStatusPath).toEqual(expect.any(String));
-      expect(JSON.parse(readFileSync(exitStatusPath!, 'utf-8'))).toEqual({
-        status: 'completed',
-        exitCode: 0,
-      });
-
-      const cleanupResult = await runAiCliJson(['cleanup'], env);
-      expect(cleanupResult.removed).toBeGreaterThanOrEqual(1);
-      const processListAfterCleanup = await runAiCliJson(['ps'], env);
-      expect(processListAfterCleanup.some((entry: any) => entry.pid === runResult.pid)).toBe(false);
-    });
+    }
   });
 } else {
   describe('live ai-cli E2E disabled', () => {

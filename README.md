@@ -384,9 +384,12 @@ npm test
 
 # Release-time live E2E against real installed AI CLIs
 ACM_LIVE_E2E=1 ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live
+
+# Release-time live E2E for both ai-cli and MCP server surfaces
+ACM_LIVE_E2E=1 ACM_LIVE_E2E_SURFACE=all ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live
 ```
 
-Live E2E is opt-in because it depends on installed and authenticated external CLIs, network access, provider availability, and cost budget.
+Live E2E is opt-in because it depends on installed and authenticated external CLIs, network access, provider availability, and cost budget. `ACM_LIVE_E2E_SURFACE` defaults to `cli`; use `mcp` or `all` to include the MCP server surface.
 
 ## Advanced Configuration (Optional)
 

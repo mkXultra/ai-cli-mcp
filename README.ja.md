@@ -394,9 +394,12 @@ npm run test:e2e
 
 # リリース前の live E2E（実際にインストール済み AI CLI を叩く）
 ACM_LIVE_E2E=1 ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live
+
+# ai-cli と MCP server surface の両方を叩く live E2E
+ACM_LIVE_E2E=1 ACM_LIVE_E2E_SURFACE=all ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live
 ```
 
-live E2E は opt-in です。インストール済みかつ認証済みの外部 CLI、ネットワーク、provider 側の可用性、コスト予算に依存するため、通常の `npm test` には含めていません。
+live E2E は opt-in です。インストール済みかつ認証済みの外部 CLI、ネットワーク、provider 側の可用性、コスト予算に依存するため、通常の `npm test` には含めていません。`ACM_LIVE_E2E_SURFACE` は既定で `cli` です。MCP server surface も含める場合は `mcp` または `all` を指定します。
 
 ## 高度な設定（オプション）
 
