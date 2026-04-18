@@ -339,6 +339,10 @@ Lists all running and completed AI agent processes with their status, PID, and b
 
 Checks supported AI CLI binary availability and path resolution from MCP clients. Like `ai-cli doctor`, it returns a `checks` block and does not verify login state or terms acceptance.
 
+### `models`
+
+Lists supported model names, aliases, and dynamic backend discovery hints from MCP clients. This returns the same structured payload as `ai-cli models`.
+
 ### `get_result`
 
 Gets the current output and status of an AI agent process by PID.

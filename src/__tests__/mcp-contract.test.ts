@@ -97,6 +97,7 @@ describe('MCP Contract Tests', () => {
       'get_result',
       'kill_process',
       'list_processes',
+      'models',
       'peek',
       'run',
       'wait',
@@ -147,9 +148,21 @@ describe('MCP Contract Tests', () => {
     const doctorTool = tools.find((tool: any) => tool.name === 'doctor');
     expect(doctorTool.inputSchema.properties).toEqual({});
     expect(doctorTool.description).toContain('binary availability');
+
+    const modelsTool = tools.find((tool: any) => tool.name === 'models');
+    expect(modelsTool.inputSchema.properties).toEqual({});
+    expect(modelsTool.description).toContain('model aliases');
   });
 
   it('preserves the stdio MCP smoke flow and response shapes', async () => {
+    const modelsResponse = await client.callTool('models', {});
+    const modelsData = parseToolJson(modelsResponse);
+
+    expect(modelsData.aliases).toEqual(expect.any(Array));
+    expect(modelsData.claude).toContain('sonnet');
+    expect(modelsData.opencode).toEqual(['opencode']);
+    expect(modelsData.dynamicModelBackends.opencode.explicitPattern).toBe('oc-<provider/model>');
+
     const doctorResponse = await client.callTool('doctor', {});
     const doctorData = parseToolJson(doctorResponse);
 

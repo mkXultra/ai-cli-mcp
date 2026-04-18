@@ -497,7 +497,7 @@ describe('ClaudeCodeServer Unit Tests', () => {
       const handler = listToolsCall[1];
       const result = await handler();
       
-      expect(result.tools).toHaveLength(8);
+      expect(result.tools).toHaveLength(9);
       const toolNames = result.tools.map((tool: any) => tool.name);
       expect(toolNames).toEqual([
         'run',
@@ -508,6 +508,7 @@ describe('ClaudeCodeServer Unit Tests', () => {
         'kill_process',
         'cleanup_processes',
         'doctor',
+        'models',
       ]);
       expect(result.tools[0].name).toBe('run');
       expect(result.tools[0].description).toContain('AI Agent Runner');

@@ -252,6 +252,7 @@ Target mapping:
 - MCP `kill_process` -> shared process service `kill`
 - MCP `cleanup_processes` -> shared process service `cleanup`
 - MCP `doctor` -> CLI binary doctor status
+- MCP `models` -> CLI model catalog payload
 
 ## Implementation Order
 

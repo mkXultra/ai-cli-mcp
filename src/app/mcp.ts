@@ -10,7 +10,7 @@ import {
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { debugLog, findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli, getCliDoctorStatus } from '../cli-utils.js';
-import { getModelParameterDescription, getSupportedModelsDescription } from '../model-catalog.js';
+import { getModelParameterDescription, getModelsPayload, getSupportedModelsDescription } from '../model-catalog.js';
 import { validatePeekPids, validatePeekTimeSec } from '../peek.js';
 import { ProcessService } from '../process-service.js';
 
@@ -284,6 +284,14 @@ ${getSupportedModelsDescription()}
             type: 'object',
             properties: {},
           },
+        },
+        {
+          name: 'models',
+          description: 'List supported model names, model aliases, and dynamic backend discovery hints.',
+          inputSchema: {
+            type: 'object',
+            properties: {},
+          },
         }
       ],
     }));
@@ -311,6 +319,8 @@ ${getSupportedModelsDescription()}
           return this.handleCleanupProcesses();
         case 'doctor':
           return this.handleDoctor();
+        case 'models':
+          return this.handleModels();
         default:
           throw new McpError(ErrorCode.MethodNotFound, `Tool ${toolName} not found`);
       }
@@ -462,6 +472,15 @@ ${getSupportedModelsDescription()}
       content: [{
         type: 'text',
         text: JSON.stringify(getCliDoctorStatus(), null, 2)
+      }]
+    };
+  }
+
+  private async handleModels(): Promise<ServerResult> {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(getModelsPayload(), null, 2)
       }]
     };
   }

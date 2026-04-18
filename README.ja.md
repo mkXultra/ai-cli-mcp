@@ -342,6 +342,10 @@ ai-cli peek 123 --time 10 --include-tool-calls
 
 MCP クライアントから、対応する AI CLI バイナリの利用可否と path 解決を確認します。`ai-cli doctor` と同じく `checks` ブロックを返し、ログイン状態や利用規約同意は確認しません。
 
+### `models`
+
+MCP クライアントから、対応モデル名、エイリアス、動的バックエンドの discovery hint を確認します。`ai-cli models` と同じ構造化 payload を返します。
+
 ### `get_result`
 
 PIDを指定して、AIエージェントプロセスの現在の出力とステータスを取得します。

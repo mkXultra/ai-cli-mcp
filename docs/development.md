@@ -126,7 +126,7 @@ npx @modelcontextprotocol/inspector node dist/server.js
 ```
 
 This will open a web interface where you can:
-1. View all available tools (`run`, `list_processes`, `get_result`, `wait`, `peek`, `kill_process`, `cleanup_processes`, `doctor`)
+1. View all available tools (`run`, `list_processes`, `get_result`, `wait`, `peek`, `kill_process`, `cleanup_processes`, `doctor`, `models`)
 2. Test each tool with different parameters
 3. Test different AI models including:
    - Claude models: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
