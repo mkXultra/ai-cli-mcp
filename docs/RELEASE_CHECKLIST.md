@@ -6,7 +6,7 @@ This project uses [semantic-release](https://semantic-release.gitbook.io/) for a
 
 1. **Commit with Conventional Commits format** to `develop` branch
 2. **CI automatically determines version** based on commit messages
-3. **Automatic release**: version bump, CHANGELOG update, npm publish, GitHub Release
+3. **Automatic release**: version bump, `server.json` sync, CHANGELOG update, npm publish, GitHub Release
 
 ## Commit Message Format
 
@@ -66,3 +66,9 @@ Configuration on npmjs.com:
 - Organization/user: `mkXultra`
 - Repository: `ai-cli-mcp`
 - Workflow filename: `publish.yml`
+
+## MCP Registry Manifest
+
+`server.json` is updated during the semantic-release `prepare` step by `.github/semantic-release-sync-server-json.cjs`. Keep `server.json` in the `@semantic-release/git` assets list so the release commit, npm package, and MCP Registry publish all use the same version.
+
+`npm run test:package` checks that `server.json` is included in the npm package and that its version matches `package.json`.
