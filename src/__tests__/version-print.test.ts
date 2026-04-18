@@ -1,9 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createTestClient, MCPTestClient } from './utils/mcp-client.js';
 import { getSharedMock } from './utils/persistent-mock.js';
+
+const packageVersion = JSON.parse(
+  readFileSync(new URL('../../package.json', import.meta.url), 'utf-8')
+).version;
 
 describe('Version Print on First Use', () => {
   let client: MCPTestClient;
@@ -53,6 +57,7 @@ describe('Version Print on First Use', () => {
     // Check that version was printed on first use
     const versionCall = findVersionCall(consoleErrorSpy.mock.calls);
     expect(versionCall).toBeDefined();
+    expect(versionCall![1]).toContain(`ai_cli_mcp v${packageVersion}`);
     expect(versionCall![1]).toMatch(/ai_cli_mcp v[0-9]+\.[0-9]+\.[0-9]+ started at \d{4}-\d{2}-\d{2}T/);
     
     // Clear the spy but keep the spy active

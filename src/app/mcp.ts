@@ -8,13 +8,14 @@ import {
   type ServerResult,
 } from '@modelcontextprotocol/sdk/types.js';
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { debugLog, findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli, getCliDoctorStatus } from '../cli-utils.js';
 import { getModelParameterDescription, getSupportedModelsDescription } from '../model-catalog.js';
 import { validatePeekPids, validatePeekTimeSec } from '../peek.js';
 import { ProcessService } from '../process-service.js';
 
-// Server version - update this when releasing new versions
-const SERVER_VERSION = "2.2.0";
+const require = createRequire(import.meta.url);
+const SERVER_VERSION = (require('../../package.json') as { version: string }).version;
 
 // Track if this is the first tool use for version printing
 let isFirstToolUse = true;
