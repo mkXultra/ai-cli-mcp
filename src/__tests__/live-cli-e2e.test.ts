@@ -89,6 +89,26 @@ function parseToolJson(content: any): any {
   return JSON.parse(content[0].text);
 }
 
+function stringifyOutputField(value: any): string {
+  if (value === undefined || value === null) {
+    return '';
+  }
+  return typeof value === 'string' ? value : JSON.stringify(value);
+}
+
+function assertLiveTokenInOutput(result: any): void {
+  const output = [
+    stringifyOutputField(result.agentOutput),
+    stringifyOutputField(result.stdout),
+    stringifyOutputField(result.stderr),
+  ].filter(Boolean).join('\n');
+
+  expect(
+    output,
+    'live token should appear in parsed or raw agent output, not only in verbose metadata',
+  ).toContain(liveToken);
+}
+
 async function runAiCliJson(args: string[], env: NodeJS.ProcessEnv): Promise<any> {
   try {
     const { stdout } = await execFileAsync(process.execPath, [aiCliPath, ...args], {
@@ -236,11 +256,13 @@ if (liveEnabled) {
         });
 
         const processList = await runAiCliJson(['ps'], env);
-        expect(processList).toContainEqual({
-          pid: runResult.pid,
-          agent,
-          status: expect.any(String),
-        });
+        expect(processList).toEqual(expect.arrayContaining([
+          expect.objectContaining({
+            pid: runResult.pid,
+            agent,
+            status: expect.any(String),
+          }),
+        ]));
 
         const peekResult = await runAiCliJson(['peek', String(runResult.pid), '--time', '1'], env);
         expect(peekResult.processes).toHaveLength(1);
@@ -274,7 +296,7 @@ if (liveEnabled) {
         });
 
         if (assertToken) {
-          expect(JSON.stringify(result)).toContain(liveToken);
+          assertLiveTokenInOutput(result);
         }
 
         const exitStatusPath = findExitStatusPath(stateDir, runResult.pid);
@@ -349,11 +371,13 @@ if (liveEnabled) {
           });
 
           const processList = parseToolJson(await client.callTool('list_processes', {}));
-          expect(processList).toContainEqual({
-            pid: runResult.pid,
-            agent,
-            status: expect.any(String),
-          });
+          expect(processList).toEqual(expect.arrayContaining([
+            expect.objectContaining({
+              pid: runResult.pid,
+              agent,
+              status: expect.any(String),
+            }),
+          ]));
 
           const peekResult = parseToolJson(await client.callTool('peek', {
             pids: [runResult.pid],
@@ -391,7 +415,7 @@ if (liveEnabled) {
           });
 
           if (assertToken) {
-            expect(JSON.stringify(result)).toContain(liveToken);
+            assertLiveTokenInOutput(result);
           }
 
           const cleanupResult = parseToolJson(await client.callTool('cleanup_processes', {}));
@@ -404,6 +428,17 @@ if (liveEnabled) {
   describe('live ai-cli E2E disabled', () => {
     it('is opt-in via ACM_LIVE_E2E=1', () => {
       expect(liveEnabled).toBe(false);
+    });
+
+    it('does not accept the live token from verbose metadata alone', () => {
+      const metadataOnly = {
+        prompt: `Reply with exactly this token and nothing else: ${liveToken}`,
+      };
+
+      expect(() => assertLiveTokenInOutput(metadataOnly)).toThrow();
+      expect(() => assertLiveTokenInOutput({
+        agentOutput: { message: liveToken },
+      })).not.toThrow();
     });
   });
 }

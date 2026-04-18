@@ -320,6 +320,35 @@ describe('cli-builder', () => {
         expect(cmd.args).not.toContain('--model');
       });
 
+      it('should build codex default model command with reasoning_effort', () => {
+        const cmd = buildCliCommand({
+          prompt: 'test',
+          workFolder: '/tmp',
+          model: 'codex',
+          reasoning_effort: 'high',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.args).toContain('-c');
+        expect(cmd.args).toContain('model_reasoning_effort=high');
+        expect(cmd.args).not.toContain('--model');
+      });
+
+      it('should build codex default model command with session_id using exec resume', () => {
+        const cmd = buildCliCommand({
+          prompt: 'test',
+          workFolder: '/tmp',
+          model: 'codex',
+          session_id: 'codex-default-ses-456',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.args[0]).toBe('exec');
+        expect(cmd.args[1]).toBe('resume');
+        expect(cmd.args[2]).toBe('codex-default-ses-456');
+        expect(cmd.args).not.toContain('--model');
+      });
+
       it('should build codex command', () => {
         const cmd = buildCliCommand({
           prompt: 'test',
