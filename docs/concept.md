@@ -30,8 +30,13 @@ MCP Client (Cursor, Claude Code, etc.)
   ├─ run(prompt, model="gemini-2.5-pro") → PID 1236
   │
   ├─ list_processes()  → 実行状況一覧
+  ├─ peek(pids)        → 実行中出力の短時間観測
   ├─ get_result(pid)   → 個別結果取得
-  └─ wait(pids)        → 全完了待ち
+  ├─ wait(pids)        → 全完了待ち
+  ├─ kill_process(pid) → 実行中プロセスの終了
+  ├─ cleanup_processes() → 完了済み状態の掃除
+  ├─ doctor()          → CLI バイナリ解決状況
+  └─ models()          → 対応モデル一覧
 ```
 
 - **Fire-and-forget**: `run` は即座にPIDを返し、呼び出し側はブロックされない
