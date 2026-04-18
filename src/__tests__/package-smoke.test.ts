@@ -88,6 +88,8 @@ describe('npm package smoke', () => {
     const serverJson = JSON.parse(readFileSync('server.json', 'utf8'));
 
     expect(serverJson.name).toBe(packageJson.mcpName);
+    expect(serverJson.description).toBe(packageJson.description);
+    expect(serverJson.description.length).toBeLessThanOrEqual(100);
     expect(serverJson.version).toBe(packageJson.version);
     expect(serverJson.packages).toEqual(
       expect.arrayContaining([
