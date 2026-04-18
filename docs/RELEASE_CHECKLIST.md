@@ -48,6 +48,10 @@ Before merging to `develop`:
 - [ ] Commit messages follow Conventional Commits format
 - [ ] PR has been reviewed (if applicable)
 
+## Branch Protection
+
+Because merges to `develop` trigger the automated release workflow, branch protection should require the deterministic PR checks before merge. At minimum, require the `test` workflow job that runs `npm run test:release`; keep the Node.js CI matrix and dependency review checks required when they are enabled for the repository.
+
 ## Important: Git Tags
 
 semantic-release uses git tags to determine the current version. **Tags must exist on the `develop` branch.**
