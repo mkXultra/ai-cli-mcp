@@ -40,10 +40,10 @@ AI支援開発において、以下の制約がユーザーの生産性を阻害
 
 - ユーザーがプロンプト（文字列 or ファイルパス）、作業ディレクトリ、モデル名を指定してAIエージェントを起動できる
 - プロセスはバックグラウンドで実行され、即座にPIDが返却される
-- モデル名から適切なCLI（Claude / Codex / Gemini）が自動選択される
+- モデル名から適切なCLI（Claude / Codex / Gemini / Forge / OpenCode）が自動選択される
 - Ultra エイリアス（`claude-ultra`, `codex-ultra`, `gemini-ultra`）による簡易モデル指定をサポート
-- `session_id` による前回セッションの継続をサポート（Claude, Gemini）
-- `reasoning_effort` による推論深度の指定をサポート（Codex）
+- `session_id` による前回セッションの継続をサポート（Claude / Codex / Gemini / Forge / OpenCode）
+- `reasoning_effort` による推論深度の指定をサポート（Claude / Codex）
 
 ### FR-2: プロセス一覧 (`list_processes`)
 
@@ -69,6 +69,15 @@ AI支援開発において、以下の制約がユーザーの生産性を阻害
 ### FR-6: クリーンアップ (`cleanup_processes`)
 
 - 完了・失敗したプロセスをプロセスリストから削除し、メモリを解放できる
+
+### FR-7: CLI 状態確認 (`doctor`)
+
+- 対応 AI CLI バイナリの利用可否と path 解決結果を取得できる
+- 検査範囲として、ログイン状態や利用規約同意は未確認であることを機械可読に示す
+
+### FR-8: モデル一覧 (`models`)
+
+- 対応モデル名、モデルエイリアス、動的バックエンドの discovery hint を取得できる
 
 ## Non-Functional Requirements
 
@@ -99,7 +108,7 @@ AI支援開発において、以下の制約がユーザーの生産性を阻害
 | Provider | Models |
 |---|---|
 | Claude | `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku` |
-| Codex | `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5` |
+| Codex | `codex` for the CLI default, `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5` |
 | Gemini | `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview` |
 | Ultra aliases | `claude-ultra`, `codex-ultra`, `gemini-ultra` |
 

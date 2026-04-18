@@ -5,8 +5,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CliProcessService } from '../cli-process-service.js';
 import { createOpenCodeMock } from './utils/opencode-mock.js';
 
-function createMockCliScript(dir: string, name: string, options: { ignoreSigterm?: boolean } = {}): string {
+function createMockCliScript(
+  dir: string,
+  name: string,
+  options: { ignoreSigterm?: boolean; exitCode?: number; stderr?: string } = {},
+): string {
   const scriptPath = join(dir, name);
+  const exitCode = options.exitCode ?? 0;
   writeFileSync(
     scriptPath,
     `#!/bin/bash
@@ -30,6 +35,23 @@ ${options.ignoreSigterm ? '  while true; do sleep 1; done\n' : '  sleep 5\n'}
 fi
 
 echo "Command executed successfully"
+${options.stderr ? `echo ${JSON.stringify(options.stderr)} >&2\n` : ''}
+exit ${exitCode}
+`
+  );
+  chmodSync(scriptPath, 0o755);
+  return scriptPath;
+}
+
+function createOutputCliScript(dir: string, name: string, stdout: string): string {
+  const scriptPath = join(dir, name);
+  writeFileSync(
+    scriptPath,
+    `#!/bin/bash
+cat <<'EOF'
+${stdout.trimEnd()}
+EOF
+exit 0
 `
   );
   chmodSync(scriptPath, 0o755);
@@ -58,7 +80,10 @@ describe('CliProcessService', () => {
     const scriptPath = createMockCliScript(root, 'mock-claude');
     const stateDir = join(root, 'state');
     const workFolder = join(root, 'work');
+    mkdirSync(stateDir, { recursive: true });
     mkdirSync(workFolder, { recursive: true });
+    const legacyWrapperPath = join(stateDir, 'detached-runner-v1.sh');
+    writeFileSync(legacyWrapperPath, '#!/bin/sh\nexit 0\n');
 
     const service = new CliProcessService({
       stateDir,
@@ -80,6 +105,8 @@ describe('CliProcessService', () => {
     const processDir = join(stateDir, 'cwds', encodeCwd(realpathSync(workFolder)), String(runResult.pid));
     expect(runResult.pid).toBeGreaterThan(0);
     expect(runResult.status).toBe('started');
+    expect(existsSync(legacyWrapperPath)).toBe(false);
+    expect(existsSync(join(stateDir, 'detached-runner-v2.sh'))).toBe(true);
     expect(existsSync(join(processDir, 'meta.json'))).toBe(true);
     expect(existsSync(join(processDir, 'stdout.log'))).toBe(true);
     expect(existsSync(join(processDir, 'stderr.log'))).toBe(true);
@@ -90,7 +117,7 @@ describe('CliProcessService', () => {
       pid: runResult.pid,
       agent: 'claude',
       status: 'completed',
-      exitCode: null,
+      exitCode: 0,
       model: 'sonnet',
       stdout: expect.any(String),
       stderr: expect.any(String),
@@ -111,7 +138,7 @@ describe('CliProcessService', () => {
       pid: runResult.pid,
       agent: 'claude',
       status: 'completed',
-      exitCode: null,
+      exitCode: 0,
       model: 'sonnet',
       stdout: expect.stringContaining('Command executed successfully'),
       stderr: expect.any(String),
@@ -120,6 +147,162 @@ describe('CliProcessService', () => {
     expect(result).not.toHaveProperty('workFolder');
     expect(result).not.toHaveProperty('prompt');
     expect(readFileSync(join(processDir, 'meta.json'), 'utf-8')).toContain('"status": "completed"');
+    expect(readFileSync(join(processDir, 'exit-status.json'), 'utf-8')).toContain('"exitCode": 0');
+  });
+
+  it.each([
+    {
+      agent: 'claude',
+      model: 'sonnet',
+      stdout: `
+{"type":"system","session_id":"ses-fake-claude"}
+{"type":"assistant","message":{"content":[{"type":"text","text":"discarded assistant text"}]}}
+{"type":"result","result":"fake claude ok","is_error":false}
+`,
+      expectedSessionId: 'ses-fake-claude',
+      expectedMessage: 'fake claude ok',
+    },
+    {
+      agent: 'codex',
+      model: 'codex',
+      stdout: `
+{"type":"thread.started","thread_id":"ses-fake-codex"}
+{"type":"item.completed","item":{"type":"agent_message","text":"fake codex ok"}}
+`,
+      expectedSessionId: 'ses-fake-codex',
+      expectedMessage: 'fake codex ok',
+    },
+    {
+      agent: 'gemini',
+      model: 'gemini-2.5-flash',
+      stdout: `
+{"type":"init","timestamp":"2026-04-18T00:00:00.000Z","session_id":"ses-fake-gemini"}
+{"type":"message","timestamp":"2026-04-18T00:00:01.000Z","role":"assistant","content":"fake gemini ok","delta":true}
+`,
+      expectedSessionId: 'ses-fake-gemini',
+      expectedMessage: 'fake gemini ok',
+    },
+    {
+      agent: 'forge',
+      model: 'forge',
+      stdout: `
+● [21:09:01] Initialize ses-fake-forge
+fake forge ok
+● [21:09:08] Finished ses-fake-forge
+`,
+      expectedSessionId: 'ses-fake-forge',
+      expectedMessage: 'fake forge ok',
+    },
+    {
+      agent: 'opencode',
+      model: 'opencode',
+      stdout: `
+{"type":"step_start","sessionID":"ses-fake-opencode"}
+{"type":"text","sessionID":"ses-fake-opencode","part":{"type":"text","text":"fake opencode ok"}}
+{"type":"step_finish","sessionID":"ses-fake-opencode","part":{"type":"step-finish","tokens":{"total":10},"cost":0}}
+`,
+      expectedSessionId: 'ses-fake-opencode',
+      expectedMessage: 'fake opencode ok',
+    },
+  ] as const)('runs and parses a fake $agent CLI through the detached lifecycle', async ({
+    agent,
+    model,
+    stdout,
+    expectedSessionId,
+    expectedMessage,
+  }) => {
+    const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
+    tempDirs.push(root);
+    const scriptPath = createOutputCliScript(root, `mock-${agent}`, stdout);
+    const stateDir = join(root, 'state');
+    const workFolder = join(root, 'work');
+    mkdirSync(workFolder, { recursive: true });
+
+    const cliPaths = {
+      claude: '/bin/sh',
+      codex: '/bin/sh',
+      gemini: '/bin/sh',
+      forge: '/bin/sh',
+      opencode: '/bin/sh',
+    };
+    cliPaths[agent] = scriptPath;
+
+    const service = new CliProcessService({
+      stateDir,
+      cliPaths,
+    });
+
+    const runResult = await service.startProcess({
+      prompt: `hello fake ${agent}`,
+      cwd: workFolder,
+      model,
+    });
+
+    expect(runResult).toMatchObject({
+      agent,
+      status: 'started',
+    });
+
+    const [result] = await service.waitForProcesses([runResult.pid], 5);
+
+    expect(result).toMatchObject({
+      pid: runResult.pid,
+      agent,
+      status: 'completed',
+      exitCode: 0,
+      model,
+      session_id: expectedSessionId,
+      agentOutput: {
+        message: expectedMessage,
+        session_id: expectedSessionId,
+      },
+    });
+    expect(result).not.toHaveProperty('stdout');
+    expect(result).not.toHaveProperty('stderr');
+  });
+
+  it('persists non-zero exit codes for detached non-OpenCode runs', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
+    tempDirs.push(root);
+    const scriptPath = createMockCliScript(root, 'mock-claude-fail', {
+      exitCode: 5,
+      stderr: 'mock cli failure',
+    });
+    const stateDir = join(root, 'state');
+    const workFolder = join(root, 'work');
+    mkdirSync(workFolder, { recursive: true });
+
+    const service = new CliProcessService({
+      stateDir,
+      cliPaths: {
+        claude: scriptPath,
+        codex: scriptPath,
+        gemini: scriptPath,
+        forge: scriptPath,
+        opencode: scriptPath,
+      },
+    });
+
+    const runResult = await service.startProcess({
+      prompt: 'fail please',
+      cwd: workFolder,
+      model: 'sonnet',
+    });
+
+    const processDir = join(stateDir, 'cwds', encodeCwd(realpathSync(workFolder)), String(runResult.pid));
+    const [waited] = await service.waitForProcesses([runResult.pid], 5);
+
+    expect(waited).toMatchObject({
+      pid: runResult.pid,
+      agent: 'claude',
+      status: 'failed',
+      exitCode: 5,
+      model: 'sonnet',
+      stdout: expect.stringContaining('Command executed successfully'),
+      stderr: expect.stringContaining('mock cli failure'),
+    });
+    expect(readFileSync(join(processDir, 'meta.json'), 'utf-8')).toContain('"status": "failed"');
+    expect(readFileSync(join(processDir, 'exit-status.json'), 'utf-8')).toContain('"exitCode": 5');
   });
 
   it('peeks only appended natural-language messages from detached logs', async () => {
@@ -231,7 +414,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
       pid: runResult.pid,
       agent: 'claude',
       status: 'completed',
-      exitCode: null,
+      exitCode: 0,
       model: null,
       session_id: 'session-cli-1',
       agentOutput: {
@@ -249,7 +432,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
       pid: runResult.pid,
       agent: 'claude',
       status: 'completed',
-      exitCode: null,
+      exitCode: 0,
       model: null,
       session_id: 'session-cli-1',
       agentOutput: {
@@ -268,7 +451,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
       pid: runResult.pid,
       agent: 'claude',
       status: 'completed',
-      exitCode: null,
+      exitCode: 0,
       model: null,
       startTime: expect.any(String),
       workFolder,
@@ -292,7 +475,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
       pid: runResult.pid,
       agent: 'claude',
       status: 'completed',
-      exitCode: null,
+      exitCode: 0,
       model: null,
       startTime: expect.any(String),
       workFolder,
@@ -336,6 +519,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
       cwd: workFolder,
       model: 'sonnet',
     });
+    const processDir = join(stateDir, 'cwds', encodeCwd(realpathSync(workFolder)), String(runResult.pid));
 
     await new Promise((resolve) => setTimeout(resolve, 150));
 
@@ -348,6 +532,12 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
 
     const result = await service.getProcessResult(runResult.pid, false);
     expect(result.status).toBe('failed');
+    expect(result.exitCode).toBe(143);
+    expect(JSON.parse(readFileSync(join(processDir, 'exit-status.json'), 'utf-8'))).toEqual({
+      status: 'failed',
+      exitCode: 143,
+    });
+    expect(readFileSync(join(processDir, 'stderr.log'), 'utf-8')).not.toContain('exit-status metadata');
   });
 
   it('does not report termination until the process actually exits', async () => {
@@ -408,7 +598,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
     killSpy.mockRestore();
   });
 
-  it('lists processes without crashing when a tracked work folder has been deleted', async () => {
+  it('marks missing exit-status metadata as failed without crashing when a tracked work folder has been deleted', async () => {
     const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
     tempDirs.push(root);
     const stateDir = join(root, 'state');
@@ -459,10 +649,11 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
       {
         pid,
         agent: 'claude',
-        status: 'completed',
+        status: 'failed',
       },
     ]);
-    expect(JSON.parse(readFileSync(join(processDir, 'meta.json'), 'utf-8')).status).toBe('completed');
+    expect(JSON.parse(readFileSync(join(processDir, 'meta.json'), 'utf-8')).status).toBe('failed');
+    expect(readFileSync(join(processDir, 'stderr.log'), 'utf-8')).toContain('exit-status metadata');
     killSpy.mockRestore();
   });
 

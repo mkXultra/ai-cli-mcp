@@ -299,7 +299,18 @@ describe('ai-cli app', () => {
 
     expect(exitCode).toBe(0);
     expect(payload.aliases).toEqual(expect.any(Array));
+    expect(payload.aliases).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'claude-ultra',
+          resolvesTo: 'opus',
+          agent: 'claude',
+          defaultReasoningEffort: 'max',
+        }),
+      ])
+    );
     expect(payload.claude).toContain('sonnet');
+    expect(payload.codex).toContain('codex');
     expect(payload.codex).toContain('gpt-5.4');
     expect(payload.forge).toEqual(['forge']);
     expect(payload.opencode).toEqual(['opencode']);
@@ -318,6 +329,12 @@ describe('ai-cli app', () => {
     const stdout = vi.fn();
     const stderr = vi.fn();
     const getDoctorStatus = vi.fn().mockReturnValue({
+      checks: {
+        binaryAvailability: true,
+        pathResolution: true,
+        loginState: false,
+        termsAcceptance: false,
+      },
       claude: {
         configuredCommand: 'claude',
         resolvedPath: '/tmp/bin/claude',
@@ -354,6 +371,7 @@ describe('ai-cli app', () => {
 
     expect(exitCode).toBe(0);
     expect(getDoctorStatus).toHaveBeenCalledTimes(1);
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"loginState": false'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"configuredCommand": "claude"'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"available": false'));
     expect(stderr).not.toHaveBeenCalled();

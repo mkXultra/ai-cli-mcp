@@ -603,6 +603,20 @@ describe('parseClaudeOutput', () => {
     });
   });
 
+  it('uses assistant text as a fallback when Claude stream-json has no result event', () => {
+    const output = `
+{"type":"system","session_id":"partial-claude-session"}
+{"type":"assistant","message":{"content":[{"type":"text","text":"Partial "}]}}
+{"type":"assistant","message":{"content":[{"type":"text","text":"answer"}]}}
+`;
+
+    expect(parseClaudeOutput(output)).toEqual({
+      message: 'Partial answer',
+      session_id: 'partial-claude-session',
+      tools: undefined,
+    });
+  });
+
   it('should handle invalid NDJSON lines gracefully', () => {
     const output = `
 {"type":"system"}

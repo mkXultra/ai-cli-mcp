@@ -3,9 +3,13 @@ name: test
 on:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -16,5 +20,5 @@ jobs:
           cache: 'npm'
       - name: Install
         run: npm ci
-      - name: Test
-        run: npm test
+      - name: Deterministic release gate
+        run: npm run test:release

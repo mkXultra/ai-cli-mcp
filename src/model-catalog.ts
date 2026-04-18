@@ -1,5 +1,6 @@
 export const CLAUDE_MODELS = ['sonnet', 'sonnet[1m]', 'opus', 'opusplan', 'haiku'] as const;
 export const CODEX_MODELS = [
+  'codex',
   'gpt-5.4',
   'gpt-5.3-codex',
   'gpt-5.2-codex',
@@ -29,7 +30,7 @@ export const MODEL_ALIASES: Record<string, string> = {
 };
 
 export const MODEL_ALIAS_DETAILS = [
-  { name: 'claude-ultra', resolvesTo: 'opus', agent: 'claude', defaultReasoningEffort: 'high' },
+  { name: 'claude-ultra', resolvesTo: 'opus', agent: 'claude', defaultReasoningEffort: 'max' },
   { name: 'codex-ultra', resolvesTo: 'gpt-5.4', agent: 'codex', defaultReasoningEffort: 'xhigh' },
   { name: 'gemini-ultra', resolvesTo: 'gemini-3.1-pro-preview', agent: 'gemini' },
 ] as const;
@@ -54,7 +55,7 @@ export function getSupportedModelsDescription(): string {
 }
 
 export function getModelParameterDescription(): string {
-  return `The model to use. Aliases: "claude-ultra" (auto high effort), "codex-ultra" (auto xhigh reasoning), "gemini-ultra". Standard: ${[...CLAUDE_MODELS, ...CODEX_MODELS, ...GEMINI_MODELS, ...FORGE_MODELS, ...OPENCODE_MODELS].map((model) => `"${model}"`).join(', ')}. OpenCode also accepts explicit dynamic models using "oc-<provider/model>". "forge" is a provider key, not a Forge model family selector.`;
+  return `The model to use. Aliases: "claude-ultra" (auto max effort), "codex-ultra" (auto xhigh reasoning), "gemini-ultra". Standard: ${[...CLAUDE_MODELS, ...CODEX_MODELS, ...GEMINI_MODELS, ...FORGE_MODELS, ...OPENCODE_MODELS].map((model) => `"${model}"`).join(', ')}. OpenCode also accepts explicit dynamic models using "oc-<provider/model>". "forge" is a provider key, not a Forge model family selector.`;
 }
 
 export function getModelsPayload(): {

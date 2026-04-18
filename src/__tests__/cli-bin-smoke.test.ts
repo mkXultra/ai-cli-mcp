@@ -108,6 +108,8 @@ describe('ai-cli entrypoint smoke', () => {
     );
 
     expect(output).toContain('"claude"');
+    expect(output).toContain('"checks"');
+    expect(output).toContain('"loginState": false');
     expect(output).toContain('"codex"');
     expect(output).toContain('"gemini"');
     expect(output).toContain('"forge"');

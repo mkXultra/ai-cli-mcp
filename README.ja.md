@@ -24,7 +24,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 - OpenCode を非対話 JSON モードで実行（`opencode run --format json --dir <workFolder> <prompt>` を使用）
 - 複数のAIモデルのサポート：
     - Claude (sonnet, sonnet[1m], opus, opusplan, haiku)
-    - Codex (gpt-5.4, gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, など)
+    - Codex (`codex` は Codex CLI 側の設定済みデフォルトモデル、加えて gpt-5.4, gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, など)
     - Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview)
     - Forge (`forge`)
     - OpenCode (`opencode` と `oc-<provider/model>` ラッパー。例: `oc-openai/gpt-5.4`)
@@ -192,6 +192,7 @@ macOSでは、これらのツールを初めて実行する際にフォルダへ
 ```bash
 ai-cli doctor
 ai-cli models
+ai-cli run --cwd "$PWD" --model codex --prompt "Codex CLI のデフォルトモデルで実行"
 ai-cli run --cwd "$PWD" --model codex-ultra --prompt "fix failing tests"
 ai-cli run --cwd "$PWD" --model opencode --session-id ses_existing --prompt "この OpenCode セッションを継続して"
 ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --prompt "明示的な OpenCode モデルで実行"
@@ -214,7 +215,9 @@ OpenCode のモデル指定は次の 2 つを受け付けます。
 
 `ai-cli models` は OpenCode を機械可読に `opencode: ["opencode"]` と `dynamicModelBackends.opencode` で公開します。実際に利用可能なバックエンドネイティブなモデル一覧は `opencode models` で確認してください。
 
-`doctor` は CLI バイナリの存在確認と path 解決だけを行います。ログイン状態や利用規約同意までは確認しません。
+Codex のモデル指定では、`codex` を使うと Codex CLI 側の設定済みデフォルトモデルを使用します。Codex CLI がアカウント種別によって明示的な `gpt-*` モデル指定を受け付けない場合に有用です。
+
+`doctor` は CLI バイナリの利用可否と path 解決だけを確認します。JSON 出力には `checks` ブロックが含まれ、ログイン状態と利用規約同意は未確認として示されます。
 
 ## CLI の状態保存先
 
@@ -229,13 +232,13 @@ OpenCode のモデル指定は次の 2 つを受け付けます。
 - `meta.json`
 - `stdout.log`
 - `stderr.log`
-- `exit-status.json`（detached な OpenCode 実行用）
+- `exit-status.json`（detached 実行用）
 
 完了済み・失敗済みの実行は `ai-cli cleanup` で削除できます。`running` のものは保持されます。
 
-## 既知の制約
+## Exit status の追跡
 
-detached 実行された `ai-cli` では、OpenCode バックエンドに限り自然終了時の exit status を永続化します。そのため OpenCode の失敗終了は非ゼロ exit code を含めて `failed` として扱われ、結果では生の `stdout` / `stderr` を保持します。一方、他の detached バックエンドでは従来どおり、より広い exit-status 追跡が追加されるまでは自然終了した実行が信頼できる exit code なしで `completed` と見なされる制約が残ります。
+detached 実行された `ai-cli` は、すべての対応バックエンドで自然終了時の exit status を `exit-status.json` に永続化します。非ゼロ終了は記録された `exitCode` 付きの `failed` として扱われ、ゼロ終了は `exitCode: 0` 付きの `completed` として扱われます。`ai-cli kill` は SIGTERM による終了を failed exit として記録し、追跡中プロセスが exit metadata なしで消えた場合も成功とは見なさず `failed` として扱います。
 
 ## MCPクライアントへの接続
 
@@ -256,13 +259,13 @@ Claude CLI、Codex CLI、Gemini CLI、Forge CLI、または OpenCode を使用�
 - `prompt_file` (string, 任意): プロンプトを含むファイルへのパス。`prompt` または `prompt_file` のいずれかが必須です。絶対パス、または `workFolder` からの相対パスが指定可能です。
 - `workFolder` (string, 必須): CLIを実行する作業ディレクトリ。絶対パスである必要があります。
 - **モデル (Models):**
-    - **Ultra エイリアス:** `claude-ultra` (自動的に high effort に設定), `codex-ultra` (自動的に xhigh reasoning に設定), `gemini-ultra`
+    - **Ultra エイリアス:** `claude-ultra` (自動的に max effort に設定), `codex-ultra` (自動的に xhigh reasoning に設定), `gemini-ultra`
     - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
-    - Codex: `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
+    - Codex: `codex`（Codex CLI 側の設定済みデフォルトモデル）および `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
     - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
     - Forge: `forge`
     - OpenCode: `opencode`（設定済みのデフォルトモデル）および `oc-openai/gpt-5.4` のような明示ラッパー
-- `reasoning_effort` (string, 任意): Claude と Codex の推論制御。Claude では `--effort` を使います（許容値: "low", "medium", "high"）。Codex では `model_reasoning_effort` を使います（許容値: "low", "medium", "high", "xhigh"）。Gemini、Forge、OpenCode では `reasoning_effort` はサポートしません。
+- `reasoning_effort` (string, 任意): Claude と Codex の推論制御。Claude では `--effort` を使います（許容値: "low", "medium", "high", "xhigh", "max"）。Codex では `model_reasoning_effort` を使います（許容値: "low", "medium", "high", "xhigh"）。Gemini、Forge、OpenCode では `reasoning_effort` はサポートしません。
 - `session_id` (string, 任意): 以前のセッションを再開するためのセッションID。Claude、Codex、Gemini、Forge、OpenCode でサポートされます。OpenCode は `--session` による in-place resume で再開し、`oc-<provider/model>` の明示指定と併用できます。
 
 ### `wait`
@@ -338,6 +341,14 @@ ai-cli peek 123 --time 10 --include-tool-calls
 
 実行中および完了したすべてのAIエージェントプロセスを、ステータス、PID、基本情報とともにリストアップします。
 
+### `doctor`
+
+MCP クライアントから、対応する AI CLI バイナリの利用可否と path 解決を確認します。`ai-cli doctor` と同じく `checks` ブロックを返し、ログイン状態や利用規約同意は確認しません。
+
+### `models`
+
+MCP クライアントから、対応モデル名、エイリアス、動的バックエンドの discovery hint を確認します。`ai-cli models` と同じ構造化 payload を返します。
+
 ### `get_result`
 
 PIDを指定して、AIエージェントプロセスの現在の出力とステータスを取得します。
@@ -380,7 +391,22 @@ npm run test:unit
 
 # E2Eテストの実行（モック使用）
 npm run test:e2e
+
+# 公開 npm package の contents smoke test
+npm run test:package
+
+# GitHub Actions と同じ deterministic PR/release gate
+# これだけでは実際の外部 CLI 実行は有効になりません
+npm run test:release
+
+# リリース前の live E2E（実際にインストール済み AI CLI を叩く）
+ACM_LIVE_E2E=1 ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live
+
+# ai-cli と MCP server surface の両方を叩く live E2E
+ACM_LIVE_E2E=1 ACM_LIVE_E2E_SURFACE=all ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live
 ```
+
+live E2E は opt-in です。インストール済みかつ認証済みの外部 CLI、ネットワーク、provider 側の可用性、コスト予算に依存するため、通常の `npm test` には含めていません。`ACM_LIVE_E2E_SURFACE` は既定で `cli` です。MCP server surface も含める場合は `mcp` または `all` を指定します。
 
 ## 高度な設定（オプション）
 

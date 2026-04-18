@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.mkXultra/ai-cli-mcp",
-  "description": "MCP server for AI CLI tools (Claude, Codex, Gemini, and Forge) with background process management",
+  "description": "MCP server for AI CLI tools (Claude, Codex, Gemini, Forge, and OpenCode) with background process management",
   "repository": {
     "url": "https://github.com/mkXultra/ai-cli-mcp",
     "source": "github"
   },
-  "version": "2.8.2",
+  "version": "2.19.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "ai-cli-mcp",
-      "version": "2.8.2",
+      "version": "2.19.0",
       "transport": {
         "type": "stdio"
       }

@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import {
+  appendFileSync,
   chmodSync,
   closeSync,
   existsSync,
@@ -12,7 +13,6 @@ import {
   renameSync,
   rmSync,
   statSync,
-  unlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { join, basename, dirname } from 'node:path';
@@ -55,6 +55,8 @@ interface CliProcessServiceOptions {
   stateDir?: string;
   cliPaths?: BuildCliCommandOptions['cliPaths'];
 }
+
+const SIGTERM_EXIT_CODE = 143;
 
 export interface CliRunOptions {
   cwd: string;
@@ -139,71 +141,7 @@ export class CliProcessService {
       cliPaths: this.cliPaths,
     });
 
-    if (cmd.agent === 'opencode') {
-      return this.startDetachedOpenCodeProcess(cmd, options.model);
-    }
-
-    const stdoutPath = this.resolveStdoutPathForPidPlaceholder();
-    const stderrPath = this.resolveStderrPathForPidPlaceholder();
-    let stdoutFd: number | undefined;
-    let stderrFd: number | undefined;
-
-    try {
-      stdoutFd = openSync(stdoutPath, 'w');
-      stderrFd = openSync(stderrPath, 'w');
-
-      const childProcess = spawn(cmd.cliPath, cmd.args, {
-        cwd: cmd.cwd,
-        detached: true,
-        stdio: ['ignore', stdoutFd, stderrFd],
-      });
-
-      const pid = childProcess.pid;
-      childProcess.unref();
-
-      if (!pid) {
-        throw new Error(`Failed to start ${cmd.agent} CLI process`);
-      }
-
-      const processDir = this.resolveProcessDir(cmd.cwd, pid);
-      mkdirSync(processDir, { recursive: true });
-      const finalStdoutPath = this.resolveStdoutPath(processDir);
-      const finalStderrPath = this.resolveStderrPath(processDir);
-      this.renamePlaceholderFile(stdoutPath, finalStdoutPath);
-      this.renamePlaceholderFile(stderrPath, finalStderrPath);
-
-      const storedProcess: StoredProcess = {
-        pid,
-        prompt: cmd.prompt,
-        workFolder: cmd.cwd,
-        cwdKey: this.resolveCwdKey(cmd.cwd),
-        model: options.model,
-        toolType: cmd.agent,
-        startTime: new Date().toISOString(),
-        stdoutPath: finalStdoutPath,
-        stderrPath: finalStderrPath,
-        status: 'running',
-      };
-      this.writeProcess(storedProcess);
-
-      return {
-        pid,
-        status: 'started',
-        agent: cmd.agent,
-        message: `${cmd.agent} process started successfully`,
-      };
-    } catch (error) {
-      this.removeFileIfExists(stdoutPath);
-      this.removeFileIfExists(stderrPath);
-      throw error;
-    } finally {
-      if (stdoutFd !== undefined) {
-        closeSync(stdoutFd);
-      }
-      if (stderrFd !== undefined) {
-        closeSync(stderrFd);
-      }
-    }
+    return this.startDetachedTrackedProcess(cmd, options.model);
   }
 
   async listProcesses(): Promise<ProcessListItem[]> {
@@ -370,7 +308,15 @@ export class CliProcessService {
       };
     }
 
-    refreshed.status = 'failed';
+    const exitStatus = this.readExitStatus(refreshed);
+    if (exitStatus) {
+      refreshed.status = exitStatus.status;
+      refreshed.exitCode = exitStatus.exitCode;
+    } else {
+      refreshed.status = 'failed';
+      refreshed.exitCode = SIGTERM_EXIT_CODE;
+      this.writeExitStatus(refreshed, { status: 'failed', exitCode: SIGTERM_EXIT_CODE });
+    }
     this.writeProcess(refreshed);
 
     return {
@@ -404,12 +350,12 @@ export class CliProcessService {
     };
   }
 
-  private async startDetachedOpenCodeProcess(
+  private async startDetachedTrackedProcess(
     cmd: Awaited<ReturnType<typeof buildCliCommand>>,
     model: string | undefined,
   ): Promise<{ pid: number; status: 'started'; agent: AgentType; message: string }> {
     const cwdKey = this.resolveCwdKey(cmd.cwd);
-    const wrapperPath = this.ensureOpenCodeWrapperScript();
+    const wrapperPath = this.ensureDetachedWrapperScript();
 
     const childProcess = spawn(wrapperPath, [this.stateDir, cwdKey, cmd.cliPath, ...cmd.args], {
       cwd: cmd.cwd,
@@ -428,12 +374,8 @@ export class CliProcessService {
     mkdirSync(processDir, { recursive: true });
     const stdoutPath = this.resolveStdoutPath(processDir);
     const stderrPath = this.resolveStderrPath(processDir);
-    if (!existsSync(stdoutPath)) {
-      writeFileSync(stdoutPath, '');
-    }
-    if (!existsSync(stderrPath)) {
-      writeFileSync(stderrPath, '');
-    }
+    this.touchFile(stdoutPath);
+    this.touchFile(stderrPath);
 
     const storedProcess: StoredProcess = {
       pid,
@@ -513,17 +455,17 @@ export class CliProcessService {
     }
 
     if (!isProcessRunning(process.pid)) {
-      process.status = 'completed';
+      process.status = 'failed';
+      this.appendTextFileSafe(
+        process.stderrPath,
+        '\nProcess exited without exit-status metadata; marking as failed.\n',
+      );
       this.writeProcess(process);
     }
     return process;
   }
 
   private readExitStatus(process: StoredProcess): StoredExitStatus | null {
-    if (process.toolType !== 'opencode') {
-      return null;
-    }
-
     const exitMetaPath = this.resolveExitStatusPath(this.resolveStoredProcessDir(process));
     if (!existsSync(exitMetaPath)) {
       return null;
@@ -541,11 +483,29 @@ export class CliProcessService {
     return null;
   }
 
+  private writeExitStatus(process: StoredProcess, exitStatus: StoredExitStatus): void {
+    const exitStatusPath = this.resolveExitStatusPath(this.resolveStoredProcessDir(process));
+    const tempPath = `${exitStatusPath}.${process.pid}.${Date.now()}.tmp`;
+    writeFileSync(tempPath, JSON.stringify(exitStatus, null, 2) + '\n');
+    renameSync(tempPath, exitStatusPath);
+  }
+
   private readTextFileSafe(filePath: string): string {
     if (!existsSync(filePath)) {
       return '';
     }
     return readFileSync(filePath, 'utf-8');
+  }
+
+  private touchFile(filePath: string): void {
+    closeSync(openSync(filePath, 'a'));
+  }
+
+  private appendTextFileSafe(filePath: string, text: string): void {
+    try {
+      appendFileSync(filePath, text);
+    } catch {
+    }
   }
 
   private fileSizeSafe(filePath: string): number {
@@ -614,20 +574,13 @@ export class CliProcessService {
     return join(processDir, 'exit-status.json');
   }
 
-  private resolveOpenCodeWrapperPath(): string {
-    return join(this.stateDir, 'opencode-detached-wrapper.sh');
+  private resolveDetachedWrapperPath(): string {
+    return join(this.stateDir, 'detached-runner-v2.sh');
   }
 
-  private resolveStdoutPathForPidPlaceholder(): string {
-    return join(this.stateDir, `pending-${Date.now()}-${Math.random().toString(36).slice(2)}.stdout.log`);
-  }
-
-  private resolveStderrPathForPidPlaceholder(): string {
-    return join(this.stateDir, `pending-${Date.now()}-${Math.random().toString(36).slice(2)}.stderr.log`);
-  }
-
-  private ensureOpenCodeWrapperScript(): string {
-    const wrapperPath = this.resolveOpenCodeWrapperPath();
+  private ensureDetachedWrapperScript(): string {
+    const wrapperPath = this.resolveDetachedWrapperPath();
+    this.removeLegacyDetachedWrappers();
     if (existsSync(wrapperPath)) {
       return wrapperPath;
     }
@@ -647,13 +600,36 @@ exit_meta_path="$process_dir/exit-status.json"
 mkdir -p "$process_dir"
 : > "$stdout_path"
 : > "$stderr_path"
-"$@" >> "$stdout_path" 2>> "$stderr_path"
+write_exit_status() {
+  status="$1"
+  exit_code="$2"
+  tmp_exit_meta_path="$exit_meta_path.$$"
+  printf '{\n  "status": "%s",\n  "exitCode": %s\n}\n' "$status" "$exit_code" > "$tmp_exit_meta_path"
+  mv "$tmp_exit_meta_path" "$exit_meta_path"
+}
+handle_signal() {
+  signal="$1"
+  exit_code="$2"
+  if [ -n "\${child_pid:-}" ]; then
+    kill "-$signal" "$child_pid" 2>/dev/null || true
+    wait "$child_pid" 2>/dev/null
+  fi
+  write_exit_status "failed" "$exit_code"
+  exit "$exit_code"
+}
+trap 'handle_signal TERM 143' TERM
+trap 'handle_signal INT 130' INT
+trap 'handle_signal HUP 129' HUP
+"$@" >> "$stdout_path" 2>> "$stderr_path" &
+child_pid="$!"
+wait "$child_pid"
 exit_code="$?"
+trap - TERM INT HUP
 status="completed"
 if [ "$exit_code" -ne 0 ]; then
   status="failed"
 fi
-printf '{\n  "status": "%s",\n  "exitCode": %s\n}\n' "$status" "$exit_code" > "$exit_meta_path"
+write_exit_status "$status" "$exit_code"
 exit "$exit_code"
 `,
     );
@@ -661,13 +637,16 @@ exit "$exit_code"
     return wrapperPath;
   }
 
-  private renamePlaceholderFile(fromPath: string, toPath: string): void {
-    renameSync(fromPath, toPath);
-  }
-
-  private removeFileIfExists(filePath: string): void {
-    if (existsSync(filePath)) {
-      unlinkSync(filePath);
+  private removeLegacyDetachedWrappers(): void {
+    for (const fileName of ['detached-runner-v1.sh']) {
+      const legacyPath = join(this.stateDir, fileName);
+      if (!existsSync(legacyPath)) {
+        continue;
+      }
+      try {
+        rmSync(legacyPath, { force: true });
+      } catch {
+      }
     }
   }
 

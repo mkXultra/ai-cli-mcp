@@ -19,8 +19,8 @@
 
 ## Test Plan
 
-- [ ] `npm run test:unit` passes
-- [ ] `npm run build` passes
+- [ ] `npm run test:release` passes (deterministic gate; real live E2E is separate)
+- [ ] Release-time live E2E passes when the change can affect CLI execution (`ACM_LIVE_E2E=1 ACM_LIVE_E2E_SURFACE=all ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live`)
 - [ ] Manual testing (if applicable)
 
 ## Notes

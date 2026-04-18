@@ -65,7 +65,7 @@ describe('ClaudeCodeServer Unit Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
-    vi.unmock('../server.js');
+    vi.doUnmock('../server.js');
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     originalEnv = { ...process.env };
@@ -497,15 +497,21 @@ describe('ClaudeCodeServer Unit Tests', () => {
       const handler = listToolsCall[1];
       const result = await handler();
       
-      expect(result.tools).toHaveLength(7);
+      expect(result.tools).toHaveLength(9);
+      const toolNames = result.tools.map((tool: any) => tool.name);
+      expect(toolNames).toEqual([
+        'run',
+        'list_processes',
+        'get_result',
+        'wait',
+        'peek',
+        'kill_process',
+        'cleanup_processes',
+        'doctor',
+        'models',
+      ]);
       expect(result.tools[0].name).toBe('run');
       expect(result.tools[0].description).toContain('AI Agent Runner');
-      expect(result.tools[1].name).toBe('list_processes');
-      expect(result.tools[2].name).toBe('get_result');
-      expect(result.tools[3].name).toBe('wait');
-      expect(result.tools[4].name).toBe('peek');
-      expect(result.tools[5].name).toBe('kill_process');
-      expect(result.tools[6].name).toBe('cleanup_processes');
     });
 
     it('should handle CallToolRequest', async () => {
@@ -557,6 +563,47 @@ describe('ClaudeCodeServer Unit Tests', () => {
       const response = JSON.parse(result.content[0].text);
       expect(response.pid).toBe(12345);
       expect(response.status).toBe('started');
+    });
+
+    it('should start and report doctor status when a CLI env path is invalid', async () => {
+      mockHomedir.mockReturnValue('/home/user');
+      mockExistsSync.mockReturnValue(true);
+      process.env.CLAUDE_CLI_NAME = './relative/path/claude';
+
+      setupServerMock();
+
+      const module = await import('../server.js');
+      // @ts-ignore
+      const { ClaudeCodeServer } = module;
+
+      expect(() => new ClaudeCodeServer()).not.toThrow();
+      const mockServerInstance = vi.mocked(Server).mock.results[0].value;
+      const callToolCall = mockServerInstance.setRequestHandler.mock.calls.find(
+        (call: any[]) => call[0].name === 'callTool'
+      );
+      const handler = callToolCall[1];
+
+      const doctorResult = await handler({
+        params: {
+          name: 'doctor',
+          arguments: {},
+        },
+      });
+      const doctorStatus = JSON.parse(doctorResult.content[0].text);
+      expect(doctorStatus.claude.error).toContain('Invalid CLAUDE_CLI_NAME');
+
+      await expect(handler({
+        params: {
+          name: 'run',
+          arguments: {
+            prompt: 'test prompt',
+            workFolder: '/tmp',
+          },
+        },
+      })).rejects.toMatchObject({
+        code: 'InvalidParams',
+        message: expect.stringContaining('Invalid CLAUDE_CLI_NAME'),
+      });
     });
 
     it('should require workFolder parameter', async () => {

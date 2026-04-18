@@ -24,7 +24,7 @@ This MCP server provides tools that can be used by LLMs to interact with AI CLI 
 - Execute Gemini CLI with automatic approval mode (using `-y`)
 - Execute Forge CLI in non-interactive mode (using `forge -C <workFolder> -p <prompt>`)
 - Execute OpenCode in non-interactive JSON mode (using `opencode run --format json --dir <workFolder> <prompt>`)
-- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, haiku), Codex (gpt-5.4, gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, gpt-5.2, gpt-5.1, gpt-5.1-codex, gpt-5-codex, gpt-5-codex-mini, gpt-5), Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview), Forge (`forge`), and OpenCode (`opencode` plus explicit `oc-<provider/model>` wrappers such as `oc-openai/gpt-5.4`)
+- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, haiku), Codex (`codex` for the CLI's configured default model, plus gpt-5.4, gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, gpt-5.2, gpt-5.1, gpt-5.1-codex, gpt-5-codex, gpt-5-codex-mini, gpt-5), Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview), Forge (`forge`), and OpenCode (`opencode` plus explicit `oc-<provider/model>` wrappers such as `oc-openai/gpt-5.4`)
 - Manage background processes with PID tracking
 - Parse and return structured outputs from both tools
 
@@ -189,6 +189,7 @@ Example flow:
 ```bash
 ai-cli doctor
 ai-cli models
+ai-cli run --cwd "$PWD" --model codex --prompt "use the Codex CLI default model"
 ai-cli run --cwd "$PWD" --model codex-ultra --prompt "fix failing tests"
 ai-cli run --cwd "$PWD" --model opencode --session-id ses_existing --prompt "continue this OpenCode session"
 ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --prompt "run with an explicit OpenCode backend model"
@@ -211,7 +212,9 @@ OpenCode model selection accepts either:
 
 `ai-cli models` exposes OpenCode machine-readably via `opencode: ["opencode"]` plus `dynamicModelBackends.opencode`, which points users to `opencode models` for backend-native discovery.
 
-`doctor` checks only binary existence and path resolution. It does not verify login state or terms acceptance.
+Codex model selection accepts `codex` to use the Codex CLI's configured default model. This is useful for account types where explicit `gpt-*` model overrides are not accepted by the Codex CLI.
+
+`doctor` checks only binary availability and path resolution. Its JSON output includes a `checks` block that marks login state and terms acceptance as unchecked.
 
 ## CLI State Storage
 
@@ -226,13 +229,13 @@ Each PID directory contains:
 - `meta.json`
 - `stdout.log`
 - `stderr.log`
-- `exit-status.json` for detached OpenCode runs
+- `exit-status.json` for detached runs
 
 Use `ai-cli cleanup` to remove completed and failed runs. Running processes are preserved.
 
-## Known Limitation
+## Exit Status Tracking
 
-Detached `ai-cli` runs persist natural exit status for OpenCode-backed runs, including failed exit codes used to preserve raw OpenCode stdout/stderr in result output. Other detached backends still keep the pre-existing limitation: naturally finished runs may be surfaced as completed without a reliable persisted exit code until broader exit tracking is added.
+Detached `ai-cli` runs persist natural exit status for all supported backends through `exit-status.json`. Non-zero exits are surfaced as `failed` with the recorded `exitCode`; zero exits are surfaced as `completed` with `exitCode: 0`. `ai-cli kill` records SIGTERM termination as a failed exit, and a tracked process that disappears without exit metadata is treated as `failed` rather than assumed successful.
 
 ## Connecting to Your MCP Client
 
@@ -253,13 +256,13 @@ Executes a prompt using Claude CLI, Codex CLI, Gemini CLI, Forge CLI, or OpenCod
 - `prompt_file` (string, optional): Path to a file containing the prompt. Either `prompt` or `prompt_file` is required. Can be absolute path or relative to `workFolder`.
 - `workFolder` (string, required): The working directory for the CLI execution. Must be an absolute path.
 **Models:**
-- **Ultra Aliases:** `claude-ultra` (defaults to high effort), `codex-ultra` (defaults to xhigh reasoning), `gemini-ultra`
+- **Ultra Aliases:** `claude-ultra` (defaults to max effort), `codex-ultra` (defaults to xhigh reasoning), `gemini-ultra`
 - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
-- Codex: `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
+- Codex: `codex` for the CLI's configured default model, plus `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
 - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
 - Forge: `forge`
 - OpenCode: `opencode` for the configured default backend model, plus explicit wrappers like `oc-openai/gpt-5.4`
-- `reasoning_effort` (string, optional): Reasoning control for Claude and Codex. Claude uses `--effort` (allowed: "low", "medium", "high"). Codex uses `model_reasoning_effort` (allowed: "low", "medium", "high", "xhigh"). Gemini, Forge, and OpenCode do not support `reasoning_effort`.
+- `reasoning_effort` (string, optional): Reasoning control for Claude and Codex. Claude uses `--effort` (allowed: "low", "medium", "high", "xhigh", "max"). Codex uses `model_reasoning_effort` (allowed: "low", "medium", "high", "xhigh"). Gemini, Forge, and OpenCode do not support `reasoning_effort`.
 - `session_id` (string, optional): Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, and OpenCode. OpenCode resumes in place via `--session` and may also be combined with an explicit `oc-<provider/model>` selection.
 
 ### `wait`
@@ -335,6 +338,14 @@ Example response:
 
 Lists all running and completed AI agent processes with their status, PID, and basic info.
 
+### `doctor`
+
+Checks supported AI CLI binary availability and path resolution from MCP clients. Like `ai-cli doctor`, it returns a `checks` block and does not verify login state or terms acceptance.
+
+### `models`
+
+Lists supported model names, aliases, and dynamic backend discovery hints from MCP clients. This returns the same structured payload as `ai-cli models`.
+
 ### `get_result`
 
 Gets the current output and status of an AI agent process by PID.
@@ -364,6 +375,28 @@ Terminates a running AI agent process by PID.
 ## Contributing
 
 For development setup, testing, and contribution guidelines, see the [Development Guide](./docs/development.md).
+
+## Testing
+
+```bash
+# Deterministic unit, parser, contract, and mocked e2e tests
+npm test
+
+# Published npm package contents smoke test
+npm run test:package
+
+# Deterministic PR/release gate used by GitHub Actions.
+# This does not enable real external CLI runs by itself.
+npm run test:release
+
+# Release-time live E2E against real installed AI CLIs
+ACM_LIVE_E2E=1 ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live
+
+# Release-time live E2E for both ai-cli and MCP server surfaces
+ACM_LIVE_E2E=1 ACM_LIVE_E2E_SURFACE=all ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live
+```
+
+Live E2E is opt-in because it depends on installed and authenticated external CLIs, network access, provider availability, and cost budget. `ACM_LIVE_E2E_SURFACE` defaults to `cli`; use `mcp` or `all` to include the MCP server surface.
 
 ## Advanced Configuration (Optional)
 

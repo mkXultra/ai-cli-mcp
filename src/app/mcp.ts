@@ -8,13 +8,14 @@ import {
   type ServerResult,
 } from '@modelcontextprotocol/sdk/types.js';
 import { spawn } from 'node:child_process';
-import { debugLog, findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli } from '../cli-utils.js';
-import { getModelParameterDescription, getSupportedModelsDescription } from '../model-catalog.js';
+import { createRequire } from 'node:module';
+import { debugLog, getCliDoctorStatus, type CliBinaryStatus } from '../cli-utils.js';
+import { getModelParameterDescription, getModelsPayload, getSupportedModelsDescription } from '../model-catalog.js';
 import { validatePeekPids, validatePeekTimeSec } from '../peek.js';
 import { ProcessService } from '../process-service.js';
 
-// Server version - update this when releasing new versions
-const SERVER_VERSION = "2.2.0";
+const require = createRequire(import.meta.url);
+const SERVER_VERSION = (require('../../package.json') as { version: string }).version;
 
 // Track if this is the first tool use for version printing
 let isFirstToolUse = true;
@@ -77,20 +78,19 @@ export class ClaudeCodeServer {
   private opencodeCliPath: string;
   private processService: ProcessService;
   private sigintHandler?: () => Promise<void>;
-  private packageVersion: string;
 
   constructor() {
-    this.claudeCliPath = findClaudeCli();
-    this.codexCliPath = findCodexCli();
-    this.geminiCliPath = findGeminiCli();
-    this.forgeCliPath = findForgeCli();
-    this.opencodeCliPath = findOpencodeCli();
+    const doctorStatus = getCliDoctorStatus();
+    this.claudeCliPath = this.resolveDoctorCliPath(doctorStatus.claude);
+    this.codexCliPath = this.resolveDoctorCliPath(doctorStatus.codex);
+    this.geminiCliPath = this.resolveDoctorCliPath(doctorStatus.gemini);
+    this.forgeCliPath = this.resolveDoctorCliPath(doctorStatus.forge);
+    this.opencodeCliPath = this.resolveDoctorCliPath(doctorStatus.opencode);
     console.error(`[Setup] Using Claude CLI command/path: ${this.claudeCliPath}`);
     console.error(`[Setup] Using Codex CLI command/path: ${this.codexCliPath}`);
     console.error(`[Setup] Using Gemini CLI command/path: ${this.geminiCliPath}`);
     console.error(`[Setup] Using Forge CLI command/path: ${this.forgeCliPath}`);
     console.error(`[Setup] Using OpenCode CLI command/path: ${this.opencodeCliPath}`);
-    this.packageVersion = SERVER_VERSION;
     this.processService = new ProcessService({
       cliPaths: {
         claude: this.claudeCliPath,
@@ -121,6 +121,20 @@ export class ClaudeCodeServer {
       process.exit(0);
     };
     process.on('SIGINT', this.sigintHandler);
+  }
+
+  private resolveDoctorCliPath(status: CliBinaryStatus): string {
+    return status.resolvedPath || status.configuredCommand;
+  }
+
+  private getCliConfigurationError(): string | null {
+    const doctorStatus = getCliDoctorStatus();
+    for (const name of ['claude', 'codex', 'gemini', 'forge', 'opencode'] as const) {
+      if (doctorStatus[name].error) {
+        return doctorStatus[name].error;
+      }
+    }
+    return null;
   }
 
   private setupToolHandlers(): void {
@@ -172,7 +186,7 @@ ${getSupportedModelsDescription()}
               },
               reasoning_effort: {
                 type: 'string',
-                description: 'Reasoning control for Claude and Codex. Claude uses --effort with "low", "medium", "high". Codex uses model_reasoning_effort with "low", "medium", "high", "xhigh". Gemini, Forge, and OpenCode do not support reasoning_effort in this integration.',
+                description: 'Reasoning control for Claude and Codex. Claude uses --effort with "low", "medium", "high", "xhigh", "max". Codex uses model_reasoning_effort with "low", "medium", "high", "xhigh". Gemini, Forge, and OpenCode do not support reasoning_effort in this integration.',
               },
               session_id: {
                 type: 'string',
@@ -275,6 +289,22 @@ ${getSupportedModelsDescription()}
             type: 'object',
             properties: {},
           },
+        },
+        {
+          name: 'doctor',
+          description: 'Check supported AI CLI binary availability and path resolution. Does not verify login state or terms acceptance.',
+          inputSchema: {
+            type: 'object',
+            properties: {},
+          },
+        },
+        {
+          name: 'models',
+          description: 'List supported model names, model aliases, and dynamic backend discovery hints.',
+          inputSchema: {
+            type: 'object',
+            properties: {},
+          },
         }
       ],
     }));
@@ -300,6 +330,10 @@ ${getSupportedModelsDescription()}
           return this.handleKillProcess(toolArguments);
         case 'cleanup_processes':
           return this.handleCleanupProcesses();
+        case 'doctor':
+          return this.handleDoctor();
+        case 'models':
+          return this.handleModels();
         default:
           throw new McpError(ErrorCode.MethodNotFound, `Tool ${toolName} not found`);
       }
@@ -310,6 +344,11 @@ ${getSupportedModelsDescription()}
     if (isFirstToolUse) {
       console.error(`ai_cli_mcp v${SERVER_VERSION} started at ${serverStartupTime}`);
       isFirstToolUse = false;
+    }
+
+    const cliConfigurationError = this.getCliConfigurationError();
+    if (cliConfigurationError) {
+      throw new McpError(ErrorCode.InvalidParams, cliConfigurationError);
     }
 
     try {
@@ -442,6 +481,24 @@ ${getSupportedModelsDescription()}
       content: [{
         type: 'text',
         text: JSON.stringify(this.processService.cleanupProcesses(), null, 2)
+      }]
+    };
+  }
+
+  private async handleDoctor(): Promise<ServerResult> {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(getCliDoctorStatus(), null, 2)
+      }]
+    };
+  }
+
+  private async handleModels(): Promise<ServerResult> {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(getModelsPayload(), null, 2)
       }]
     };
   }

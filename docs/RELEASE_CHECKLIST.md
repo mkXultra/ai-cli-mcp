@@ -6,7 +6,7 @@ This project uses [semantic-release](https://semantic-release.gitbook.io/) for a
 
 1. **Commit with Conventional Commits format** to `develop` branch
 2. **CI automatically determines version** based on commit messages
-3. **Automatic release**: version bump, CHANGELOG update, npm publish, GitHub Release
+3. **Automatic release**: version bump, `server.json` sync, CHANGELOG update, npm publish, GitHub Release
 
 ## Commit Message Format
 
@@ -40,10 +40,17 @@ BREAKING CHANGE: response structure has changed"
 
 Before merging to `develop`:
 
-- [ ] Tests pass locally (`npm test`)
+- [ ] Deterministic release gate passes locally (`npm run test:release`; this does not enable real external CLI runs by itself)
+- [ ] Package smoke passes (`npm run test:package`, included in `npm run test:release`)
 - [ ] Build succeeds (`npm run build`)
+- [ ] Release-time live E2E passes for the intended backends (`ACM_LIVE_E2E=1 ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live`, or `ACM_LIVE_E2E_AGENTS=all` for all backends; add `ACM_LIVE_E2E_SURFACE=all` to cover both ai-cli and MCP server surfaces)
+- [ ] Package contents look correct (`npm pack --dry-run`, covered by `npm run test:package`)
 - [ ] Commit messages follow Conventional Commits format
 - [ ] PR has been reviewed (if applicable)
+
+## Branch Protection
+
+Because merges to `develop` trigger the automated release workflow, branch protection should require the deterministic PR checks before merge. At minimum, require the `test` workflow job that runs `npm run test:release`; keep the Node.js CI matrix and dependency review checks required when they are enabled for the repository.
 
 ## Important: Git Tags
 
@@ -63,3 +70,9 @@ Configuration on npmjs.com:
 - Organization/user: `mkXultra`
 - Repository: `ai-cli-mcp`
 - Workflow filename: `publish.yml`
+
+## MCP Registry Manifest
+
+`server.json` is updated during the semantic-release `prepare` step by `.github/semantic-release-sync-server-json.cjs`. Keep `server.json` in the `@semantic-release/git` assets list so the release commit, npm package, and MCP Registry publish all use the same version.
+
+`npm run test:package` checks that `server.json` is included in the npm package and that its version matches `package.json`.

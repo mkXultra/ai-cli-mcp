@@ -18,11 +18,20 @@ npm test
 # Unit tests only
 npm run test:unit
 
+# Deterministic PR/release gate
+npm run test:release
+
+# Published npm package contents smoke test
+npm run test:package
+
 # E2E tests (with mocks)
 npm run test:e2e
 
 # E2E tests locally (requires Claude CLI)
 npm run test:e2e:local
+
+# Opt-in live E2E against real installed AI CLIs
+ACM_LIVE_E2E=1 ACM_LIVE_E2E_SURFACE=all ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live
 
 # Watch mode
 npm run test:watch

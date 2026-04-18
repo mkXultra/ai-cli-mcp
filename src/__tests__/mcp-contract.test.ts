@@ -93,9 +93,11 @@ describe('MCP Contract Tests', () => {
 
     expect(toolNames).toEqual([
       'cleanup_processes',
+      'doctor',
       'get_result',
       'kill_process',
       'list_processes',
+      'models',
       'peek',
       'run',
       'wait',
@@ -142,9 +144,47 @@ describe('MCP Contract Tests', () => {
       'pids',
     ]);
     expect(peekTool.description).toContain('One-shot');
+
+    const doctorTool = tools.find((tool: any) => tool.name === 'doctor');
+    expect(doctorTool.inputSchema.properties).toEqual({});
+    expect(doctorTool.description).toContain('binary availability');
+
+    const modelsTool = tools.find((tool: any) => tool.name === 'models');
+    expect(modelsTool.inputSchema.properties).toEqual({});
+    expect(modelsTool.description).toContain('model aliases');
   });
 
   it('preserves the stdio MCP smoke flow and response shapes', async () => {
+    const modelsResponse = await client.callTool('models', {});
+    const modelsData = parseToolJson(modelsResponse);
+
+    expect(modelsData.aliases).toEqual(expect.any(Array));
+    expect(modelsData.aliases).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'claude-ultra',
+          resolvesTo: 'opus',
+          agent: 'claude',
+          defaultReasoningEffort: 'max',
+        }),
+      ])
+    );
+    expect(modelsData.claude).toContain('sonnet');
+    expect(modelsData.codex).toContain('codex');
+    expect(modelsData.opencode).toEqual(['opencode']);
+    expect(modelsData.dynamicModelBackends.opencode.explicitPattern).toBe('oc-<provider/model>');
+
+    const doctorResponse = await client.callTool('doctor', {});
+    const doctorData = parseToolJson(doctorResponse);
+
+    expect(doctorData.checks).toEqual({
+      binaryAvailability: true,
+      pathResolution: true,
+      loginState: false,
+      termsAcceptance: false,
+    });
+    expect(doctorData.claude.configuredCommand).toBe(process.env.TEST_CLAUDE_CLI_NAME);
+
     const runResponse = await client.callTool('run', {
       prompt: 'create a file called contract.txt with content "hello"',
       workFolder: testDir,

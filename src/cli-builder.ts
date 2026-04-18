@@ -3,8 +3,9 @@ import { resolve as pathResolve, isAbsolute } from 'node:path';
 import type { CliPaths } from './cli-utils.js';
 import { MODEL_ALIASES } from './model-catalog.js';
 
-export const ALLOWED_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
-const CLAUDE_REASONING_EFFORTS = new Set(['low', 'medium', 'high']);
+export const ALLOWED_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
+const CLAUDE_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
+const CODEX_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
 const OPENCODE_MODEL_ERROR = 'Invalid OpenCode model. Expected exact syntax oc-<provider/model>.';
 
 type Agent = 'codex' | 'claude' | 'gemini' | 'forge' | 'opencode';
@@ -18,6 +19,9 @@ interface ModelSelection {
 function getStandardAgentForModel(model: string): Exclude<Agent, 'opencode'> {
   if (model === 'forge') {
     return 'forge';
+  }
+  if (model === 'codex') {
+    return 'codex';
   }
   if (model.startsWith('gpt-')) {
     return 'codex';
@@ -101,7 +105,7 @@ export function getReasoningEffort(model: string, rawValue: unknown): string {
   const normalized = trimmed.toLowerCase();
   if (!ALLOWED_REASONING_EFFORTS.has(normalized)) {
     throw new Error(
-      `Invalid reasoning_effort: ${rawValue}. Allowed values: low, medium, high, xhigh.`
+      `Invalid reasoning_effort: ${rawValue}. Allowed values: low, medium, high, xhigh, max.`
     );
   }
   const agent = getStandardAgentForModel(model);
@@ -115,7 +119,12 @@ export function getReasoningEffort(model: string, rawValue: unknown): string {
   }
   if (agent === 'claude' && !CLAUDE_REASONING_EFFORTS.has(normalized)) {
     throw new Error(
-      'Claude reasoning_effort supports only low, medium, high.'
+      'Claude reasoning_effort supports only low, medium, high, xhigh, max.'
+    );
+  }
+  if (agent === 'codex' && !CODEX_REASONING_EFFORTS.has(normalized)) {
+    throw new Error(
+      'Codex reasoning_effort supports only low, medium, high, xhigh.'
     );
   }
   return normalized;
@@ -188,7 +197,7 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
     if (rawModel === 'codex-ultra') {
       reasoningEffortArg = 'xhigh';
     } else if (rawModel === 'claude-ultra') {
-      reasoningEffortArg = 'high';
+      reasoningEffortArg = 'max';
     }
   }
 
@@ -212,7 +221,7 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
     if (reasoningEffort) {
       args.push('-c', `model_reasoning_effort=${reasoningEffort}`);
     }
-    if (resolvedModel) {
+    if (resolvedModel && resolvedModel !== 'codex') {
       args.push('--model', resolvedModel);
     }
 
