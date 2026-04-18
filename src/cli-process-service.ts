@@ -10,6 +10,7 @@ import {
   readFileSync,
   readdirSync,
   realpathSync,
+  renameSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -483,10 +484,10 @@ export class CliProcessService {
   }
 
   private writeExitStatus(process: StoredProcess, exitStatus: StoredExitStatus): void {
-    writeFileSync(
-      this.resolveExitStatusPath(this.resolveStoredProcessDir(process)),
-      JSON.stringify(exitStatus, null, 2) + '\n',
-    );
+    const exitStatusPath = this.resolveExitStatusPath(this.resolveStoredProcessDir(process));
+    const tempPath = `${exitStatusPath}.${process.pid}.${Date.now()}.tmp`;
+    writeFileSync(tempPath, JSON.stringify(exitStatus, null, 2) + '\n');
+    renameSync(tempPath, exitStatusPath);
   }
 
   private readTextFileSafe(filePath: string): string {
