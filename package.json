@@ -10,6 +10,24 @@
     "ai-cli": "dist/bin/ai-cli.js",
     "ai-cli-mcp": "dist/bin/ai-cli-mcp.js"
   },
+  "files": [
+    "dist/app",
+    "dist/bin",
+    "dist/cli-builder.js",
+    "dist/cli-parse.js",
+    "dist/cli-process-service.js",
+    "dist/cli-utils.js",
+    "dist/cli.js",
+    "dist/model-catalog.js",
+    "dist/parsers.js",
+    "dist/peek.js",
+    "dist/process-result.js",
+    "dist/process-service.js",
+    "dist/server.js",
+    "server.json",
+    "README.ja.md",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
