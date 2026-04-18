@@ -395,6 +395,9 @@ npm run test:e2e
 # 公開 npm package の contents smoke test
 npm run test:package
 
+# GitHub Actions と同じ deterministic PR/release gate
+npm run test:release
+
 # リリース前の live E2E（実際にインストール済み AI CLI を叩く）
 ACM_LIVE_E2E=1 ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live
 

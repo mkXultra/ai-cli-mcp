@@ -39,17 +39,8 @@ jobs:
       - name: Install dependencies
         run: npm clean-install
 
-      - name: Build
-        run: npm run build
-
-      - name: Run tests
-        run: npm test
-
-      - name: Live E2E opt-in guard
-        run: npm run test:live
-
-      - name: Package smoke
-        run: npm run test:package
+      - name: Release gate
+        run: npm run test:release
 
       - name: Verify provenance attestations
         run: npm audit signatures

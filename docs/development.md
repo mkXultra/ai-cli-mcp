@@ -61,6 +61,9 @@ npm run test:unit
 # Verify the published npm package contents
 npm run test:package
 
+# Run the deterministic PR/release gate used by GitHub Actions
+npm run test:release
+
 # Run e2e tests (with mocks)
 npm run test:e2e
 

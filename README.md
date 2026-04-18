@@ -385,6 +385,9 @@ npm test
 # Published npm package contents smoke test
 npm run test:package
 
+# Deterministic PR/release gate used by GitHub Actions
+npm run test:release
+
 # Release-time live E2E against real installed AI CLIs
 ACM_LIVE_E2E=1 ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live
 
