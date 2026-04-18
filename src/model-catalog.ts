@@ -1,5 +1,6 @@
 export const CLAUDE_MODELS = ['sonnet', 'sonnet[1m]', 'opus', 'opusplan', 'haiku'] as const;
 export const CODEX_MODELS = [
+  'codex',
   'gpt-5.4',
   'gpt-5.3-codex',
   'gpt-5.2-codex',

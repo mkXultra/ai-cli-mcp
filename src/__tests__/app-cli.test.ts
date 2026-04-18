@@ -300,6 +300,7 @@ describe('ai-cli app', () => {
     expect(exitCode).toBe(0);
     expect(payload.aliases).toEqual(expect.any(Array));
     expect(payload.claude).toContain('sonnet');
+    expect(payload.codex).toContain('codex');
     expect(payload.codex).toContain('gpt-5.4');
     expect(payload.forge).toEqual(['forge']);
     expect(payload.opencode).toEqual(['opencode']);

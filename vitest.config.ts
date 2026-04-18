@@ -5,6 +5,11 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: ['./src/__tests__/setup-unit.ts'],
+    exclude: [
+      'node_modules/**',
+      'src/__tests__/live-cli-e2e.test.ts',
+      'dist/__tests__/live-cli-e2e.test.js',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

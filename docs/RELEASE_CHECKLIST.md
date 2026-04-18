@@ -42,6 +42,8 @@ Before merging to `develop`:
 
 - [ ] Tests pass locally (`npm test`)
 - [ ] Build succeeds (`npm run build`)
+- [ ] Release-time live E2E passes for the intended backends (`ACM_LIVE_E2E=1 ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live`, or `ACM_LIVE_E2E_AGENTS=all` for full coverage)
+- [ ] Package contents look correct (`npm pack --dry-run`)
 - [ ] Commit messages follow Conventional Commits format
 - [ ] PR has been reviewed (if applicable)
 

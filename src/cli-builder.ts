@@ -19,6 +19,9 @@ function getStandardAgentForModel(model: string): Exclude<Agent, 'opencode'> {
   if (model === 'forge') {
     return 'forge';
   }
+  if (model === 'codex') {
+    return 'codex';
+  }
   if (model.startsWith('gpt-')) {
     return 'codex';
   }
@@ -212,7 +215,7 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
     if (reasoningEffort) {
       args.push('-c', `model_reasoning_effort=${reasoningEffort}`);
     }
-    if (resolvedModel) {
+    if (resolvedModel && resolvedModel !== 'codex') {
       args.push('--model', resolvedModel);
     }
 

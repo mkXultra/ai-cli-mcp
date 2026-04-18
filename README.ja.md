@@ -24,7 +24,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 - OpenCode を非対話 JSON モードで実行（`opencode run --format json --dir <workFolder> <prompt>` を使用）
 - 複数のAIモデルのサポート：
     - Claude (sonnet, sonnet[1m], opus, opusplan, haiku)
-    - Codex (gpt-5.4, gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, など)
+    - Codex (`codex` は Codex CLI 側の設定済みデフォルトモデル、加えて gpt-5.4, gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, など)
     - Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview)
     - Forge (`forge`)
     - OpenCode (`opencode` と `oc-<provider/model>` ラッパー。例: `oc-openai/gpt-5.4`)
@@ -192,6 +192,7 @@ macOSでは、これらのツールを初めて実行する際にフォルダへ
 ```bash
 ai-cli doctor
 ai-cli models
+ai-cli run --cwd "$PWD" --model codex --prompt "Codex CLI のデフォルトモデルで実行"
 ai-cli run --cwd "$PWD" --model codex-ultra --prompt "fix failing tests"
 ai-cli run --cwd "$PWD" --model opencode --session-id ses_existing --prompt "この OpenCode セッションを継続して"
 ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --prompt "明示的な OpenCode モデルで実行"
@@ -213,6 +214,8 @@ OpenCode のモデル指定は次の 2 つを受け付けます。
 - `oc-<provider/model>`: 明示的な OpenCode の provider/model を指定。例: `oc-openai/gpt-5.4`
 
 `ai-cli models` は OpenCode を機械可読に `opencode: ["opencode"]` と `dynamicModelBackends.opencode` で公開します。実際に利用可能なバックエンドネイティブなモデル一覧は `opencode models` で確認してください。
+
+Codex のモデル指定では、`codex` を使うと Codex CLI 側の設定済みデフォルトモデルを使用します。Codex CLI がアカウント種別によって明示的な `gpt-*` モデル指定を受け付けない場合に有用です。
 
 `doctor` は CLI バイナリの利用可否と path 解決だけを確認します。JSON 出力には `checks` ブロックが含まれ、ログイン状態と利用規約同意は未確認として示されます。
 
@@ -258,7 +261,7 @@ Claude CLI、Codex CLI、Gemini CLI、Forge CLI、または OpenCode を使用�
 - **モデル (Models):**
     - **Ultra エイリアス:** `claude-ultra` (自動的に high effort に設定), `codex-ultra` (自動的に xhigh reasoning に設定), `gemini-ultra`
     - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
-    - Codex: `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
+    - Codex: `codex`（Codex CLI 側の設定済みデフォルトモデル）および `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
     - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
     - Forge: `forge`
     - OpenCode: `opencode`（設定済みのデフォルトモデル）および `oc-openai/gpt-5.4` のような明示ラッパー
@@ -388,7 +391,12 @@ npm run test:unit
 
 # E2Eテストの実行（モック使用）
 npm run test:e2e
+
+# リリース前の live E2E（実際にインストール済み AI CLI を叩く）
+ACM_LIVE_E2E=1 ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live
 ```
+
+live E2E は opt-in です。インストール済みかつ認証済みの外部 CLI、ネットワーク、provider 側の可用性、コスト予算に依存するため、通常の `npm test` には含めていません。
 
 ## 高度な設定（オプション）
 

@@ -36,6 +36,7 @@
     "test:unit": "vitest run --config vitest.config.unit.ts",
     "test:e2e": "npm run build && vitest run --config vitest.config.e2e.ts",
     "test:e2e:local": "npm run build && vitest run --config vitest.config.e2e.ts",
+    "test:live": "npm run build && vitest run --config vitest.config.live.ts",
     "test:coverage": "npm run build && vitest --coverage --config vitest.config.unit.ts",
     "test:watch": "vitest --watch",
     "cli.run": "tsx src/cli.ts",

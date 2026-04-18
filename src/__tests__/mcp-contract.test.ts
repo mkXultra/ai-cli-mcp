@@ -160,6 +160,7 @@ describe('MCP Contract Tests', () => {
 
     expect(modelsData.aliases).toEqual(expect.any(Array));
     expect(modelsData.claude).toContain('sonnet');
+    expect(modelsData.codex).toContain('codex');
     expect(modelsData.opencode).toEqual(['opencode']);
     expect(modelsData.dynamicModelBackends.opencode.explicitPattern).toBe('oc-<provider/model>');
 

@@ -64,6 +64,12 @@ npm run test:e2e
 # Run e2e tests locally (requires Claude CLI)
 npm run test:e2e:local
 
+# Run opt-in live E2E against real installed AI CLIs
+ACM_LIVE_E2E=1 npm run test:live
+
+# Select backends for live E2E. Use "all" for every supported backend.
+ACM_LIVE_E2E=1 ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live
+
 # Watch mode for development
 npm run test:watch
 
@@ -130,7 +136,7 @@ This will open a web interface where you can:
 2. Test each tool with different parameters
 3. Test different AI models including:
    - Claude models: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
-   - Codex models: `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5.1-codex`, `gpt-5-codex`, `gpt-5-codex-mini`, `gpt-5`
+   - Codex models: `codex` for the CLI default, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5.1-codex`, `gpt-5-codex`, `gpt-5-codex-mini`, `gpt-5`
    - Gemini models: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
 
 Example test: Select the `run` tool and provide:

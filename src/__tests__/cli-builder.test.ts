@@ -303,6 +303,23 @@ describe('cli-builder', () => {
     });
 
     describe('codex agent', () => {
+      it('should build codex command using the CLI default model', () => {
+        const cmd = buildCliCommand({
+          prompt: 'test',
+          workFolder: '/tmp',
+          model: 'codex',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.agent).toBe('codex');
+        expect(cmd.resolvedModel).toBe('codex');
+        expect(cmd.cliPath).toBe('/usr/bin/codex');
+        expect(cmd.args).toContain('exec');
+        expect(cmd.args).toContain('--dangerously-bypass-approvals-and-sandbox');
+        expect(cmd.args).toContain('--json');
+        expect(cmd.args).not.toContain('--model');
+      });
+
       it('should build codex command', () => {
         const cmd = buildCliCommand({
           prompt: 'test',

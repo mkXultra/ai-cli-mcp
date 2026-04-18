@@ -47,6 +47,36 @@ npm run test:e2e:local
 
 The integration tests are marked with `.skip()` by default and will only run when you have Claude CLI installed and authenticated.
 
+### Live CLI E2E
+
+Use `test:live` for release-time checks against real installed AI CLIs. This suite runs the built `dist/bin/ai-cli.js` command and verifies the real `run -> ps -> peek -> wait -> result -> cleanup` flow, including persisted `exit-status.json`.
+
+Live E2E is opt-in and is not part of normal `npm test`:
+
+```bash
+# Shows the opt-in guard and does not call external CLIs
+npm run test:live
+
+# Default live backends: claude,codex
+ACM_LIVE_E2E=1 npm run test:live
+
+# Choose exact backends
+ACM_LIVE_E2E=1 ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live
+
+# Full release-time coverage
+ACM_LIVE_E2E=1 ACM_LIVE_E2E_AGENTS=all npm run test:live
+```
+
+Useful environment variables:
+
+- `ACM_LIVE_E2E_AGENTS`: comma-separated `claude,codex,gemini,forge,opencode`, or `all`. Defaults to `claude,codex`.
+- `ACM_LIVE_E2E_TIMEOUT_SECONDS`: timeout passed to `ai-cli wait`. Defaults to `240`.
+- `ACM_LIVE_E2E_TOKEN`: expected token in the model response. Defaults to `ACM_LIVE_E2E_OK`.
+- `ACM_LIVE_E2E_ASSERT_TOKEN=0`: disables response-token assertion if a provider adds unavoidable formatting.
+- `ACM_LIVE_E2E_<AGENT>_MODEL`: override a default model, for example `ACM_LIVE_E2E_CODEX_MODEL=gpt-5.4`. The default Codex value is `codex`, which uses the Codex CLI's configured default model for account compatibility.
+
+Keep this suite out of mandatory CI unless the runner has authenticated CLI sessions, network access, and an acceptable cost budget.
+
 ## Test Scenarios
 
 ### Basic Operations
