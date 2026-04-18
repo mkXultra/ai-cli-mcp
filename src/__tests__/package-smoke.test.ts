@@ -87,10 +87,12 @@ describe('npm package smoke', () => {
     const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
     const serverJson = JSON.parse(readFileSync('server.json', 'utf8'));
 
+    expect(serverJson.name).toBe(packageJson.mcpName);
     expect(serverJson.version).toBe(packageJson.version);
     expect(serverJson.packages).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
+          registryType: 'npm',
           identifier: packageJson.name,
           version: packageJson.version,
         }),
