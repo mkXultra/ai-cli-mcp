@@ -9,7 +9,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { debugLog, findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli, getCliDoctorStatus } from '../cli-utils.js';
+import { debugLog, getCliDoctorStatus, type CliBinaryStatus } from '../cli-utils.js';
 import { getModelParameterDescription, getModelsPayload, getSupportedModelsDescription } from '../model-catalog.js';
 import { validatePeekPids, validatePeekTimeSec } from '../peek.js';
 import { ProcessService } from '../process-service.js';
@@ -78,20 +78,19 @@ export class ClaudeCodeServer {
   private opencodeCliPath: string;
   private processService: ProcessService;
   private sigintHandler?: () => Promise<void>;
-  private packageVersion: string;
 
   constructor() {
-    this.claudeCliPath = findClaudeCli();
-    this.codexCliPath = findCodexCli();
-    this.geminiCliPath = findGeminiCli();
-    this.forgeCliPath = findForgeCli();
-    this.opencodeCliPath = findOpencodeCli();
+    const doctorStatus = getCliDoctorStatus();
+    this.claudeCliPath = this.resolveDoctorCliPath(doctorStatus.claude);
+    this.codexCliPath = this.resolveDoctorCliPath(doctorStatus.codex);
+    this.geminiCliPath = this.resolveDoctorCliPath(doctorStatus.gemini);
+    this.forgeCliPath = this.resolveDoctorCliPath(doctorStatus.forge);
+    this.opencodeCliPath = this.resolveDoctorCliPath(doctorStatus.opencode);
     console.error(`[Setup] Using Claude CLI command/path: ${this.claudeCliPath}`);
     console.error(`[Setup] Using Codex CLI command/path: ${this.codexCliPath}`);
     console.error(`[Setup] Using Gemini CLI command/path: ${this.geminiCliPath}`);
     console.error(`[Setup] Using Forge CLI command/path: ${this.forgeCliPath}`);
     console.error(`[Setup] Using OpenCode CLI command/path: ${this.opencodeCliPath}`);
-    this.packageVersion = SERVER_VERSION;
     this.processService = new ProcessService({
       cliPaths: {
         claude: this.claudeCliPath,
@@ -122,6 +121,20 @@ export class ClaudeCodeServer {
       process.exit(0);
     };
     process.on('SIGINT', this.sigintHandler);
+  }
+
+  private resolveDoctorCliPath(status: CliBinaryStatus): string {
+    return status.resolvedPath || status.configuredCommand;
+  }
+
+  private getCliConfigurationError(): string | null {
+    const doctorStatus = getCliDoctorStatus();
+    for (const name of ['claude', 'codex', 'gemini', 'forge', 'opencode'] as const) {
+      if (doctorStatus[name].error) {
+        return doctorStatus[name].error;
+      }
+    }
+    return null;
   }
 
   private setupToolHandlers(): void {
@@ -331,6 +344,11 @@ ${getSupportedModelsDescription()}
     if (isFirstToolUse) {
       console.error(`ai_cli_mcp v${SERVER_VERSION} started at ${serverStartupTime}`);
       isFirstToolUse = false;
+    }
+
+    const cliConfigurationError = this.getCliConfigurationError();
+    if (cliConfigurationError) {
+      throw new McpError(ErrorCode.InvalidParams, cliConfigurationError);
     }
 
     try {

@@ -565,6 +565,47 @@ describe('ClaudeCodeServer Unit Tests', () => {
       expect(response.status).toBe('started');
     });
 
+    it('should start and report doctor status when a CLI env path is invalid', async () => {
+      mockHomedir.mockReturnValue('/home/user');
+      mockExistsSync.mockReturnValue(true);
+      process.env.CLAUDE_CLI_NAME = './relative/path/claude';
+
+      setupServerMock();
+
+      const module = await import('../server.js');
+      // @ts-ignore
+      const { ClaudeCodeServer } = module;
+
+      expect(() => new ClaudeCodeServer()).not.toThrow();
+      const mockServerInstance = vi.mocked(Server).mock.results[0].value;
+      const callToolCall = mockServerInstance.setRequestHandler.mock.calls.find(
+        (call: any[]) => call[0].name === 'callTool'
+      );
+      const handler = callToolCall[1];
+
+      const doctorResult = await handler({
+        params: {
+          name: 'doctor',
+          arguments: {},
+        },
+      });
+      const doctorStatus = JSON.parse(doctorResult.content[0].text);
+      expect(doctorStatus.claude.error).toContain('Invalid CLAUDE_CLI_NAME');
+
+      await expect(handler({
+        params: {
+          name: 'run',
+          arguments: {
+            prompt: 'test prompt',
+            workFolder: '/tmp',
+          },
+        },
+      })).rejects.toMatchObject({
+        code: 'InvalidParams',
+        message: expect.stringContaining('Invalid CLAUDE_CLI_NAME'),
+      });
+    });
+
     it('should require workFolder parameter', async () => {
       mockHomedir.mockReturnValue('/home/user');
       mockExistsSync.mockReturnValue(true);
