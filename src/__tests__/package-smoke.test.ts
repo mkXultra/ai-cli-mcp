@@ -97,4 +97,17 @@ describe('npm package smoke', () => {
       ])
     );
   });
+
+  it('keeps package metadata aligned with packed runtime files', () => {
+    const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
+    const packageLock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
+
+    expect(packageLock.version).toBe(packageJson.version);
+    expect(packageLock.packages[''].version).toBe(packageJson.version);
+    expect(expectedPackageFiles).toContain(packageJson.main);
+
+    for (const binPath of Object.values(packageJson.bin)) {
+      expect(expectedPackageFiles).toContain(binPath);
+    }
+  });
 });
