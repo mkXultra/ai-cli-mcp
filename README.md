@@ -335,6 +335,10 @@ Example response:
 
 Lists all running and completed AI agent processes with their status, PID, and basic info.
 
+### `doctor`
+
+Checks supported AI CLI binary availability and path resolution from MCP clients. Like `ai-cli doctor`, it returns a `checks` block and does not verify login state or terms acceptance.
+
 ### `get_result`
 
 Gets the current output and status of an AI agent process by PID.

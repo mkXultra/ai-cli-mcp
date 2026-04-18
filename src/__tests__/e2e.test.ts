@@ -39,7 +39,7 @@ describe('Claude Code MCP E2E Tests', () => {
     it('should register run tool', async () => {
       const tools = await client.listTools();
       
-      expect(tools).toHaveLength(7);
+      expect(tools).toHaveLength(8);
       const claudeCodeTool = tools.find((t: any) => t.name === 'run');
       expect(claudeCodeTool.inputSchema.properties.model.description).toContain('sonnet');
       expect(claudeCodeTool.inputSchema.properties.model.description).toContain('opencode');
@@ -51,6 +51,7 @@ describe('Claude Code MCP E2E Tests', () => {
       expect(tools.some((t: any) => t.name === 'get_result')).toBe(true);
       expect(tools.some((t: any) => t.name === 'peek')).toBe(true);
       expect(tools.some((t: any) => t.name === 'kill_process')).toBe(true);
+      expect(tools.some((t: any) => t.name === 'doctor')).toBe(true);
     });
   });
 

@@ -250,6 +250,8 @@ Target mapping:
 - MCP `list_processes` -> shared process service `ps`
 - MCP `get_result` -> shared process service `result`
 - MCP `kill_process` -> shared process service `kill`
+- MCP `cleanup_processes` -> shared process service `cleanup`
+- MCP `doctor` -> CLI binary doctor status
 
 ## Implementation Order
 

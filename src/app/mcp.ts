@@ -8,7 +8,7 @@ import {
   type ServerResult,
 } from '@modelcontextprotocol/sdk/types.js';
 import { spawn } from 'node:child_process';
-import { debugLog, findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli } from '../cli-utils.js';
+import { debugLog, findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli, getCliDoctorStatus } from '../cli-utils.js';
 import { getModelParameterDescription, getSupportedModelsDescription } from '../model-catalog.js';
 import { validatePeekPids, validatePeekTimeSec } from '../peek.js';
 import { ProcessService } from '../process-service.js';
@@ -275,6 +275,14 @@ ${getSupportedModelsDescription()}
             type: 'object',
             properties: {},
           },
+        },
+        {
+          name: 'doctor',
+          description: 'Check supported AI CLI binary availability and path resolution. Does not verify login state or terms acceptance.',
+          inputSchema: {
+            type: 'object',
+            properties: {},
+          },
         }
       ],
     }));
@@ -300,6 +308,8 @@ ${getSupportedModelsDescription()}
           return this.handleKillProcess(toolArguments);
         case 'cleanup_processes':
           return this.handleCleanupProcesses();
+        case 'doctor':
+          return this.handleDoctor();
         default:
           throw new McpError(ErrorCode.MethodNotFound, `Tool ${toolName} not found`);
       }
@@ -442,6 +452,15 @@ ${getSupportedModelsDescription()}
       content: [{
         type: 'text',
         text: JSON.stringify(this.processService.cleanupProcesses(), null, 2)
+      }]
+    };
+  }
+
+  private async handleDoctor(): Promise<ServerResult> {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(getCliDoctorStatus(), null, 2)
       }]
     };
   }

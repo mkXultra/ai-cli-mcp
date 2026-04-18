@@ -93,6 +93,7 @@ describe('MCP Contract Tests', () => {
 
     expect(toolNames).toEqual([
       'cleanup_processes',
+      'doctor',
       'get_result',
       'kill_process',
       'list_processes',
@@ -142,9 +143,24 @@ describe('MCP Contract Tests', () => {
       'pids',
     ]);
     expect(peekTool.description).toContain('One-shot');
+
+    const doctorTool = tools.find((tool: any) => tool.name === 'doctor');
+    expect(doctorTool.inputSchema.properties).toEqual({});
+    expect(doctorTool.description).toContain('binary availability');
   });
 
   it('preserves the stdio MCP smoke flow and response shapes', async () => {
+    const doctorResponse = await client.callTool('doctor', {});
+    const doctorData = parseToolJson(doctorResponse);
+
+    expect(doctorData.checks).toEqual({
+      binaryAvailability: true,
+      pathResolution: true,
+      loginState: false,
+      termsAcceptance: false,
+    });
+    expect(doctorData.claude.configuredCommand).toBe(process.env.TEST_CLAUDE_CLI_NAME);
+
     const runResponse = await client.callTool('run', {
       prompt: 'create a file called contract.txt with content "hello"',
       workFolder: testDir,
