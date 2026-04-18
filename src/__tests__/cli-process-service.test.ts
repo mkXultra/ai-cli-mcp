@@ -43,6 +43,21 @@ exit ${exitCode}
   return scriptPath;
 }
 
+function createOutputCliScript(dir: string, name: string, stdout: string): string {
+  const scriptPath = join(dir, name);
+  writeFileSync(
+    scriptPath,
+    `#!/bin/bash
+cat <<'EOF'
+${stdout.trimEnd()}
+EOF
+exit 0
+`
+  );
+  chmodSync(scriptPath, 0o755);
+  return scriptPath;
+}
+
 function encodeCwd(cwd: string): string {
   return cwd
     .split('')
@@ -133,6 +148,117 @@ describe('CliProcessService', () => {
     expect(result).not.toHaveProperty('prompt');
     expect(readFileSync(join(processDir, 'meta.json'), 'utf-8')).toContain('"status": "completed"');
     expect(readFileSync(join(processDir, 'exit-status.json'), 'utf-8')).toContain('"exitCode": 0');
+  });
+
+  it.each([
+    {
+      agent: 'claude',
+      model: 'sonnet',
+      stdout: `
+{"type":"system","session_id":"ses-fake-claude"}
+{"type":"assistant","message":{"content":[{"type":"text","text":"discarded assistant text"}]}}
+{"type":"result","result":"fake claude ok","is_error":false}
+`,
+      expectedSessionId: 'ses-fake-claude',
+      expectedMessage: 'fake claude ok',
+    },
+    {
+      agent: 'codex',
+      model: 'codex',
+      stdout: `
+{"type":"thread.started","thread_id":"ses-fake-codex"}
+{"type":"item.completed","item":{"type":"agent_message","text":"fake codex ok"}}
+`,
+      expectedSessionId: 'ses-fake-codex',
+      expectedMessage: 'fake codex ok',
+    },
+    {
+      agent: 'gemini',
+      model: 'gemini-2.5-flash',
+      stdout: `
+{"type":"init","timestamp":"2026-04-18T00:00:00.000Z","session_id":"ses-fake-gemini"}
+{"type":"message","timestamp":"2026-04-18T00:00:01.000Z","role":"assistant","content":"fake gemini ok","delta":true}
+`,
+      expectedSessionId: 'ses-fake-gemini',
+      expectedMessage: 'fake gemini ok',
+    },
+    {
+      agent: 'forge',
+      model: 'forge',
+      stdout: `
+● [21:09:01] Initialize ses-fake-forge
+fake forge ok
+● [21:09:08] Finished ses-fake-forge
+`,
+      expectedSessionId: 'ses-fake-forge',
+      expectedMessage: 'fake forge ok',
+    },
+    {
+      agent: 'opencode',
+      model: 'opencode',
+      stdout: `
+{"type":"step_start","sessionID":"ses-fake-opencode"}
+{"type":"text","sessionID":"ses-fake-opencode","part":{"type":"text","text":"fake opencode ok"}}
+{"type":"step_finish","sessionID":"ses-fake-opencode","part":{"type":"step-finish","tokens":{"total":10},"cost":0}}
+`,
+      expectedSessionId: 'ses-fake-opencode',
+      expectedMessage: 'fake opencode ok',
+    },
+  ] as const)('runs and parses a fake $agent CLI through the detached lifecycle', async ({
+    agent,
+    model,
+    stdout,
+    expectedSessionId,
+    expectedMessage,
+  }) => {
+    const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
+    tempDirs.push(root);
+    const scriptPath = createOutputCliScript(root, `mock-${agent}`, stdout);
+    const stateDir = join(root, 'state');
+    const workFolder = join(root, 'work');
+    mkdirSync(workFolder, { recursive: true });
+
+    const cliPaths = {
+      claude: '/bin/sh',
+      codex: '/bin/sh',
+      gemini: '/bin/sh',
+      forge: '/bin/sh',
+      opencode: '/bin/sh',
+    };
+    cliPaths[agent] = scriptPath;
+
+    const service = new CliProcessService({
+      stateDir,
+      cliPaths,
+    });
+
+    const runResult = await service.startProcess({
+      prompt: `hello fake ${agent}`,
+      cwd: workFolder,
+      model,
+    });
+
+    expect(runResult).toMatchObject({
+      agent,
+      status: 'started',
+    });
+
+    const [result] = await service.waitForProcesses([runResult.pid], 5);
+
+    expect(result).toMatchObject({
+      pid: runResult.pid,
+      agent,
+      status: 'completed',
+      exitCode: 0,
+      model,
+      session_id: expectedSessionId,
+      agentOutput: {
+        message: expectedMessage,
+        session_id: expectedSessionId,
+      },
+    });
+    expect(result).not.toHaveProperty('stdout');
+    expect(result).not.toHaveProperty('stderr');
   });
 
   it('persists non-zero exit codes for detached non-OpenCode runs', async () => {
