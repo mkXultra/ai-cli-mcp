@@ -82,4 +82,19 @@ describe('npm package smoke', () => {
     expect(readFileSync('dist/bin/ai-cli.js', 'utf8').startsWith('#!/usr/bin/env node')).toBe(true);
     expect(readFileSync('dist/bin/ai-cli-mcp.js', 'utf8').startsWith('#!/usr/bin/env node')).toBe(true);
   });
+
+  it('keeps the MCP registry manifest version aligned with the npm package', () => {
+    const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
+    const serverJson = JSON.parse(readFileSync('server.json', 'utf8'));
+
+    expect(serverJson.version).toBe(packageJson.version);
+    expect(serverJson.packages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          identifier: packageJson.name,
+          version: packageJson.version,
+        }),
+      ])
+    );
+  });
 });
