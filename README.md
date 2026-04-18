@@ -256,13 +256,13 @@ Executes a prompt using Claude CLI, Codex CLI, Gemini CLI, Forge CLI, or OpenCod
 - `prompt_file` (string, optional): Path to a file containing the prompt. Either `prompt` or `prompt_file` is required. Can be absolute path or relative to `workFolder`.
 - `workFolder` (string, required): The working directory for the CLI execution. Must be an absolute path.
 **Models:**
-- **Ultra Aliases:** `claude-ultra` (defaults to high effort), `codex-ultra` (defaults to xhigh reasoning), `gemini-ultra`
+- **Ultra Aliases:** `claude-ultra` (defaults to max effort), `codex-ultra` (defaults to xhigh reasoning), `gemini-ultra`
 - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
 - Codex: `codex` for the CLI's configured default model, plus `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
 - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
 - Forge: `forge`
 - OpenCode: `opencode` for the configured default backend model, plus explicit wrappers like `oc-openai/gpt-5.4`
-- `reasoning_effort` (string, optional): Reasoning control for Claude and Codex. Claude uses `--effort` (allowed: "low", "medium", "high"). Codex uses `model_reasoning_effort` (allowed: "low", "medium", "high", "xhigh"). Gemini, Forge, and OpenCode do not support `reasoning_effort`.
+- `reasoning_effort` (string, optional): Reasoning control for Claude and Codex. Claude uses `--effort` (allowed: "low", "medium", "high", "xhigh", "max"). Codex uses `model_reasoning_effort` (allowed: "low", "medium", "high", "xhigh"). Gemini, Forge, and OpenCode do not support `reasoning_effort`.
 - `session_id` (string, optional): Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, and OpenCode. OpenCode resumes in place via `--session` and may also be combined with an explicit `oc-<provider/model>` selection.
 
 ### `wait`

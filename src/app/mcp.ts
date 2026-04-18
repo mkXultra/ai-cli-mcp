@@ -186,7 +186,7 @@ ${getSupportedModelsDescription()}
               },
               reasoning_effort: {
                 type: 'string',
-                description: 'Reasoning control for Claude and Codex. Claude uses --effort with "low", "medium", "high". Codex uses model_reasoning_effort with "low", "medium", "high", "xhigh". Gemini, Forge, and OpenCode do not support reasoning_effort in this integration.',
+                description: 'Reasoning control for Claude and Codex. Claude uses --effort with "low", "medium", "high", "xhigh", "max". Codex uses model_reasoning_effort with "low", "medium", "high", "xhigh". Gemini, Forge, and OpenCode do not support reasoning_effort in this integration.',
               },
               session_id: {
                 type: 'string',

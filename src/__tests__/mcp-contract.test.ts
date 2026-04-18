@@ -159,6 +159,16 @@ describe('MCP Contract Tests', () => {
     const modelsData = parseToolJson(modelsResponse);
 
     expect(modelsData.aliases).toEqual(expect.any(Array));
+    expect(modelsData.aliases).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'claude-ultra',
+          resolvesTo: 'opus',
+          agent: 'claude',
+          defaultReasoningEffort: 'max',
+        }),
+      ])
+    );
     expect(modelsData.claude).toContain('sonnet');
     expect(modelsData.codex).toContain('codex');
     expect(modelsData.opencode).toEqual(['opencode']);

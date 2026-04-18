@@ -299,6 +299,16 @@ describe('ai-cli app', () => {
 
     expect(exitCode).toBe(0);
     expect(payload.aliases).toEqual(expect.any(Array));
+    expect(payload.aliases).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'claude-ultra',
+          resolvesTo: 'opus',
+          agent: 'claude',
+          defaultReasoningEffort: 'max',
+        }),
+      ])
+    );
     expect(payload.claude).toContain('sonnet');
     expect(payload.codex).toContain('codex');
     expect(payload.codex).toContain('gpt-5.4');

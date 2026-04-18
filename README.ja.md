@@ -259,13 +259,13 @@ Claude CLI、Codex CLI、Gemini CLI、Forge CLI、または OpenCode を使用�
 - `prompt_file` (string, 任意): プロンプトを含むファイルへのパス。`prompt` または `prompt_file` のいずれかが必須です。絶対パス、または `workFolder` からの相対パスが指定可能です。
 - `workFolder` (string, 必須): CLIを実行する作業ディレクトリ。絶対パスである必要があります。
 - **モデル (Models):**
-    - **Ultra エイリアス:** `claude-ultra` (自動的に high effort に設定), `codex-ultra` (自動的に xhigh reasoning に設定), `gemini-ultra`
+    - **Ultra エイリアス:** `claude-ultra` (自動的に max effort に設定), `codex-ultra` (自動的に xhigh reasoning に設定), `gemini-ultra`
     - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
     - Codex: `codex`（Codex CLI 側の設定済みデフォルトモデル）および `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
     - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
     - Forge: `forge`
     - OpenCode: `opencode`（設定済みのデフォルトモデル）および `oc-openai/gpt-5.4` のような明示ラッパー
-- `reasoning_effort` (string, 任意): Claude と Codex の推論制御。Claude では `--effort` を使います（許容値: "low", "medium", "high"）。Codex では `model_reasoning_effort` を使います（許容値: "low", "medium", "high", "xhigh"）。Gemini、Forge、OpenCode では `reasoning_effort` はサポートしません。
+- `reasoning_effort` (string, 任意): Claude と Codex の推論制御。Claude では `--effort` を使います（許容値: "low", "medium", "high", "xhigh", "max"）。Codex では `model_reasoning_effort` を使います（許容値: "low", "medium", "high", "xhigh"）。Gemini、Forge、OpenCode では `reasoning_effort` はサポートしません。
 - `session_id` (string, 任意): 以前のセッションを再開するためのセッションID。Claude、Codex、Gemini、Forge、OpenCode でサポートされます。OpenCode は `--session` による in-place resume で再開し、`oc-<provider/model>` の明示指定と併用できます。
 
 ### `wait`

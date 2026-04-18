@@ -121,8 +121,8 @@ src/
 `claude-ultra` / `codex-ultra` / `gemini-ultra` というエイリアスを提供している。
 
 ```
-claude-ultra  → opus
-codex-ultra   → gpt-5.4 (+ reasoning_effort: high)
+claude-ultra  → opus (+ reasoning_effort: max)
+codex-ultra   → gpt-5.4 (+ reasoning_effort: xhigh)
 gemini-ultra  → gemini-3.1-pro-preview
 ```
 
