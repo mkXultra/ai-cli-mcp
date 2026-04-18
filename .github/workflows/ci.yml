@@ -6,9 +6,13 @@ on:
   pull_request:
     branches: [ develop ]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     strategy:
       matrix:
