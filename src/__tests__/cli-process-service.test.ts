@@ -65,7 +65,10 @@ describe('CliProcessService', () => {
     const scriptPath = createMockCliScript(root, 'mock-claude');
     const stateDir = join(root, 'state');
     const workFolder = join(root, 'work');
+    mkdirSync(stateDir, { recursive: true });
     mkdirSync(workFolder, { recursive: true });
+    const legacyWrapperPath = join(stateDir, 'detached-runner-v1.sh');
+    writeFileSync(legacyWrapperPath, '#!/bin/sh\nexit 0\n');
 
     const service = new CliProcessService({
       stateDir,
@@ -87,6 +90,8 @@ describe('CliProcessService', () => {
     const processDir = join(stateDir, 'cwds', encodeCwd(realpathSync(workFolder)), String(runResult.pid));
     expect(runResult.pid).toBeGreaterThan(0);
     expect(runResult.status).toBe('started');
+    expect(existsSync(legacyWrapperPath)).toBe(false);
+    expect(existsSync(join(stateDir, 'detached-runner-v2.sh'))).toBe(true);
     expect(existsSync(join(processDir, 'meta.json'))).toBe(true);
     expect(existsSync(join(processDir, 'stdout.log'))).toBe(true);
     expect(existsSync(join(processDir, 'stderr.log'))).toBe(true);

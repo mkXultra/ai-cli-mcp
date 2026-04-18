@@ -579,6 +579,7 @@ export class CliProcessService {
 
   private ensureDetachedWrapperScript(): string {
     const wrapperPath = this.resolveDetachedWrapperPath();
+    this.removeLegacyDetachedWrappers();
     if (existsSync(wrapperPath)) {
       return wrapperPath;
     }
@@ -633,6 +634,19 @@ exit "$exit_code"
     );
     chmodSync(wrapperPath, 0o755);
     return wrapperPath;
+  }
+
+  private removeLegacyDetachedWrappers(): void {
+    for (const fileName of ['detached-runner-v1.sh']) {
+      const legacyPath = join(this.stateDir, fileName);
+      if (!existsSync(legacyPath)) {
+        continue;
+      }
+      try {
+        rmSync(legacyPath, { force: true });
+      } catch {
+      }
+    }
   }
 
   private killPidOrGroup(pid: number, signal: NodeJS.Signals): void {
