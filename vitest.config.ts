@@ -7,6 +7,7 @@ export default defineConfig({
     setupFiles: ['./src/__tests__/setup-unit.ts'],
     exclude: [
       'node_modules/**',
+      'dist/**',
       'src/__tests__/live-cli-e2e.test.ts',
       'dist/__tests__/live-cli-e2e.test.js',
     ],

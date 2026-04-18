@@ -97,15 +97,11 @@ function stringifyOutputField(value: any): string {
 }
 
 function assertLiveTokenInOutput(result: any): void {
-  const output = [
-    stringifyOutputField(result.agentOutput),
-    stringifyOutputField(result.stdout),
-    stringifyOutputField(result.stderr),
-  ].filter(Boolean).join('\n');
+  const output = stringifyOutputField(result.agentOutput);
 
   expect(
     output,
-    'live token should appear in parsed or raw agent output, not only in verbose metadata',
+    'live token should appear in parsed agentOutput, not only in verbose metadata or raw prompt echoes',
   ).toContain(liveToken);
 }
 
@@ -433,6 +429,8 @@ if (liveEnabled) {
     it('does not accept the live token from verbose metadata alone', () => {
       const metadataOnly = {
         prompt: `Reply with exactly this token and nothing else: ${liveToken}`,
+        stdout: JSON.stringify({ type: 'user', message: { content: liveToken } }),
+        stderr: liveToken,
       };
 
       expect(() => assertLiveTokenInOutput(metadataOnly)).toThrow();
