@@ -139,7 +139,7 @@ This will open a web interface where you can:
 2. Test each tool with different parameters
 3. Test different AI models including:
    - Claude models: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
-   - Codex models: `codex` for the CLI default, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5.1-codex`, `gpt-5-codex`, `gpt-5-codex-mini`, `gpt-5`
+   - Codex models: `codex` for the CLI default, `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5.1-codex`, `gpt-5-codex`, `gpt-5-codex-mini`, `gpt-5`
    - Gemini models: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
 
 Example test: Select the `run` tool and provide:
