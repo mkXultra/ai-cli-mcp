@@ -39,7 +39,7 @@ jobs:
       - name: Install dependencies
         run: npm clean-install
 
-      - name: Release gate
+      - name: Deterministic release gate
         run: npm run test:release
 
       - name: Verify provenance attestations

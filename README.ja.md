@@ -396,6 +396,7 @@ npm run test:e2e
 npm run test:package
 
 # GitHub Actions と同じ deterministic PR/release gate
+# これだけでは実際の外部 CLI 実行は有効になりません
 npm run test:release
 
 # リリース前の live E2E（実際にインストール済み AI CLI を叩く）

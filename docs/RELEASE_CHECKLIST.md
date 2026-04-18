@@ -40,7 +40,7 @@ BREAKING CHANGE: response structure has changed"
 
 Before merging to `develop`:
 
-- [ ] Deterministic release gate passes locally (`npm run test:release`)
+- [ ] Deterministic release gate passes locally (`npm run test:release`; this does not enable real external CLI runs by itself)
 - [ ] Package smoke passes (`npm run test:package`, included in `npm run test:release`)
 - [ ] Build succeeds (`npm run build`)
 - [ ] Release-time live E2E passes for the intended backends (`ACM_LIVE_E2E=1 ACM_LIVE_E2E_AGENTS=claude,codex npm run test:live`, or `ACM_LIVE_E2E_AGENTS=all` for all backends; add `ACM_LIVE_E2E_SURFACE=all` to cover both ai-cli and MCP server surfaces)

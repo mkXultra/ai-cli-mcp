@@ -61,7 +61,8 @@ npm run test:unit
 # Verify the published npm package contents
 npm run test:package
 
-# Run the deterministic PR/release gate used by GitHub Actions
+# Run the deterministic PR/release gate used by GitHub Actions.
+# This does not enable real external CLI runs by itself.
 npm run test:release
 
 # Run e2e tests (with mocks)

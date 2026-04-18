@@ -385,7 +385,8 @@ npm test
 # Published npm package contents smoke test
 npm run test:package
 
-# Deterministic PR/release gate used by GitHub Actions
+# Deterministic PR/release gate used by GitHub Actions.
+# This does not enable real external CLI runs by itself.
 npm run test:release
 
 # Release-time live E2E against real installed AI CLIs
