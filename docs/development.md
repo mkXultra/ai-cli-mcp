@@ -102,13 +102,13 @@ CLI プロセスをフォアグラウンドで起動し、**生の stdout をそ
 npm run -s cli.run -- --model sonnet --workFolder /tmp --prompt "hello"
 
 # prompt file 指定
-npm run -s cli.run -- --model gpt-5.2-codex --workFolder /path/to/project --prompt_file prompt.txt
+npm run -s cli.run -- --model gpt-5.3-codex --workFolder /path/to/project --prompt_file prompt.txt
 
 # セッション再開
 npm run -s cli.run -- --model sonnet --workFolder /tmp --prompt "continue" --session_id <id>
 
 # Codex reasoning effort
-npm run -s cli.run -- --model gpt-5.2-codex --workFolder /tmp --prompt "test" --reasoning_effort high
+npm run -s cli.run -- --model gpt-5.3-codex --workFolder /tmp --prompt "test" --reasoning_effort high
 ```
 
 > **Tip:** `-s` (silent) で npm のスクリプトバナーを抑制します。付けないとリダイレクト時にバナーが混入します。
@@ -146,7 +146,7 @@ This will open a web interface where you can:
 2. Test each tool with different parameters
 3. Test different AI models including:
    - Claude models: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
-   - Codex models: `codex` for the CLI default, `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5.1-codex`, `gpt-5-codex`, `gpt-5-codex-mini`, `gpt-5`
+   - Codex models: `gpt-5.4`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
    - Gemini models: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
 
 Example test: Select the `run` tool and provide:

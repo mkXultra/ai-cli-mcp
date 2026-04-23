@@ -1,17 +1,11 @@
 export const CLAUDE_MODELS = ['sonnet', 'sonnet[1m]', 'opus', 'opusplan', 'haiku'] as const;
 export const CODEX_MODELS = [
-  'codex',
   'gpt-5.4',
+  'gpt-5.5',
+  'gpt-5.4-mini',
   'gpt-5.3-codex',
-  'gpt-5.2-codex',
-  'gpt-5.1-codex-mini',
-  'gpt-5.1-codex-max',
+  'gpt-5.3-codex-spark',
   'gpt-5.2',
-  'gpt-5.1',
-  'gpt-5.1-codex',
-  'gpt-5-codex',
-  'gpt-5-codex-mini',
-  'gpt-5',
 ] as const;
 export const GEMINI_MODELS = [
   'gemini-2.5-pro',
@@ -25,13 +19,13 @@ export const OPENCODE_MODELS = ['opencode'] as const;
 
 export const MODEL_ALIASES: Record<string, string> = {
   'claude-ultra': 'opus',
-  'codex-ultra': 'gpt-5.4',
+  'codex-ultra': 'gpt-5.5',
   'gemini-ultra': 'gemini-3.1-pro-preview',
 };
 
 export const MODEL_ALIAS_DETAILS = [
   { name: 'claude-ultra', resolvesTo: 'opus', agent: 'claude', defaultReasoningEffort: 'max' },
-  { name: 'codex-ultra', resolvesTo: 'gpt-5.4', agent: 'codex', defaultReasoningEffort: 'xhigh' },
+  { name: 'codex-ultra', resolvesTo: 'gpt-5.5', agent: 'codex', defaultReasoningEffort: 'xhigh' },
   { name: 'gemini-ultra', resolvesTo: 'gemini-3.1-pro-preview', agent: 'gemini' },
 ] as const;
 

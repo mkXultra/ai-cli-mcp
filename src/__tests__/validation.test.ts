@@ -295,7 +295,7 @@ describe('Argument Validation Tests', () => {
             arguments: {
               prompt: 'test',
               workFolder: '/tmp',
-              model: 'gpt-5.2-codex',
+              model: 'gpt-5.3-codex',
               reasoning_effort: 'fast'
             }
           }

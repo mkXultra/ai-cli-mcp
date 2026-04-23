@@ -26,7 +26,7 @@ Claude Code や Codex CLI は対話的に使うことを前提としており、
 MCP Client (Cursor, Claude Code, etc.)
   │
   ├─ run(prompt, model="opus")     → PID 1234 (即座に返却)
-  ├─ run(prompt, model="gpt-5.2-codex")  → PID 1235
+  ├─ run(prompt, model="gpt-5.3-codex")  → PID 1235
   ├─ run(prompt, model="gemini-2.5-pro") → PID 1236
   │
   ├─ list_processes()  → 実行状況一覧
@@ -122,7 +122,7 @@ src/
 
 ```
 claude-ultra  → opus (+ reasoning_effort: max)
-codex-ultra   → gpt-5.4 (+ reasoning_effort: xhigh)
+codex-ultra   → gpt-5.5 (+ reasoning_effort: xhigh)
 gemini-ultra  → gemini-3.1-pro-preview
 ```
 

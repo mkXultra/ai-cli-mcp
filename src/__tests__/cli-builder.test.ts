@@ -38,8 +38,8 @@ describe('cli-builder', () => {
       expect(resolveModelAlias('claude-ultra')).toBe('opus');
     });
 
-    it('should resolve codex-ultra to gpt-5.4', () => {
-      expect(resolveModelAlias('codex-ultra')).toBe('gpt-5.4');
+    it('should resolve codex-ultra to gpt-5.5', () => {
+      expect(resolveModelAlias('codex-ultra')).toBe('gpt-5.5');
     });
 
     it('should resolve gemini-ultra to gemini-3.1-pro-preview', () => {
@@ -48,7 +48,7 @@ describe('cli-builder', () => {
 
     it('should pass through non-alias model names', () => {
       expect(resolveModelAlias('sonnet')).toBe('sonnet');
-      expect(resolveModelAlias('gpt-5.2-codex')).toBe('gpt-5.2-codex');
+      expect(resolveModelAlias('gpt-5.3-codex')).toBe('gpt-5.3-codex');
     });
 
     it('should pass through empty string', () => {
@@ -369,7 +369,7 @@ describe('cli-builder', () => {
         const cmd = buildCliCommand({
           prompt: 'test',
           workFolder: '/tmp',
-          model: 'gpt-5.2-codex',
+          model: 'gpt-5.3-codex',
           cliPaths: DEFAULT_CLI_PATHS,
         });
 
@@ -380,7 +380,7 @@ describe('cli-builder', () => {
         expect(cmd.args).not.toContain('--full-auto');
         expect(cmd.args).toContain('--json');
         expect(cmd.args).toContain('--model');
-        expect(cmd.args).toContain('gpt-5.2-codex');
+        expect(cmd.args).toContain('gpt-5.3-codex');
       });
 
       it('should build codex command with session_id using exec resume', () => {
@@ -401,7 +401,7 @@ describe('cli-builder', () => {
         const cmd = buildCliCommand({
           prompt: 'test',
           workFolder: '/tmp',
-          model: 'gpt-5.2-codex',
+          model: 'gpt-5.3-codex',
           reasoning_effort: 'high',
           cliPaths: DEFAULT_CLI_PATHS,
         });
@@ -419,7 +419,7 @@ describe('cli-builder', () => {
         });
 
         expect(cmd.agent).toBe('codex');
-        expect(cmd.resolvedModel).toBe('gpt-5.4');
+        expect(cmd.resolvedModel).toBe('gpt-5.5');
         expect(cmd.args).toContain('-c');
         expect(cmd.args).toContain('model_reasoning_effort=xhigh');
       });

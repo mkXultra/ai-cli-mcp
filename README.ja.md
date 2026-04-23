@@ -24,7 +24,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 - OpenCode を非対話 JSON モードで実行（`opencode run --format json --dir <workFolder> <prompt>` を使用）
 - 複数のAIモデルのサポート：
     - Claude (sonnet, sonnet[1m], opus, opusplan, haiku)
-    - Codex (`codex` は Codex CLI 側の設定済みデフォルトモデル、加えて gpt-5.4, gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, など)
+    - Codex (gpt-5.4, gpt-5.5, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2)
     - Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview)
     - Forge (`forge`)
     - OpenCode (`opencode` と `oc-<provider/model>` ラッパー。例: `oc-openai/gpt-5.4`)
@@ -37,7 +37,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 
 > 以下の3つのタスクをacm mcp runでエージェントを起動して：
 > 1. `sonnet` で `src/backend` のコードをリファクタリング
-> 2. `gpt-5.2-codex` で `src/frontend` のユニットテストを作成
+> 2. `gpt-5.3-codex` で `src/frontend` のユニットテストを作成
 > 3. `gemini-2.5-pro` で `docs/` のドキュメントを更新
 >
 > 実行中はあなたはTODOリストを更新する作業を行ってください。それが終わったら `wait` ツールを使ってすべての完了を待機し、結果をまとめて報告してください。
@@ -50,7 +50,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 > 2. `wait` ツールでこの処理の完了を待ち、結果から `session_id` を取得してください。
 > 3. その `session_id` を使い、以下の2つのタスクを `acm mcp run` で並行して実行してください：
 >    - `sonnet` で `src/utils` のリファクタリング案を作成
->    - `gpt-5.2-codex` で `README.md` にアーキテクチャの解説を追記
+>    - `gpt-5.3-codex` で `README.md` にアーキテクチャの解説を追記
 > 4. 最後に再び `wait` して、両方の結果をまとめてください。
 
 [![セッション再開デモ](docs/assets/demo-resume-jp.gif)](https://github.com/mkXultra/ai-cli-mcp/releases/download/v2.11.0/demo-resume-jp.mp4)
@@ -192,7 +192,7 @@ macOSでは、これらのツールを初めて実行する際にフォルダへ
 ```bash
 ai-cli doctor
 ai-cli models
-ai-cli run --cwd "$PWD" --model codex --prompt "Codex CLI のデフォルトモデルで実行"
+ai-cli run --cwd "$PWD" --model gpt-5.4 --prompt "デフォルトの Codex モデルで実行"
 ai-cli run --cwd "$PWD" --model codex-ultra --prompt "fix failing tests"
 ai-cli run --cwd "$PWD" --model opencode --session-id ses_existing --prompt "この OpenCode セッションを継続して"
 ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --prompt "明示的な OpenCode モデルで実行"
@@ -215,7 +215,7 @@ OpenCode のモデル指定は次の 2 つを受け付けます。
 
 `ai-cli models` は OpenCode を機械可読に `opencode: ["opencode"]` と `dynamicModelBackends.opencode` で公開します。実際に利用可能なバックエンドネイティブなモデル一覧は `opencode models` で確認してください。
 
-Codex のモデル指定では、`codex` を使うと Codex CLI 側の設定済みデフォルトモデルを使用します。Codex CLI がアカウント種別によって明示的な `gpt-*` モデル指定を受け付けない場合に有用です。
+Codex のモデル指定では、公開デフォルトモデルとして `gpt-5.4` を使用します。
 
 `doctor` は CLI バイナリの利用可否と path 解決だけを確認します。JSON 出力には `checks` ブロックが含まれ、ログイン状態と利用規約同意は未確認として示されます。
 
@@ -259,9 +259,9 @@ Claude CLI、Codex CLI、Gemini CLI、Forge CLI、または OpenCode を使用�
 - `prompt_file` (string, 任意): プロンプトを含むファイルへのパス。`prompt` または `prompt_file` のいずれかが必須です。絶対パス、または `workFolder` からの相対パスが指定可能です。
 - `workFolder` (string, 必須): CLIを実行する作業ディレクトリ。絶対パスである必要があります。
 - **モデル (Models):**
-    - **Ultra エイリアス:** `claude-ultra` (自動的に max effort に設定), `codex-ultra` (自動的に xhigh reasoning に設定), `gemini-ultra`
+    - **Ultra エイリアス:** `claude-ultra` (自動的に max effort に設定), `codex-ultra` (`gpt-5.5`、自動的に xhigh reasoning に設定), `gemini-ultra`
     - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
-    - Codex: `codex`（Codex CLI 側の設定済みデフォルトモデル）および `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
+    - Codex: `gpt-5.4`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
     - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
     - Forge: `forge`
     - OpenCode: `opencode`（設定済みのデフォルトモデル）および `oc-openai/gpt-5.4` のような明示ラッパー
