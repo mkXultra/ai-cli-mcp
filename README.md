@@ -24,7 +24,7 @@ This MCP server provides tools that can be used by LLMs to interact with AI CLI 
 - Execute Gemini CLI with automatic approval mode (using `-y`)
 - Execute Forge CLI in non-interactive mode (using `forge -C <workFolder> -p <prompt>`)
 - Execute OpenCode in non-interactive JSON mode (using `opencode run --format json --dir <workFolder> <prompt>`)
-- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, haiku), Codex (`codex` for the CLI's configured default model, plus gpt-5.4, gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, gpt-5.2, gpt-5.1, gpt-5.1-codex, gpt-5-codex, gpt-5-codex-mini, gpt-5), Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview), Forge (`forge`), and OpenCode (`opencode` plus explicit `oc-<provider/model>` wrappers such as `oc-openai/gpt-5.4`)
+- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, haiku), Codex (`codex` for the CLI's configured default model, plus gpt-5.5, gpt-5.4, gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, gpt-5.2, gpt-5.1, gpt-5.1-codex, gpt-5-codex, gpt-5-codex-mini, gpt-5), Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview), Forge (`forge`), and OpenCode (`opencode` plus explicit `oc-<provider/model>` wrappers such as `oc-openai/gpt-5.4`)
 - Manage background processes with PID tracking
 - Parse and return structured outputs from both tools
 
@@ -256,9 +256,9 @@ Executes a prompt using Claude CLI, Codex CLI, Gemini CLI, Forge CLI, or OpenCod
 - `prompt_file` (string, optional): Path to a file containing the prompt. Either `prompt` or `prompt_file` is required. Can be absolute path or relative to `workFolder`.
 - `workFolder` (string, required): The working directory for the CLI execution. Must be an absolute path.
 **Models:**
-- **Ultra Aliases:** `claude-ultra` (defaults to max effort), `codex-ultra` (defaults to xhigh reasoning), `gemini-ultra`
+- **Ultra Aliases:** `claude-ultra` (defaults to max effort), `codex-ultra` (`gpt-5.5`, defaults to xhigh reasoning), `gemini-ultra`
 - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
-- Codex: `codex` for the CLI's configured default model, plus `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
+- Codex: `codex` for the CLI's configured default model, plus `gpt-5.5`, `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5.1-codex`, `gpt-5-codex`, `gpt-5-codex-mini`, `gpt-5`
 - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
 - Forge: `forge`
 - OpenCode: `opencode` for the configured default backend model, plus explicit wrappers like `oc-openai/gpt-5.4`

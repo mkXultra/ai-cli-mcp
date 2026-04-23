@@ -24,7 +24,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 - OpenCode を非対話 JSON モードで実行（`opencode run --format json --dir <workFolder> <prompt>` を使用）
 - 複数のAIモデルのサポート：
     - Claude (sonnet, sonnet[1m], opus, opusplan, haiku)
-    - Codex (`codex` は Codex CLI 側の設定済みデフォルトモデル、加えて gpt-5.4, gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, など)
+    - Codex (`codex` は Codex CLI 側の設定済みデフォルトモデル、加えて gpt-5.5, gpt-5.4, gpt-5.3-codex, gpt-5.2-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max, など)
     - Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview)
     - Forge (`forge`)
     - OpenCode (`opencode` と `oc-<provider/model>` ラッパー。例: `oc-openai/gpt-5.4`)
@@ -259,9 +259,9 @@ Claude CLI、Codex CLI、Gemini CLI、Forge CLI、または OpenCode を使用�
 - `prompt_file` (string, 任意): プロンプトを含むファイルへのパス。`prompt` または `prompt_file` のいずれかが必須です。絶対パス、または `workFolder` からの相対パスが指定可能です。
 - `workFolder` (string, 必須): CLIを実行する作業ディレクトリ。絶対パスである必要があります。
 - **モデル (Models):**
-    - **Ultra エイリアス:** `claude-ultra` (自動的に max effort に設定), `codex-ultra` (自動的に xhigh reasoning に設定), `gemini-ultra`
+    - **Ultra エイリアス:** `claude-ultra` (自動的に max effort に設定), `codex-ultra` (`gpt-5.5`、自動的に xhigh reasoning に設定), `gemini-ultra`
     - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
-    - Codex: `codex`（Codex CLI 側の設定済みデフォルトモデル）および `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5`
+    - Codex: `codex`（Codex CLI 側の設定済みデフォルトモデル）および `gpt-5.5`, `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2`, `gpt-5.1`, `gpt-5.1-codex`, `gpt-5-codex`, `gpt-5-codex-mini`, `gpt-5`
     - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
     - Forge: `forge`
     - OpenCode: `opencode`（設定済みのデフォルトモデル）および `oc-openai/gpt-5.4` のような明示ラッパー

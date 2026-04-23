@@ -78,7 +78,7 @@ Useful environment variables:
 - `ACM_LIVE_E2E_COMMAND_TIMEOUT_MS`: process/request timeout used by the live test harness. Defaults to `ACM_LIVE_E2E_TIMEOUT_SECONDS + 60s`.
 - `ACM_LIVE_E2E_TOKEN`: expected token in the model response. Defaults to `ACM_LIVE_E2E_OK`.
 - `ACM_LIVE_E2E_ASSERT_TOKEN=0`: disables response-token assertion if a provider adds unavoidable formatting.
-- `ACM_LIVE_E2E_<AGENT>_MODEL`: override a default model, for example `ACM_LIVE_E2E_CODEX_MODEL=gpt-5.4`. The default Codex value is `codex`, which uses the Codex CLI's configured default model for account compatibility.
+- `ACM_LIVE_E2E_<AGENT>_MODEL`: override a default model, for example `ACM_LIVE_E2E_CODEX_MODEL=gpt-5.5`. The default Codex value is `codex`, which uses the Codex CLI's configured default model for account compatibility.
 
 Keep this suite out of mandatory CI unless the runner has authenticated CLI sessions, network access, and an acceptable cost budget.
 

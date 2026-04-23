@@ -307,10 +307,17 @@ describe('ai-cli app', () => {
           agent: 'claude',
           defaultReasoningEffort: 'max',
         }),
+        expect.objectContaining({
+          name: 'codex-ultra',
+          resolvesTo: 'gpt-5.5',
+          agent: 'codex',
+          defaultReasoningEffort: 'xhigh',
+        }),
       ])
     );
     expect(payload.claude).toContain('sonnet');
     expect(payload.codex).toContain('codex');
+    expect(payload.codex).toContain('gpt-5.5');
     expect(payload.codex).toContain('gpt-5.4');
     expect(payload.forge).toEqual(['forge']);
     expect(payload.opencode).toEqual(['opencode']);
