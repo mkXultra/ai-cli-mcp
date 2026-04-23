@@ -1,6 +1,6 @@
 {
   "name": "ai-cli-mcp",
-  "version": "2.20.1",
+  "version": "2.21.0",
   "mcpName": "io.github.mkXultra/ai-cli-mcp",
   "description": "Run Claude, Codex, Gemini, Forge, and OpenCode CLIs through MCP with background jobs",
   "author": "mkXultra",

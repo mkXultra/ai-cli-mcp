@@ -1,3 +1,11 @@
+# [2.21.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.20.1...v2.21.0) (2026-04-23)
+
+
+### Features
+
+* Codex モデルカタログを整理し gpt-5.4 をデフォルトに設定 ([20091b7](https://github.com/mkXultra/ai-cli-mcp/commit/20091b7aa119d3b27605e36a592af176eca740e4))
+* gpt-5.5 を Codex モデルに追加し codex-ultra エイリアスを更新 ([f3b704f](https://github.com/mkXultra/ai-cli-mcp/commit/f3b704f8051f61a00e66ff7831a07c3d8b67afe6))
+
 ## [2.20.1](https://github.com/mkXultra/ai-cli-mcp/compare/v2.20.0...v2.20.1) (2026-04-18)
 
 
