@@ -32,7 +32,7 @@ const tempDirs: string[] = [];
 
 const defaultModels: Record<LiveAgent, string> = {
   claude: 'haiku',
-  codex: 'codex',
+  codex: 'gpt-5.4',
   gemini: 'gemini-2.5-flash',
   forge: 'forge',
   opencode: 'opencode',
@@ -223,7 +223,7 @@ if (liveEnabled) {
         const models = await runAiCliJson(['models'], env);
         expect(models.aliases).toEqual(expect.any(Array));
         expect(models.claude).toContain('haiku');
-        expect(models.codex).toContain('codex');
+        expect(models.codex).toContain('gpt-5.4');
         expect(models.gemini).toContain('gemini-2.5-flash');
         expect(models.forge).toEqual(['forge']);
         expect(models.opencode).toEqual(['opencode']);
@@ -342,7 +342,7 @@ if (liveEnabled) {
           const models = parseToolJson(await client.callTool('models', {}));
           expect(models.aliases).toEqual(expect.any(Array));
           expect(models.claude).toContain('haiku');
-          expect(models.codex).toContain('codex');
+          expect(models.codex).toContain('gpt-5.4');
           expect(models.gemini).toContain('gemini-2.5-flash');
           expect(models.forge).toEqual(['forge']);
           expect(models.opencode).toEqual(['opencode']);

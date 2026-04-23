@@ -170,7 +170,14 @@ describe('MCP Contract Tests', () => {
       ])
     );
     expect(modelsData.claude).toContain('sonnet');
-    expect(modelsData.codex).toContain('codex');
+    expect(modelsData.codex).toEqual([
+      'gpt-5.4',
+      'gpt-5.5',
+      'gpt-5.4-mini',
+      'gpt-5.3-codex',
+      'gpt-5.3-codex-spark',
+      'gpt-5.2',
+    ]);
     expect(modelsData.opencode).toEqual(['opencode']);
     expect(modelsData.dynamicModelBackends.opencode.explicitPattern).toBe('oc-<provider/model>');
 

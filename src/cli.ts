@@ -35,7 +35,7 @@ function parseArgs(argv: string[]): Record<string, string> {
 const USAGE = `Usage: npm run -s cli.run -- --model <model> --workFolder <path> --prompt "..." [options]
 
 Options:
-  --model              Model name or alias (e.g. sonnet, opus, gpt-5.2-codex, gemini-2.5-pro, forge, opencode, oc-openai/gpt-5.4)
+  --model              Model name or alias (e.g. sonnet, opus, gpt-5.3-codex, gemini-2.5-pro, forge, opencode, oc-openai/gpt-5.4)
   --workFolder         Working directory (absolute path)
   --prompt             Prompt string (mutually exclusive with --prompt_file)
   --prompt_file        Path to a file containing the prompt

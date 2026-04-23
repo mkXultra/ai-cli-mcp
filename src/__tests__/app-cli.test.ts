@@ -316,9 +316,13 @@ describe('ai-cli app', () => {
       ])
     );
     expect(payload.claude).toContain('sonnet');
-    expect(payload.codex).toContain('codex');
-    expect(payload.codex).toContain('gpt-5.5');
+    expect(payload.codex).not.toContain('codex');
     expect(payload.codex).toContain('gpt-5.4');
+    expect(payload.codex).toContain('gpt-5.5');
+    expect(payload.codex).toContain('gpt-5.4-mini');
+    expect(payload.codex).toContain('gpt-5.3-codex');
+    expect(payload.codex).toContain('gpt-5.3-codex-spark');
+    expect(payload.codex).toContain('gpt-5.2');
     expect(payload.forge).toEqual(['forge']);
     expect(payload.opencode).toEqual(['opencode']);
     expect(payload.dynamicModelBackends).toEqual({
@@ -404,7 +408,7 @@ describe('ai-cli app', () => {
     expect(exitCode).toBe(0);
     expect(stdout).toHaveBeenCalledWith(RUN_HELP_TEXT);
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('claude-ultra'));
-    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('gpt-5.2-codex'));
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('gpt-5.3-codex'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('gemini-2.5-pro'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('forge'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('opencode'));
