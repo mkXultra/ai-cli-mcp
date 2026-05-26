@@ -268,3 +268,17 @@ export function findClaudeCli(): string {
   const status = getCliBinaryStatus('claude');
   return getCliCommandOrThrow(status);
 }
+
+// On Windows, Node spawn({shell:true}) joins args with spaces without quoting,
+// so args containing whitespace get split by cmd.exe. We pre-quote here.
+// Uses cmd.exe convention: wrap in "..." and escape internal " as "".
+export function quoteWindowsCmdArg(arg: string): string {
+  if (arg === '') return '""';
+  if (!/[\s"&|<>^()]/.test(arg)) return arg;
+  return '"' + arg.replace(/"/g, '""') + '"';
+}
+
+export function maybeQuoteWindowsArgs(args: string[]): string[] {
+  if (process.platform !== 'win32') return args;
+  return args.map(quoteWindowsCmdArg);
+}

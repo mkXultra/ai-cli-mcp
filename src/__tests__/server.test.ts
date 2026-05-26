@@ -6,6 +6,7 @@ import { resolve as pathResolve } from 'node:path';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { EventEmitter } from 'node:events';
+import { maybeQuoteWindowsArgs } from '../cli-utils.js';
 
 // Mock dependencies
 vi.mock('node:child_process');
@@ -726,9 +727,10 @@ describe('ClaudeCodeServer Unit Tests', () => {
       });
       
       // Verify spawn was called with -r flag
+      // (Windows-quoted via maybeQuoteWindowsArgs for cmd.exe survival).
       expect(mockSpawn).toHaveBeenCalledWith(
         expect.any(String),
-        expect.arrayContaining(['-r', 'test-session-123', '--fork-session', '-p', 'test prompt']),
+        expect.arrayContaining(maybeQuoteWindowsArgs(['-r', 'test-session-123', '--fork-session', '-p', 'test prompt'])),
         expect.any(Object)
       );
     });
@@ -886,9 +888,10 @@ describe('ClaudeCodeServer Unit Tests', () => {
       });
       
       // Verify file was read and spawn was called with content
+      // (Windows-quoted via maybeQuoteWindowsArgs for cmd.exe survival).
       expect(mockSpawn).toHaveBeenCalledWith(
         expect.any(String),
-        expect.arrayContaining(['-p', 'Content from file']),
+        expect.arrayContaining(maybeQuoteWindowsArgs(['-p', 'Content from file'])),
         expect.any(Object)
       );
     });
