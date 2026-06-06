@@ -33,7 +33,7 @@ const tempDirs: string[] = [];
 const defaultModels: Record<LiveAgent, string> = {
   claude: 'haiku',
   codex: 'gpt-5.4',
-  gemini: 'gemini-2.5-flash',
+  gemini: 'gemini-3.5-flash-high',
   forge: 'forge',
   opencode: 'opencode',
 };
@@ -224,7 +224,7 @@ if (liveEnabled) {
         expect(models.aliases).toEqual(expect.any(Array));
         expect(models.claude).toContain('haiku');
         expect(models.codex).toContain('gpt-5.4');
-        expect(models.gemini).toContain('gemini-2.5-flash');
+        expect(models.gemini).toContain('Gemini 3.5 Flash (High)');
         expect(models.forge).toEqual(['forge']);
         expect(models.opencode).toEqual(['opencode']);
       });
@@ -343,7 +343,7 @@ if (liveEnabled) {
           expect(models.aliases).toEqual(expect.any(Array));
           expect(models.claude).toContain('haiku');
           expect(models.codex).toContain('gpt-5.4');
-          expect(models.gemini).toContain('gemini-2.5-flash');
+          expect(models.gemini).toContain('Gemini 3.5 Flash (High)');
           expect(models.forge).toEqual(['forge']);
           expect(models.opencode).toEqual(['opencode']);
         });

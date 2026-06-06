@@ -19,13 +19,13 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 
 - すべての権限確認をスキップしてClaude CLIを実行（`--dangerously-skip-permissions` を使用）
 - 承認とサンドボックスをバイパスしてCodex CLIを実行（`--dangerously-bypass-approvals-and-sandbox` を使用）
-- 自動承認モードでGemini CLIを実行（`-y` を使用）
+- Gemini エージェント経路で Antigravity CLI を print モード実行（`agy-mcp --dangerously-skip-permissions -p` を使用）
 - Forge CLI を非対話モードで実行（`forge -C <workFolder> -p <prompt>` を使用）
 - OpenCode を非対話 JSON モードで実行（`opencode run --format json --dir <workFolder> <prompt>` を使用）
 - 複数のAIモデルのサポート：
     - Claude (sonnet, sonnet[1m], opus, opusplan, haiku)
     - Codex (gpt-5.4, gpt-5.5, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2)
-    - Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview)
+    - Gemini/Antigravity (`gemini-3.5-flash-high`, `gemini-3.5-flash`, `gemini-3.5-flash-low`, `gemini-3.1-pro`, `gemini-3.1-pro-low`)
     - Forge (`forge`)
     - OpenCode (`opencode` と `oc-<provider/model>` ラッパー。例: `oc-openai/gpt-5.4`)
 - PID追跡によるバックグラウンドプロセスの管理
@@ -38,7 +38,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 > 以下の3つのタスクをacm mcp runでエージェントを起動して：
 > 1. `sonnet` で `src/backend` のコードをリファクタリング
 > 2. `gpt-5.3-codex` で `src/frontend` のユニットテストを作成
-> 3. `gemini-2.5-pro` で `docs/` のドキュメントを更新
+> 3. `gemini-3.5-flash-high` で `docs/` のドキュメントを更新
 >
 > 実行中はあなたはTODOリストを更新する作業を行ってください。それが終わったら `wait` ツールを使ってすべての完了を待機し、結果をまとめて報告してください。
 
@@ -67,7 +67,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 
 - **Claude Code**: `claude doctor` が通り、`--dangerously-skip-permissions` での実行が承認済み（一度手動で実行してログイン・承認済み）であること。
 - **Codex CLI**（オプション）: インストール済みで、ログインなどの初期設定が完了していること。
-- **Gemini CLI**（オプション）: インストール済みで、ログインなどの初期設定が完了していること。
+- **Antigravity CLI**（オプション）: `agy-mcp` がインストール済みで、初期設定が完了していること。
 - **Forge CLI**（オプション）: インストール済みで、初期設定が完了していること。
 - **OpenCode**（オプション）: インストール済みで、設定が完了していること。この統合では `opencode run --format json` を使用し、明示的なモデル指定は `ai-cli models` が公開する `oc-<provider/model>` 構文に従います。
 
@@ -162,12 +162,12 @@ claude --dangerously-skip-permissions
 codex login
 ```
 
-### Gemini CLIの場合:
+### Antigravity CLIの場合:
 
-**Geminiの場合、ログインして認証情報を設定していることを確認してください：**
+**Antigravity のモデル一覧を取得できることを確認してください：**
 
 ```bash
-gemini auth login
+agy-mcp models
 ```
 
 macOSでは、これらのツールを初めて実行する際にフォルダへのアクセス許可を求められる場合があります。最初の実行が失敗しても、2回目以降は動作するはずです。
@@ -252,7 +252,7 @@ detached 実行された `ai-cli` は、すべての対応バックエンドで�
 
 ### `run`
 
-Claude CLI、Codex CLI、Gemini CLI、Forge CLI、または OpenCode を使用してプロンプトを実行します。モデル名に基づいて適切なCLIが自動的に選択されます。
+Claude CLI、Codex CLI、Gemini エージェント経路の Antigravity CLI、Forge CLI、または OpenCode を使用してプロンプトを実行します。モデル名に基づいて適切なCLIが自動的に選択されます。
 
 **引数:**
 - `prompt` (string, 任意): AIエージェントに送信するプロンプト。`prompt` または `prompt_file` のいずれかが必須です。
@@ -262,7 +262,7 @@ Claude CLI、Codex CLI、Gemini CLI、Forge CLI、または OpenCode を使用�
     - **Ultra エイリアス:** `claude-ultra` (自動的に max effort に設定), `codex-ultra` (`gpt-5.5`、自動的に xhigh reasoning に設定), `gemini-ultra`
     - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
     - Codex: `gpt-5.4`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
-    - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
+    - Gemini/Antigravity: `gemini-3.5-flash-high`, `gemini-3.5-flash`, `gemini-3.5-flash-low`, `gemini-3.1-pro`, `gemini-3.1-pro-low`
     - Forge: `forge`
     - OpenCode: `opencode`（設定済みのデフォルトモデル）および `oc-openai/gpt-5.4` のような明示ラッパー
 - `reasoning_effort` (string, 任意): Claude と Codex の推論制御。Claude では `--effort` を使います（許容値: "low", "medium", "high", "xhigh", "max"）。Codex では `model_reasoning_effort` を使います（許容値: "low", "medium", "high", "xhigh"）。Gemini、Forge、OpenCode では `reasoning_effort` はサポートしません。
@@ -414,7 +414,7 @@ live E2E は opt-in です。インストール済みかつ認証済みの外部
 
 - `CLAUDE_CLI_NAME`: Claude CLIのバイナリ名または絶対パスを上書き（デフォルト: `claude`）
 - `CODEX_CLI_NAME`: Codex CLIのバイナリ名または絶対パスを上書き（デフォルト: `codex`）
-- `GEMINI_CLI_NAME`: Gemini CLIのバイナリ名または絶対パスを上書き（デフォルト: `gemini`）
+- `GEMINI_CLI_NAME`: Gemini/Antigravity CLIのバイナリ名または絶対パスを上書き（デフォルト: `agy-mcp`）
 - `FORGE_CLI_NAME`: Forge CLIのバイナリ名または絶対パスを上書き（デフォルト: `forge`）
 - `OPENCODE_CLI_NAME`: OpenCode CLIのバイナリ名または絶対パスを上書き（デフォルト: `opencode`）
 - `MCP_CLAUDE_DEBUG`: デバッグログを有効化（`true` に設定すると詳細な出力が表示されます）

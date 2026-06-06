@@ -409,7 +409,7 @@ describe('ai-cli app', () => {
     expect(stdout).toHaveBeenCalledWith(RUN_HELP_TEXT);
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('claude-ultra'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('gpt-5.3-codex'));
-    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('gemini-2.5-pro'));
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('gemini-3.5-flash-high'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('forge'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('opencode'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('oc-openai/gpt-5.4'));

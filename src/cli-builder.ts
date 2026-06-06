@@ -26,7 +26,8 @@ function getStandardAgentForModel(model: string): Exclude<Agent, 'opencode'> {
   if (model.startsWith('gpt-')) {
     return 'codex';
   }
-  if (model.startsWith('gemini')) {
+  // Case-insensitive: o agy (Antigravity CLI) usa nomes como "Gemini 3.5 Flash (High)".
+  if (model.toLowerCase().startsWith('gemini')) {
     return 'gemini';
   }
   return 'claude';
@@ -146,6 +147,7 @@ export interface BuildCliCommandOptions {
   model?: string;
   session_id?: string;
   reasoning_effort?: string;
+  log_file?: string;
   cliPaths: CliPaths;
 }
 
@@ -227,18 +229,26 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
 
     args.push('--skip-git-repo-check', '--dangerously-bypass-approvals-and-sandbox', '--json', prompt);
   } else if (agent === 'gemini') {
+    // Servido pelo Antigravity CLI (agy) via wrapper agy-mcp. Modo "yolo" headless:
+    // -p (print/one-shot), --dangerously-skip-permissions (auto-aprova tools),
+    // --model "<nome>" (ex.: "Gemini 3.5 Flash (High)"), resume via --conversation.
+    // O agy NÃO suporta -y nem --output-format stream-json (saída é texto puro).
     cliPath = options.cliPaths.gemini;
-    args = ['-y', '--output-format', 'stream-json'];
+    args = ['--dangerously-skip-permissions'];
+
+    if (options.log_file && typeof options.log_file === 'string' && options.log_file.trim()) {
+      args.push('--log-file', options.log_file);
+    }
 
     if (options.session_id && typeof options.session_id === 'string') {
-      args.push('-r', options.session_id);
+      args.push('--conversation', options.session_id);
     }
 
     if (resolvedModel) {
       args.push('--model', resolvedModel);
     }
 
-    args.push(prompt);
+    args.push('-p', prompt);
   } else if (agent === 'forge') {
     cliPath = options.cliPaths.forge;
     args = ['-C', cwd];

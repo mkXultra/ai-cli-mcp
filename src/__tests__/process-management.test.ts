@@ -263,7 +263,7 @@ describe('Process Management Tests', () => {
           arguments: {
             prompt: 'gemini peek prompt',
             workFolder: '/tmp',
-            model: 'gemini-2.5-pro',
+            model: 'gemini-3.5-flash-high',
           }
         }
       });

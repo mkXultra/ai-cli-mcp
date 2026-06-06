@@ -21,10 +21,10 @@ This MCP server provides tools that can be used by LLMs to interact with AI CLI 
 
 - Run Claude CLI with all permissions bypassed (using `--dangerously-skip-permissions`)
 - Execute Codex CLI with approvals and sandbox bypassed (using `--dangerously-bypass-approvals-and-sandbox`)
-- Execute Gemini CLI with automatic approval mode (using `-y`)
+- Execute Antigravity CLI through the Gemini agent path in print mode (using `agy-mcp --dangerously-skip-permissions -p`)
 - Execute Forge CLI in non-interactive mode (using `forge -C <workFolder> -p <prompt>`)
 - Execute OpenCode in non-interactive JSON mode (using `opencode run --format json --dir <workFolder> <prompt>`)
-- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, haiku), Codex (gpt-5.4, gpt-5.5, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2), Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview), Forge (`forge`), and OpenCode (`opencode` plus explicit `oc-<provider/model>` wrappers such as `oc-openai/gpt-5.4`)
+- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, haiku), Codex (gpt-5.4, gpt-5.5, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2), Gemini/Antigravity (`gemini-3.5-flash-high`, `gemini-3.5-flash`, `gemini-3.5-flash-low`, `gemini-3.1-pro`, `gemini-3.1-pro-low`), Forge (`forge`), and OpenCode (`opencode` plus explicit `oc-<provider/model>` wrappers such as `oc-openai/gpt-5.4`)
 - Manage background processes with PID tracking
 - Parse and return structured outputs from both tools
 
@@ -35,7 +35,7 @@ You can instruct your main agent to run multiple tasks in parallel like this:
 > Launch agents for the following 3 tasks using acm mcp run:
 > 1. Refactor `src/backend` code using `sonnet`
 > 2. Create unit tests for `src/frontend` using `gpt-5.3-codex`
-> 3. Update docs in `docs/` using `gemini-2.5-pro`
+> 3. Update docs in `docs/` using `gemini-3.5-flash-high`
 >
 > While they run, please update the TODO list. Once done, use the `wait` tool to wait for all completions and report the results together.
 
@@ -64,7 +64,7 @@ The only prerequisite is that the AI CLI tools you want to use are locally insta
 
 - **Claude Code**: `claude doctor` passes, and execution with `--dangerously-skip-permissions` is approved (you must run it manually once to login and accept terms).
 - **Codex CLI** (Optional): Installed and initial setup (login etc.) completed.
-- **Gemini CLI** (Optional): Installed and initial setup (login etc.) completed.
+- **Antigravity CLI** (Optional): `agy-mcp` installed and initial setup completed.
 - **Forge CLI** (Optional): Installed and initial setup completed.
 - **OpenCode** (Optional): Installed and configured. This integration uses `opencode run --format json`, and explicit provider/model selection follows the `oc-<provider/model>` wrapper syntax exposed by `ai-cli models`.
 
@@ -159,12 +159,12 @@ Follow the prompts to accept. Once this is done, the MCP server will be able to 
 codex login
 ```
 
-### For Gemini CLI:
+### For Antigravity CLI:
 
-**For Gemini, ensure you're logged in and have configured your credentials:**
+**For Antigravity, ensure the CLI can resolve available models:**
 
 ```bash
-gemini auth login
+agy-mcp models
 ```
 
 macOS might ask for folder permissions the first time any of these tools run. If the first run fails, subsequent runs should work.
@@ -249,7 +249,7 @@ This server exposes the following tools:
 
 ### `run`
 
-Executes a prompt using Claude CLI, Codex CLI, Gemini CLI, Forge CLI, or OpenCode. The appropriate CLI is automatically selected based on the model name.
+Executes a prompt using Claude CLI, Codex CLI, Antigravity through the Gemini agent path, Forge CLI, or OpenCode. The appropriate CLI is automatically selected based on the model name.
 
 **Arguments:**
 - `prompt` (string, optional): The prompt to send to the AI agent. Either `prompt` or `prompt_file` is required.
@@ -259,7 +259,7 @@ Executes a prompt using Claude CLI, Codex CLI, Gemini CLI, Forge CLI, or OpenCod
 - **Ultra Aliases:** `claude-ultra` (defaults to max effort), `codex-ultra` (`gpt-5.5`, defaults to xhigh reasoning), `gemini-ultra`
 - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
 - Codex: `gpt-5.4`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
-- Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
+- Gemini/Antigravity: `gemini-3.5-flash-high`, `gemini-3.5-flash`, `gemini-3.5-flash-low`, `gemini-3.1-pro`, `gemini-3.1-pro-low`
 - Forge: `forge`
 - OpenCode: `opencode` for the configured default backend model, plus explicit wrappers like `oc-openai/gpt-5.4`
 - `reasoning_effort` (string, optional): Reasoning control for Claude and Codex. Claude uses `--effort` (allowed: "low", "medium", "high", "xhigh", "max"). Codex uses `model_reasoning_effort` (allowed: "low", "medium", "high", "xhigh"). Gemini, Forge, and OpenCode do not support `reasoning_effort`.
@@ -404,7 +404,7 @@ Normally not required, but useful for customizing CLI paths or debugging.
 
 - `CLAUDE_CLI_NAME`: Override the Claude CLI binary name or provide an absolute path (default: `claude`)
 - `CODEX_CLI_NAME`: Override the Codex CLI binary name or provide an absolute path (default: `codex`)
-- `GEMINI_CLI_NAME`: Override the Gemini CLI binary name or provide an absolute path (default: `gemini`)
+- `GEMINI_CLI_NAME`: Override the Gemini/Antigravity CLI binary name or provide an absolute path (default: `agy-mcp`)
 - `FORGE_CLI_NAME`: Override the Forge CLI binary name or provide an absolute path (default: `forge`)
 - `OPENCODE_CLI_NAME`: Override the OpenCode CLI binary name or provide an absolute path (default: `opencode`)
 - `MCP_CLAUDE_DEBUG`: Enable debug logging (set to `true` for verbose output)

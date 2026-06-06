@@ -42,8 +42,8 @@ describe('cli-builder', () => {
       expect(resolveModelAlias('codex-ultra')).toBe('gpt-5.5');
     });
 
-    it('should resolve gemini-ultra to gemini-3.1-pro-preview', () => {
-      expect(resolveModelAlias('gemini-ultra')).toBe('gemini-3.1-pro-preview');
+    it('should resolve gemini-ultra to Gemini 3.1 Pro (High)', () => {
+      expect(resolveModelAlias('gemini-ultra')).toBe('Gemini 3.1 Pro (High)');
     });
 
     it('should pass through non-alias model names', () => {
@@ -97,7 +97,7 @@ describe('cli-builder', () => {
     });
 
     it('should throw for unsupported model families', () => {
-      expect(() => getReasoningEffort('gemini-2.5-pro', 'high')).toThrow(
+      expect(() => getReasoningEffort('gemini-3.5-flash-high', 'high')).toThrow(
         'reasoning_effort is only supported for Claude and Codex models.'
       );
     });
@@ -450,35 +450,65 @@ describe('cli-builder', () => {
       });
     });
 
-    describe('gemini agent', () => {
-      it('should build gemini command', () => {
+    describe('gemini agent (Antigravity CLI / agy)', () => {
+      it('should build gemini command with agy yolo flags', () => {
         const cmd = buildCliCommand({
           prompt: 'test',
           workFolder: '/tmp',
-          model: 'gemini-2.5-pro',
+          model: 'gemini-3.5-flash-high',
           cliPaths: DEFAULT_CLI_PATHS,
         });
 
         expect(cmd.agent).toBe('gemini');
         expect(cmd.cliPath).toBe('/usr/bin/gemini');
-        expect(cmd.args).toContain('-y');
-        expect(cmd.args).toContain('--output-format');
-        expect(cmd.args).toContain('stream-json');
+        expect(cmd.args).toContain('--dangerously-skip-permissions');
         expect(cmd.args).toContain('--model');
-        expect(cmd.args).toContain('gemini-2.5-pro');
+        expect(cmd.args).toContain('Gemini 3.5 Flash (High)');
+        expect(cmd.args).toContain('-p');
+        expect(cmd.args).toContain('test');
+        // agy NÃO usa as flags do gemini-cli legado.
+        expect(cmd.args).not.toContain('-y');
+        expect(cmd.args).not.toContain('--output-format');
+        expect(cmd.args).not.toContain('stream-json');
       });
 
-      it('should build gemini command with session_id', () => {
+      it('should accept the display-name model directly', () => {
         const cmd = buildCliCommand({
           prompt: 'test',
           workFolder: '/tmp',
-          model: 'gemini-2.5-pro',
+          model: 'Gemini 3.5 Flash (High)',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.agent).toBe('gemini');
+        expect(cmd.resolvedModel).toBe('Gemini 3.5 Flash (High)');
+      });
+
+      it('should resume via --conversation with session_id', () => {
+        const cmd = buildCliCommand({
+          prompt: 'test',
+          workFolder: '/tmp',
+          model: 'gemini-3.5-flash-high',
           session_id: 'gem-789',
           cliPaths: DEFAULT_CLI_PATHS,
         });
 
-        expect(cmd.args).toContain('-r');
+        expect(cmd.args).toContain('--conversation');
         expect(cmd.args).toContain('gem-789');
+        expect(cmd.args).not.toContain('-r');
+      });
+
+      it('should pass internal agy log file path when provided', () => {
+        const cmd = buildCliCommand({
+          prompt: 'test',
+          workFolder: '/tmp',
+          model: 'gemini-3.5-flash-high',
+          log_file: '/tmp/agy.log',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.args).toContain('--log-file');
+        expect(cmd.args).toContain('/tmp/agy.log');
       });
 
       it('should resolve gemini-ultra alias', () => {
@@ -490,7 +520,7 @@ describe('cli-builder', () => {
         });
 
         expect(cmd.agent).toBe('gemini');
-        expect(cmd.resolvedModel).toBe('gemini-3.1-pro-preview');
+        expect(cmd.resolvedModel).toBe('Gemini 3.1 Pro (High)');
       });
     });
 

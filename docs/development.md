@@ -147,12 +147,12 @@ This will open a web interface where you can:
 3. Test different AI models including:
    - Claude models: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
    - Codex models: `gpt-5.4`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
-   - Gemini models: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
+   - Gemini/Antigravity models: `gemini-3.5-flash-high`, `gemini-3.5-flash`, `gemini-3.5-flash-low`, `gemini-3.1-pro`, `gemini-3.1-pro-low`
 
 Example test: Select the `run` tool and provide:
 - `prompt`: "What is 2+2?"
 - `workFolder`: "/tmp"
-- `model`: "gemini-2.5-flash"
+- `model`: "gemini-3.5-flash"
 
 ## Configuration via Environment Variables
 
@@ -160,7 +160,7 @@ Example test: Select the `run` tool and provide:
 |----------|-------------|
 | `CLAUDE_CLI_NAME` | Claude CLI binary name or absolute path (default: `claude`) |
 | `CODEX_CLI_NAME` | Codex CLI binary name or absolute path (default: `codex`) |
-| `GEMINI_CLI_NAME` | Gemini CLI binary name or absolute path (default: `gemini`) |
+| `GEMINI_CLI_NAME` | Gemini/Antigravity CLI binary name or absolute path (default: `agy-mcp`) |
 | `MCP_CLAUDE_DEBUG` | Enable debug logging — `true` / `false` (default: `false`) |
 
 These can be set in your shell environment or within the `env` block of your `mcp.json` server configuration.

@@ -22,7 +22,7 @@ describe('parseCodexOutput', () => {
     const output = `
 {"type":"thread.started","thread_id":"tool-test-id"}
 {"type":"turn.started"}
-{"type":"item.completed","item":{"id":"item_1","type":"mcp_tool_call","server":"acm","tool":"run","arguments":{"model":"gemini-2.5-flash","prompt":"hi"},"result":{"content":[{"text":"started","type":"text"}]},"status":"completed"}}
+{"type":"item.completed","item":{"id":"item_1","type":"mcp_tool_call","server":"acm","tool":"run","arguments":{"model":"gemini-3.5-flash","prompt":"hi"},"result":{"content":[{"text":"started","type":"text"}]},"status":"completed"}}
 {"type":"item.completed","item":{"type":"agent_message","text":"Tool executed"}}
 {"type":"turn.completed"}
 `;
@@ -34,7 +34,7 @@ describe('parseCodexOutput', () => {
     expect(result.tools[0]).toEqual({
       tool: "run",
       server: "acm",
-      input: { model: "gemini-2.5-flash", prompt: "hi" },
+      input: { model: "gemini-3.5-flash", prompt: "hi" },
       output: { content: [{ text: "started", type: "text" }] }
     });
   });
@@ -110,6 +110,20 @@ describe('PeekMessageExtractor', () => {
     expect(extractor.push(output, ts)).toEqual([
       { ts, text: 'Visible Gemini text' },
     ]);
+  });
+
+  it('extracts Antigravity plain stdout as Gemini peek messages', () => {
+    const extractor = new PeekMessageExtractor('gemini');
+
+    expect(extractor.push('Visible Antigravity text\n', ts)).toEqual([
+      { ts, text: 'Visible Antigravity text' },
+    ]);
+  });
+
+  it('does not expose Antigravity stderr logs as Gemini peek messages', () => {
+    const extractor = new PeekEventExtractor('gemini', { source: 'stderr' });
+
+    expect(extractor.push('I0606 internal agy log line\n', ts)).toEqual([]);
   });
 
   it('joins split Gemini assistant chunks into one peek message on flush', () => {
@@ -511,6 +525,31 @@ describe('PeekEventExtractor', () => {
 });
 
 describe('parseGeminiOutput', () => {
+  it('should parse Antigravity plain text output', () => {
+    expect(parseGeminiOutput('Plain Antigravity answer\n')).toEqual({
+      message: 'Plain Antigravity answer',
+    });
+  });
+
+  it('should keep Antigravity JSON-shaped answers as message text', () => {
+    expect(parseGeminiOutput('{"answer":"OK"}\n')).toEqual({
+      message: '{"answer":"OK"}',
+    });
+  });
+
+  it('should attach Antigravity conversation IDs from agy logs', () => {
+    const log = [
+      'I0606 printmode.go:82] Print mode: starting (promptLength=2, model="Gemini 3.5 Flash (Low)", conversationID="")',
+      'I0606 server.go:753] Created conversation agy-session-123',
+      'I0606 printmode.go:147] Print mode: conversation=agy-session-123, sending message',
+    ].join('\n');
+
+    expect(parseGeminiOutput('OK\n', log)).toEqual({
+      message: 'OK',
+      session_id: 'agy-session-123',
+    });
+  });
+
   it('should parse legacy final JSON output', () => {
     const output = JSON.stringify({
       session_id: 'gemini-session-json',
@@ -544,7 +583,7 @@ describe('parseGeminiOutput', () => {
 
   it('should parse Gemini stream-json NDJSON output', () => {
     const output = [
-      '{"type":"init","timestamp":"2026-04-11T14:44:42.293Z","session_id":"gemini-session-stream","model":"gemini-3.1-pro-preview"}',
+      '{"type":"init","timestamp":"2026-04-11T14:44:42.293Z","session_id":"gemini-session-stream","model":"Gemini 3.1 Pro (High)"}',
       '{"type":"message","timestamp":"2026-04-11T14:44:42.294Z","role":"user","content":"hidden user text"}',
       '{"type":"message","timestamp":"2026-04-11T14:44:53.820Z","role":"assistant","content":"First logical assistant response.","delta":true}',
       '{"type":"tool_use","timestamp":"2026-04-11T14:44:53.821Z","tool_name":"run_shell_command","tool_id":"tool-1","parameters":{"command":"echo hidden"}}',

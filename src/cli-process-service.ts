@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import {
   appendFileSync,
   chmodSync,
@@ -42,6 +43,7 @@ interface StoredProcess {
   startTime: string;
   stdoutPath: string;
   stderrPath: string;
+  logPath?: string;
   status: 'running' | 'completed' | 'failed';
   exitCode?: number;
 }
@@ -90,9 +92,13 @@ function normalizeCwdForStorage(cwd: string): string {
     .join('');
 }
 
-function parseAgentOutput(agent: AgentType, stdout: string, stderr: string): any {
+function parseAgentOutput(agent: AgentType, stdout: string, stderr: string, logText = ''): any {
   if (agent === 'codex') {
     return parseCodexOutput(`${stdout}\n${stderr}`);
+  }
+
+  if (agent === 'gemini') {
+    return parseGeminiOutput(stdout, logText);
   }
 
   if (!stdout) {
@@ -101,9 +107,6 @@ function parseAgentOutput(agent: AgentType, stdout: string, stderr: string): any
 
   if (agent === 'claude') {
     return parseClaudeOutput(stdout);
-  }
-  if (agent === 'gemini') {
-    return parseGeminiOutput(stdout);
   }
   if (agent === 'forge') {
     return parseForgeOutput(stdout);
@@ -131,7 +134,7 @@ export class CliProcessService {
   }
 
   async startProcess(options: CliRunOptions): Promise<{ pid: number; status: 'started'; agent: AgentType; message: string }> {
-    const cmd = buildCliCommand({
+    let cmd = buildCliCommand({
       prompt: options.prompt,
       prompt_file: options.prompt_file,
       workFolder: options.cwd,
@@ -141,7 +144,22 @@ export class CliProcessService {
       cliPaths: this.cliPaths,
     });
 
-    return this.startDetachedTrackedProcess(cmd, options.model);
+    let logPath: string | undefined;
+    if (cmd.agent === 'gemini') {
+      logPath = this.createAgyLogPath();
+      cmd = buildCliCommand({
+        prompt: options.prompt,
+        prompt_file: options.prompt_file,
+        workFolder: options.cwd,
+        model: options.model,
+        session_id: options.session_id,
+        reasoning_effort: options.reasoning_effort,
+        log_file: logPath,
+        cliPaths: this.cliPaths,
+      });
+    }
+
+    return this.startDetachedTrackedProcess(cmd, options.model, logPath);
   }
 
   async listProcesses(): Promise<ProcessListItem[]> {
@@ -157,7 +175,8 @@ export class CliProcessService {
     const refreshed = this.refreshStatus(storedProcess);
     const stdout = this.readTextFileSafe(refreshed.stdoutPath);
     const stderr = this.readTextFileSafe(refreshed.stderrPath);
-    const agentOutput = parseAgentOutput(refreshed.toolType, stdout, stderr);
+    const logText = refreshed.logPath ? this.readTextFileSafe(refreshed.logPath) : '';
+    const agentOutput = parseAgentOutput(refreshed.toolType, stdout, stderr, logText);
 
     return buildProcessResult({
       pid,
@@ -336,6 +355,9 @@ export class CliProcessService {
       }
 
       const processDir = this.resolveStoredProcessDir(refreshed);
+      if (refreshed.logPath && existsSync(refreshed.logPath)) {
+        rmSync(refreshed.logPath, { force: true });
+      }
       if (existsSync(processDir)) {
         rmSync(processDir, { recursive: true, force: true });
         removed++;
@@ -353,6 +375,7 @@ export class CliProcessService {
   private async startDetachedTrackedProcess(
     cmd: Awaited<ReturnType<typeof buildCliCommand>>,
     model: string | undefined,
+    logPath: string | undefined,
   ): Promise<{ pid: number; status: 'started'; agent: AgentType; message: string }> {
     const cwdKey = this.resolveCwdKey(cmd.cwd);
     const wrapperPath = this.ensureDetachedWrapperScript();
@@ -387,6 +410,7 @@ export class CliProcessService {
       startTime: new Date().toISOString(),
       stdoutPath,
       stderrPath,
+      logPath,
       status: 'running',
     };
     this.writeProcess(storedProcess);
@@ -506,6 +530,12 @@ export class CliProcessService {
       appendFileSync(filePath, text);
     } catch {
     }
+  }
+
+  private createAgyLogPath(): string {
+    const logDir = join(this.stateDir, 'logs');
+    mkdirSync(logDir, { recursive: true });
+    return join(logDir, `${randomUUID()}.agy.log`);
   }
 
   private fileSizeSafe(filePath: string): number {

@@ -1,4 +1,8 @@
 import { spawn, type ChildProcess } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
 import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekEventExtractor } from './parsers.js';
 import {
@@ -25,6 +29,7 @@ interface TrackedProcess {
   startTime: string;
   stdout: string;
   stderr: string;
+  logPath?: string;
   status: ProcessStatus;
   exitCode?: number;
 }
@@ -46,9 +51,13 @@ interface ProcessServiceOptions {
   cliPaths: BuildCliCommandOptions['cliPaths'];
 }
 
-function parseAgentOutput(agent: AgentType, stdout: string, stderr: string): any {
+function parseAgentOutput(agent: AgentType, stdout: string, stderr: string, logText = ''): any {
   if (agent === 'codex') {
     return parseCodexOutput(`${stdout || ''}\n${stderr || ''}`);
+  }
+
+  if (agent === 'gemini') {
+    return parseGeminiOutput(stdout, logText);
   }
 
   if (!stdout) {
@@ -57,9 +66,6 @@ function parseAgentOutput(agent: AgentType, stdout: string, stderr: string): any
 
   if (agent === 'claude') {
     return parseClaudeOutput(stdout);
-  }
-  if (agent === 'gemini') {
-    return parseGeminiOutput(stdout);
   }
   if (agent === 'forge') {
     return parseForgeOutput(stdout);
@@ -80,10 +86,20 @@ export class ProcessService {
   }
 
   startProcess(options: Omit<BuildCliCommandOptions, 'cliPaths'>): StartProcessResult {
-    const cmd = buildCliCommand({
+    let cmd = buildCliCommand({
       ...options,
       cliPaths: this.cliPaths,
     });
+
+    let logPath: string | undefined;
+    if (cmd.agent === 'gemini') {
+      logPath = this.createAgyLogPath();
+      cmd = buildCliCommand({
+        ...options,
+        log_file: logPath,
+        cliPaths: this.cliPaths,
+      });
+    }
 
     const { cliPath, args: processArgs, cwd: effectiveCwd, agent, prompt } = cmd;
     const childProcess = spawn(cliPath, processArgs, {
@@ -107,6 +123,7 @@ export class ProcessService {
       startTime: new Date().toISOString(),
       stdout: '',
       stderr: '',
+      logPath,
       status: 'running',
     };
 
@@ -170,7 +187,8 @@ export class ProcessService {
       throw new Error(`Process with PID ${pid} not found`);
     }
 
-    const agentOutput = parseAgentOutput(process.toolType, process.stdout, process.stderr);
+    const logText = process.logPath ? this.readTextFileSafe(process.logPath) : '';
+    const agentOutput = parseAgentOutput(process.toolType, process.stdout, process.stderr, logText);
 
     return buildProcessResult({
       pid,
@@ -355,6 +373,9 @@ export class ProcessService {
     for (const [pid, process] of this.processManager.entries()) {
       if (process.status === 'completed' || process.status === 'failed') {
         removedPids.push(pid);
+        if (process.logPath) {
+          this.removeAgyLogPath(process.logPath);
+        }
         this.processManager.delete(pid);
       }
     }
@@ -364,5 +385,29 @@ export class ProcessService {
       removedPids,
       message: `Cleaned up ${removedPids.length} finished process(es)`,
     };
+  }
+
+  private createAgyLogPath(): string {
+    return join(tmpdir() || '.', `ai-cli-mcp-agy-${randomUUID()}.log`);
+  }
+
+  private readTextFileSafe(filePath: string): string {
+    if (!existsSync(filePath)) {
+      return '';
+    }
+
+    try {
+      const text = readFileSync(filePath, 'utf-8');
+      return typeof text === 'string' ? text : '';
+    } catch {
+      return '';
+    }
+  }
+
+  private removeAgyLogPath(filePath: string): void {
+    try {
+      rmSync(filePath, { force: true });
+    } catch {
+    }
   }
 }

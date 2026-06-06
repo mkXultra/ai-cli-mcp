@@ -7,12 +7,15 @@ export const CODEX_MODELS = [
   'gpt-5.3-codex-spark',
   'gpt-5.2',
 ] as const;
+// Modelos do agente "gemini" servidos pelo Antigravity CLI (agy). O nome de
+// exibição (com o nível de raciocínio entre parênteses) É o ID aceito pelo
+// --model. Use os aliases lowercase abaixo para conveniência.
 export const GEMINI_MODELS = [
-  'gemini-2.5-pro',
-  'gemini-2.5-flash',
-  'gemini-3.1-pro-preview',
-  'gemini-3-pro-preview',
-  'gemini-3-flash-preview',
+  'Gemini 3.5 Flash (High)',
+  'Gemini 3.5 Flash (Medium)',
+  'Gemini 3.5 Flash (Low)',
+  'Gemini 3.1 Pro (High)',
+  'Gemini 3.1 Pro (Low)',
 ] as const;
 export const FORGE_MODELS = ['forge'] as const;
 export const OPENCODE_MODELS = ['opencode'] as const;
@@ -20,13 +23,24 @@ export const OPENCODE_MODELS = ['opencode'] as const;
 export const MODEL_ALIASES: Record<string, string> = {
   'claude-ultra': 'opus',
   'codex-ultra': 'gpt-5.5',
-  'gemini-ultra': 'gemini-3.1-pro-preview',
+  // Aliases lowercase -> nome de exibição aceito pelo agy.
+  'gemini-ultra': 'Gemini 3.1 Pro (High)',
+  'gemini-3.5-flash-high': 'Gemini 3.5 Flash (High)',
+  'gemini-3.5-flash': 'Gemini 3.5 Flash (Medium)',
+  'gemini-3.5-flash-low': 'Gemini 3.5 Flash (Low)',
+  'gemini-3.1-pro': 'Gemini 3.1 Pro (High)',
+  'gemini-3.1-pro-low': 'Gemini 3.1 Pro (Low)',
 };
 
 export const MODEL_ALIAS_DETAILS = [
   { name: 'claude-ultra', resolvesTo: 'opus', agent: 'claude', defaultReasoningEffort: 'max' },
   { name: 'codex-ultra', resolvesTo: 'gpt-5.5', agent: 'codex', defaultReasoningEffort: 'xhigh' },
-  { name: 'gemini-ultra', resolvesTo: 'gemini-3.1-pro-preview', agent: 'gemini' },
+  { name: 'gemini-ultra', resolvesTo: 'Gemini 3.1 Pro (High)', agent: 'gemini' },
+  { name: 'gemini-3.5-flash-high', resolvesTo: 'Gemini 3.5 Flash (High)', agent: 'gemini' },
+  { name: 'gemini-3.5-flash', resolvesTo: 'Gemini 3.5 Flash (Medium)', agent: 'gemini' },
+  { name: 'gemini-3.5-flash-low', resolvesTo: 'Gemini 3.5 Flash (Low)', agent: 'gemini' },
+  { name: 'gemini-3.1-pro', resolvesTo: 'Gemini 3.1 Pro (High)', agent: 'gemini' },
+  { name: 'gemini-3.1-pro-low', resolvesTo: 'Gemini 3.1 Pro (Low)', agent: 'gemini' },
 ] as const;
 
 export interface DynamicModelBackendDescription {

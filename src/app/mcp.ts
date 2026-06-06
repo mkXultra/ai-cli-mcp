@@ -88,7 +88,7 @@ export class ClaudeCodeServer {
     this.opencodeCliPath = this.resolveDoctorCliPath(doctorStatus.opencode);
     console.error(`[Setup] Using Claude CLI command/path: ${this.claudeCliPath}`);
     console.error(`[Setup] Using Codex CLI command/path: ${this.codexCliPath}`);
-    console.error(`[Setup] Using Gemini CLI command/path: ${this.geminiCliPath}`);
+    console.error(`[Setup] Using Gemini/Antigravity CLI command/path: ${this.geminiCliPath}`);
     console.error(`[Setup] Using Forge CLI command/path: ${this.forgeCliPath}`);
     console.error(`[Setup] Using OpenCode CLI command/path: ${this.opencodeCliPath}`);
     this.processService = new ProcessService({
