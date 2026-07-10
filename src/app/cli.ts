@@ -28,9 +28,9 @@ Options:
   --cwd <path>                 Working directory
   --prompt <text>              Prompt text
   --prompt-file <path>         Path to a prompt file
-  --model <model>              Model name or alias (e.g. sonnet, claude-ultra, gpt-5.3-codex, codex-ultra, gemini-3.5-flash-high, gemini-ultra, forge, opencode, oc-openai/gpt-5.4)
+  --model <model>              Model name or alias (e.g. sonnet, claude-ultra, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, codex-ultra, gemini-3.5-flash-high, forge, opencode, oc-openai/gpt-5.4)
   --session-id <id>            Resume a previous session, including OpenCode in-place resumes
-  --reasoning-effort <level>   Reasoning level for Claude/Codex only; unsupported for Gemini, Forge, and OpenCode
+  --reasoning-effort <level>   Claude: low..max; GPT-5.6/Codex default: low..ultra; legacy Codex: low..xhigh
   --help, -h                   Show this help message
 
 Compatibility aliases:
@@ -98,7 +98,7 @@ Options:
 
 export const MODELS_HELP_TEXT = `Usage: ai-cli models
 
-List supported models and aliases.
+List supported models, aliases, and per-model Codex reasoning capabilities.
 
 Options:
   --help, -h                   Show this help message

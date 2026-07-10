@@ -122,11 +122,13 @@ src/
 
 ```
 claude-ultra  → opus (+ reasoning_effort: max)
-codex-ultra   → gpt-5.5 (+ reasoning_effort: xhigh)
+codex-ultra   → gpt-5.6-sol (+ reasoning_effort: ultra)
 gemini-ultra  → Gemini 3.1 Pro (High)
 ```
 
 **設計意図**: AI プロバイダーのモデル名は頻繁に変わる。利用者（特にAIエージェント）が個々のモデル名の変遷を追う必要がないよう、「そのプロバイダーの最強モデル」を指す安定したエイリアスを提供する。マッピング先はサーバー側で更新するだけで、利用者のプロンプトを変更する必要がない。
+
+`codex-ultra` はこの設計に従って `gpt-5.5` + `xhigh` から `gpt-5.6-sol` + `ultra` へ移行した。再現性のため旧モデルを固定したい呼び出しは、エイリアスではなくモデルと effort を明示する。
 
 ## Security Model
 

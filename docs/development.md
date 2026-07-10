@@ -146,7 +146,8 @@ This will open a web interface where you can:
 2. Test each tool with different parameters
 3. Test different AI models including:
    - Claude models: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
-   - Codex models: `gpt-5.4`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
+   - Codex models: `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
+   - GPT-5.6 reasoning (Codex CLI `>= 0.144.0`): `low`, `medium`, `high`, `xhigh`, `max`, `ultra`; explicit legacy Codex models: through `xhigh`
    - Gemini/Antigravity models: `gemini-3.5-flash-high`, `gemini-3.5-flash`, `gemini-3.5-flash-low`, `gemini-3.1-pro`, `gemini-3.1-pro-low`
 
 Example test: Select the `run` tool and provide:

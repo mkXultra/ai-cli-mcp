@@ -24,7 +24,7 @@ This MCP server provides tools that can be used by LLMs to interact with AI CLI 
 - Execute Antigravity CLI through the Gemini agent path in print mode (using `agy-mcp --dangerously-skip-permissions -p`)
 - Execute Forge CLI in non-interactive mode (using `forge -C <workFolder> -p <prompt>`)
 - Execute OpenCode in non-interactive JSON mode (using `opencode run --format json --dir <workFolder> <prompt>`)
-- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, haiku), Codex (gpt-5.4, gpt-5.5, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2), Gemini/Antigravity (`gemini-3.5-flash-high`, `gemini-3.5-flash`, `gemini-3.5-flash-low`, `gemini-3.1-pro`, `gemini-3.1-pro-low`), Forge (`forge`), and OpenCode (`opencode` plus explicit `oc-<provider/model>` wrappers such as `oc-openai/gpt-5.4`)
+- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, haiku), Codex (gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-5.5, gpt-5.4, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2), Gemini/Antigravity (`gemini-3.5-flash-high`, `gemini-3.5-flash`, `gemini-3.5-flash-low`, `gemini-3.1-pro`, `gemini-3.1-pro-low`), Forge (`forge`), and OpenCode (`opencode` plus explicit `oc-<provider/model>` wrappers such as `oc-openai/gpt-5.4`)
 - Manage background processes with PID tracking
 - Parse and return structured outputs from both tools
 
@@ -63,7 +63,7 @@ You can reuse heavy context (like large codebases) using session IDs to save cos
 The only prerequisite is that the AI CLI tools you want to use are locally installed and correctly configured.
 
 - **Claude Code**: `claude doctor` passes, and execution with `--dangerously-skip-permissions` is approved (you must run it manually once to login and accept terms).
-- **Codex CLI** (Optional): Installed and initial setup (login etc.) completed.
+- **Codex CLI** (Optional): Installed and initial setup (login etc.) completed. GPT-5.6 Sol/Terra/Luna support requires Codex CLI `>= 0.144.0`.
 - **Antigravity CLI** (Optional): `agy-mcp` installed and initial setup completed.
 - **Forge CLI** (Optional): Installed and initial setup completed.
 - **OpenCode** (Optional): Installed and configured. This integration uses `opencode run --format json`, and explicit provider/model selection follows the `oc-<provider/model>` wrapper syntax exposed by `ai-cli models`.
@@ -256,14 +256,16 @@ Executes a prompt using Claude CLI, Codex CLI, Antigravity through the Gemini ag
 - `prompt_file` (string, optional): Path to a file containing the prompt. Either `prompt` or `prompt_file` is required. Can be absolute path or relative to `workFolder`.
 - `workFolder` (string, required): The working directory for the CLI execution. Must be an absolute path.
 **Models:**
-- **Ultra Aliases:** `claude-ultra` (defaults to max effort), `codex-ultra` (`gpt-5.5`, defaults to xhigh reasoning), `gemini-ultra`
+- **Ultra Aliases:** `claude-ultra` (defaults to max effort), `codex-ultra` (`gpt-5.6-sol`, defaults to ultra reasoning), `gemini-ultra`
 - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
-- Codex: `gpt-5.4`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
+- Codex: `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
 - Gemini/Antigravity: `gemini-3.5-flash-high`, `gemini-3.5-flash`, `gemini-3.5-flash-low`, `gemini-3.1-pro`, `gemini-3.1-pro-low`
 - Forge: `forge`
 - OpenCode: `opencode` for the configured default backend model, plus explicit wrappers like `oc-openai/gpt-5.4`
-- `reasoning_effort` (string, optional): Reasoning control for Claude and Codex. Claude uses `--effort` (allowed: "low", "medium", "high", "xhigh", "max"). Codex uses `model_reasoning_effort` (allowed: "low", "medium", "high", "xhigh"). Gemini, Forge, and OpenCode do not support `reasoning_effort`.
+- `reasoning_effort` (string, optional): Reasoning control for Claude and Codex. Claude uses `--effort` (`low` through `max`). GPT-5.6 Sol/Terra/Luna and the configured Codex default use `model_reasoning_effort` (`low`, `medium`, `high`, `xhigh`, `max`, `ultra`); explicit legacy Codex models remain limited to `low` through `xhigh`. Gemini, Forge, and OpenCode do not support `reasoning_effort`.
 - `session_id` (string, optional): Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, and OpenCode. OpenCode resumes in place via `--session` and may also be combined with an explicit `oc-<provider/model>` selection.
+
+> **Migration note:** `codex-ultra` previously resolved to `gpt-5.5` + `xhigh`; it now tracks the strongest Codex option as `gpt-5.6-sol` + `ultra`. Pin `model: "gpt-5.5"` and `reasoning_effort: "xhigh"` when the old behavior is required. Codex CLI 0.144.0's visual model catalog omits `ultra` for Luna, but the backend accepted and reported `gpt-5.6-luna` + `ultra` in a live compatibility check on 2026-07-09.
 
 ### `wait`
 

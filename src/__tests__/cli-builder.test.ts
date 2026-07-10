@@ -38,8 +38,8 @@ describe('cli-builder', () => {
       expect(resolveModelAlias('claude-ultra')).toBe('opus');
     });
 
-    it('should resolve codex-ultra to gpt-5.5', () => {
-      expect(resolveModelAlias('codex-ultra')).toBe('gpt-5.5');
+    it('should resolve codex-ultra to gpt-5.6-sol', () => {
+      expect(resolveModelAlias('codex-ultra')).toBe('gpt-5.6-sol');
     });
 
     it('should resolve gemini-ultra to Gemini 3.1 Pro (High)', () => {
@@ -85,14 +85,31 @@ describe('cli-builder', () => {
     });
 
     it('should throw for invalid reasoning effort value', () => {
-      expect(() => getReasoningEffort('gpt-5.2', 'ultra')).toThrow(
-        'Invalid reasoning_effort: ultra. Allowed values: low, medium, high, xhigh, max.'
+      expect(() => getReasoningEffort('gpt-5.2', 'extreme')).toThrow(
+        'Invalid reasoning_effort: extreme. Allowed values: low, medium, high, xhigh, max, ultra.'
       );
     });
 
-    it('should reject max for codex models', () => {
+    it('should preserve the legacy Codex effort ceiling', () => {
       expect(() => getReasoningEffort('gpt-5.2', 'max')).toThrow(
-        'Codex reasoning_effort supports only low, medium, high, xhigh.'
+        'Codex model gpt-5.2 reasoning_effort supports only low, medium, high, xhigh.'
+      );
+      expect(() => getReasoningEffort('gpt-5.5', 'ultra')).toThrow(
+        'Codex model gpt-5.5 reasoning_effort supports only low, medium, high, xhigh.'
+      );
+    });
+
+    it('should accept low through ultra for every GPT-5.6 variant and configured Codex default', () => {
+      for (const model of ['codex', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna']) {
+        for (const effort of ['low', 'medium', 'high', 'xhigh', 'max', 'ultra']) {
+          expect(getReasoningEffort(model, effort)).toBe(effort);
+        }
+      }
+    });
+
+    it('should reject ultra for Claude', () => {
+      expect(() => getReasoningEffort('opus', 'ultra')).toThrow(
+        'Claude reasoning_effort supports only low, medium, high, xhigh, max.'
       );
     });
 
@@ -410,7 +427,7 @@ describe('cli-builder', () => {
         expect(cmd.args).toContain('model_reasoning_effort=high');
       });
 
-      it('should resolve codex-ultra and default to xhigh reasoning', () => {
+      it('should resolve codex-ultra to Sol and default to ultra reasoning', () => {
         const cmd = buildCliCommand({
           prompt: 'test',
           workFolder: '/tmp',
@@ -419,9 +436,9 @@ describe('cli-builder', () => {
         });
 
         expect(cmd.agent).toBe('codex');
-        expect(cmd.resolvedModel).toBe('gpt-5.5');
+        expect(cmd.resolvedModel).toBe('gpt-5.6-sol');
         expect(cmd.args).toContain('-c');
-        expect(cmd.args).toContain('model_reasoning_effort=xhigh');
+        expect(cmd.args).toContain('model_reasoning_effort=ultra');
       });
 
       it('should allow overriding reasoning_effort for codex-ultra', () => {
@@ -434,10 +451,29 @@ describe('cli-builder', () => {
         });
 
         expect(cmd.args).toContain('model_reasoning_effort=low');
-        expect(cmd.args).not.toContain('model_reasoning_effort=xhigh');
+        expect(cmd.args).not.toContain('model_reasoning_effort=ultra');
       });
 
-      it('should reject max reasoning_effort for codex', () => {
+      it('should build all GPT-5.6 model and effort combinations', () => {
+        for (const model of ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna']) {
+          for (const effort of ['low', 'medium', 'high', 'xhigh', 'max', 'ultra']) {
+            const cmd = buildCliCommand({
+              prompt: 'test',
+              workFolder: '/tmp',
+              model,
+              reasoning_effort: effort,
+              cliPaths: DEFAULT_CLI_PATHS,
+            });
+
+            expect(cmd.agent).toBe('codex');
+            expect(cmd.resolvedModel).toBe(model);
+            expect(cmd.args).toContain(model);
+            expect(cmd.args).toContain(`model_reasoning_effort=${effort}`);
+          }
+        }
+      });
+
+      it('should reject max reasoning_effort for legacy codex', () => {
         expect(() =>
           buildCliCommand({
             prompt: 'test',
@@ -446,7 +482,7 @@ describe('cli-builder', () => {
             reasoning_effort: 'max',
             cliPaths: DEFAULT_CLI_PATHS,
           })
-        ).toThrow('Codex reasoning_effort supports only low, medium, high, xhigh.');
+        ).toThrow('Codex model gpt-5.4 reasoning_effort supports only low, medium, high, xhigh.');
       });
     });
 
