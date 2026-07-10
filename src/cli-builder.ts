@@ -1,11 +1,17 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve as pathResolve, isAbsolute } from 'node:path';
 import type { CliPaths } from './cli-utils.js';
-import { MODEL_ALIASES } from './model-catalog.js';
+import {
+  CODEX_REASONING_EFFORTS_BY_MODEL,
+  LEGACY_CODEX_REASONING_EFFORTS,
+  MODEL_ALIASES,
+  MODEL_ALIAS_DEFAULT_REASONING_EFFORTS,
+  REASONING_EFFORT_LEVELS,
+} from './model-catalog.js';
 
-export const ALLOWED_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
+export const ALLOWED_REASONING_EFFORTS = new Set<string>(REASONING_EFFORT_LEVELS);
 const CLAUDE_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
-const CODEX_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
+const LEGACY_CODEX_REASONING_EFFORT_SET = new Set<string>(LEGACY_CODEX_REASONING_EFFORTS);
 const OPENCODE_MODEL_ERROR = 'Invalid OpenCode model. Expected exact syntax oc-<provider/model>.';
 
 type Agent = 'codex' | 'claude' | 'gemini' | 'forge' | 'opencode';
@@ -26,7 +32,8 @@ function getStandardAgentForModel(model: string): Exclude<Agent, 'opencode'> {
   if (model.startsWith('gpt-')) {
     return 'codex';
   }
-  if (model.startsWith('gemini')) {
+  // Case-insensitive: o agy (Antigravity CLI) usa nomes como "Gemini 3.5 Flash (High)".
+  if (model.toLowerCase().startsWith('gemini')) {
     return 'gemini';
   }
   return 'claude';
@@ -105,7 +112,7 @@ export function getReasoningEffort(model: string, rawValue: unknown): string {
   const normalized = trimmed.toLowerCase();
   if (!ALLOWED_REASONING_EFFORTS.has(normalized)) {
     throw new Error(
-      `Invalid reasoning_effort: ${rawValue}. Allowed values: low, medium, high, xhigh, max.`
+      `Invalid reasoning_effort: ${rawValue}. Allowed values: ${REASONING_EFFORT_LEVELS.join(', ')}.`
     );
   }
   const agent = getStandardAgentForModel(model);
@@ -122,9 +129,16 @@ export function getReasoningEffort(model: string, rawValue: unknown): string {
       'Claude reasoning_effort supports only low, medium, high, xhigh, max.'
     );
   }
-  if (agent === 'codex' && !CODEX_REASONING_EFFORTS.has(normalized)) {
+  const codexEfforts = agent === 'codex'
+    ? new Set<string>(
+      CODEX_REASONING_EFFORTS_BY_MODEL[
+        model as keyof typeof CODEX_REASONING_EFFORTS_BY_MODEL
+      ] || LEGACY_CODEX_REASONING_EFFORTS
+    )
+    : LEGACY_CODEX_REASONING_EFFORT_SET;
+  if (agent === 'codex' && !codexEfforts.has(normalized)) {
     throw new Error(
-      'Codex reasoning_effort supports only low, medium, high, xhigh.'
+      `Codex model ${model || '(default)'} reasoning_effort supports only ${[...codexEfforts].join(', ')}.`
     );
   }
   return normalized;
@@ -146,6 +160,7 @@ export interface BuildCliCommandOptions {
   model?: string;
   session_id?: string;
   reasoning_effort?: string;
+  log_file?: string;
   cliPaths: CliPaths;
 }
 
@@ -194,11 +209,7 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
 
   let reasoningEffortArg: string | undefined = options.reasoning_effort;
   if (!reasoningEffortArg) {
-    if (rawModel === 'codex-ultra') {
-      reasoningEffortArg = 'xhigh';
-    } else if (rawModel === 'claude-ultra') {
-      reasoningEffortArg = 'max';
-    }
+    reasoningEffortArg = MODEL_ALIAS_DEFAULT_REASONING_EFFORTS[rawModel];
   }
 
   const reasoningTargetModel = rawModel === 'opencode' || rawModel.startsWith('oc-')
@@ -227,18 +238,26 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
 
     args.push('--skip-git-repo-check', '--dangerously-bypass-approvals-and-sandbox', '--json', prompt);
   } else if (agent === 'gemini') {
+    // Servido pelo Antigravity CLI (agy) via wrapper agy-mcp. Modo "yolo" headless:
+    // -p (print/one-shot), --dangerously-skip-permissions (auto-aprova tools),
+    // --model "<nome>" (ex.: "Gemini 3.5 Flash (High)"), resume via --conversation.
+    // O agy NÃO suporta -y nem --output-format stream-json (saída é texto puro).
     cliPath = options.cliPaths.gemini;
-    args = ['-y', '--output-format', 'stream-json'];
+    args = ['--dangerously-skip-permissions'];
+
+    if (options.log_file && typeof options.log_file === 'string' && options.log_file.trim()) {
+      args.push('--log-file', options.log_file);
+    }
 
     if (options.session_id && typeof options.session_id === 'string') {
-      args.push('-r', options.session_id);
+      args.push('--conversation', options.session_id);
     }
 
     if (resolvedModel) {
       args.push('--model', resolvedModel);
     }
 
-    args.push(prompt);
+    args.push('-p', prompt);
   } else if (agent === 'forge') {
     cliPath = options.cliPaths.forge;
     args = ['-C', cwd];

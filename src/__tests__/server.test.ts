@@ -819,16 +819,16 @@ describe('ClaudeCodeServer Unit Tests', () => {
           arguments: {
             prompt: 'test prompt',
             workFolder: '/tmp',
-            model: 'gemini-2.5-pro',
+            model: 'gemini-3.5-flash-high',
             session_id: 'gemini-session-789'
           }
         }
       });
 
-      // Verify spawn was called with -r flag for Gemini
+      // Verify spawn was called with --conversation flag for Gemini (Antigravity CLI / agy)
       expect(mockSpawn).toHaveBeenCalledWith(
         expect.any(String),
-        expect.arrayContaining(['-r', 'gemini-session-789']),
+        expect.arrayContaining(['--conversation', 'gemini-session-789']),
         expect.any(Object)
       );
     });

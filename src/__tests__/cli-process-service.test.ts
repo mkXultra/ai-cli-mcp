@@ -58,6 +58,40 @@ exit 0
   return scriptPath;
 }
 
+function createAgyOutputCliScript(dir: string, name: string): string {
+  const scriptPath = join(dir, name);
+  writeFileSync(
+    scriptPath,
+    `#!/bin/bash
+log_file=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --log-file)
+      log_file="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+if [[ -n "$log_file" ]]; then
+  mkdir -p "$(dirname "$log_file")"
+  cat > "$log_file" <<'EOF'
+I0606 server.go:753] Created conversation agy-session-123
+I0606 printmode.go:147] Print mode: conversation=agy-session-123, sending message
+EOF
+fi
+
+printf 'agy plain ok\\n'
+exit 0
+`
+  );
+  chmodSync(scriptPath, 0o755);
+  return scriptPath;
+}
+
 function encodeCwd(cwd: string): string {
   return cwd
     .split('')
@@ -174,7 +208,7 @@ describe('CliProcessService', () => {
     },
     {
       agent: 'gemini',
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       stdout: `
 {"type":"init","timestamp":"2026-04-18T00:00:00.000Z","session_id":"ses-fake-gemini"}
 {"type":"message","timestamp":"2026-04-18T00:00:01.000Z","role":"assistant","content":"fake gemini ok","delta":true}
@@ -255,6 +289,49 @@ fake forge ok
       agentOutput: {
         message: expectedMessage,
         session_id: expectedSessionId,
+      },
+    });
+    expect(result).not.toHaveProperty('stdout');
+    expect(result).not.toHaveProperty('stderr');
+  });
+
+  it('extracts Antigravity conversation IDs from the internal agy log', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
+    tempDirs.push(root);
+    const scriptPath = createAgyOutputCliScript(root, 'mock-agy');
+    const stateDir = join(root, 'state');
+    const workFolder = join(root, 'work');
+    mkdirSync(workFolder, { recursive: true });
+
+    const service = new CliProcessService({
+      stateDir,
+      cliPaths: {
+        claude: '/bin/sh',
+        codex: '/bin/sh',
+        gemini: scriptPath,
+        forge: '/bin/sh',
+        opencode: '/bin/sh',
+      },
+    });
+
+    const runResult = await service.startProcess({
+      prompt: 'hello agy',
+      cwd: workFolder,
+      model: 'gemini-3.5-flash-low',
+    });
+
+    const [result] = await service.waitForProcesses([runResult.pid], 5);
+
+    expect(result).toMatchObject({
+      pid: runResult.pid,
+      agent: 'gemini',
+      status: 'completed',
+      exitCode: 0,
+      model: 'gemini-3.5-flash-low',
+      session_id: 'agy-session-123',
+      agentOutput: {
+        message: 'agy plain ok',
+        session_id: 'agy-session-123',
       },
     });
     expect(result).not.toHaveProperty('stdout');

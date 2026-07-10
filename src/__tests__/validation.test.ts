@@ -314,7 +314,7 @@ describe('Argument Validation Tests', () => {
             arguments: {
               prompt: 'test',
               workFolder: '/tmp',
-              model: 'gemini-2.5-pro',
+              model: 'gemini-3.5-flash-high',
               reasoning_effort: 'low'
             }
           }

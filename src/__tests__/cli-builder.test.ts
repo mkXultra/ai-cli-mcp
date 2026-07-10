@@ -38,12 +38,12 @@ describe('cli-builder', () => {
       expect(resolveModelAlias('claude-ultra')).toBe('opus');
     });
 
-    it('should resolve codex-ultra to gpt-5.5', () => {
-      expect(resolveModelAlias('codex-ultra')).toBe('gpt-5.5');
+    it('should resolve codex-ultra to gpt-5.6-sol', () => {
+      expect(resolveModelAlias('codex-ultra')).toBe('gpt-5.6-sol');
     });
 
-    it('should resolve gemini-ultra to gemini-3.1-pro-preview', () => {
-      expect(resolveModelAlias('gemini-ultra')).toBe('gemini-3.1-pro-preview');
+    it('should resolve gemini-ultra to Gemini 3.1 Pro (High)', () => {
+      expect(resolveModelAlias('gemini-ultra')).toBe('Gemini 3.1 Pro (High)');
     });
 
     it('should pass through non-alias model names', () => {
@@ -85,19 +85,36 @@ describe('cli-builder', () => {
     });
 
     it('should throw for invalid reasoning effort value', () => {
-      expect(() => getReasoningEffort('gpt-5.2', 'ultra')).toThrow(
-        'Invalid reasoning_effort: ultra. Allowed values: low, medium, high, xhigh, max.'
+      expect(() => getReasoningEffort('gpt-5.2', 'extreme')).toThrow(
+        'Invalid reasoning_effort: extreme. Allowed values: low, medium, high, xhigh, max, ultra.'
       );
     });
 
-    it('should reject max for codex models', () => {
+    it('should preserve the legacy Codex effort ceiling', () => {
       expect(() => getReasoningEffort('gpt-5.2', 'max')).toThrow(
-        'Codex reasoning_effort supports only low, medium, high, xhigh.'
+        'Codex model gpt-5.2 reasoning_effort supports only low, medium, high, xhigh.'
+      );
+      expect(() => getReasoningEffort('gpt-5.5', 'ultra')).toThrow(
+        'Codex model gpt-5.5 reasoning_effort supports only low, medium, high, xhigh.'
+      );
+    });
+
+    it('should accept low through ultra for every GPT-5.6 variant and configured Codex default', () => {
+      for (const model of ['codex', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna']) {
+        for (const effort of ['low', 'medium', 'high', 'xhigh', 'max', 'ultra']) {
+          expect(getReasoningEffort(model, effort)).toBe(effort);
+        }
+      }
+    });
+
+    it('should reject ultra for Claude', () => {
+      expect(() => getReasoningEffort('opus', 'ultra')).toThrow(
+        'Claude reasoning_effort supports only low, medium, high, xhigh, max.'
       );
     });
 
     it('should throw for unsupported model families', () => {
-      expect(() => getReasoningEffort('gemini-2.5-pro', 'high')).toThrow(
+      expect(() => getReasoningEffort('gemini-3.5-flash-high', 'high')).toThrow(
         'reasoning_effort is only supported for Claude and Codex models.'
       );
     });
@@ -410,7 +427,7 @@ describe('cli-builder', () => {
         expect(cmd.args).toContain('model_reasoning_effort=high');
       });
 
-      it('should resolve codex-ultra and default to xhigh reasoning', () => {
+      it('should resolve codex-ultra to Sol and default to ultra reasoning', () => {
         const cmd = buildCliCommand({
           prompt: 'test',
           workFolder: '/tmp',
@@ -419,9 +436,9 @@ describe('cli-builder', () => {
         });
 
         expect(cmd.agent).toBe('codex');
-        expect(cmd.resolvedModel).toBe('gpt-5.5');
+        expect(cmd.resolvedModel).toBe('gpt-5.6-sol');
         expect(cmd.args).toContain('-c');
-        expect(cmd.args).toContain('model_reasoning_effort=xhigh');
+        expect(cmd.args).toContain('model_reasoning_effort=ultra');
       });
 
       it('should allow overriding reasoning_effort for codex-ultra', () => {
@@ -434,10 +451,29 @@ describe('cli-builder', () => {
         });
 
         expect(cmd.args).toContain('model_reasoning_effort=low');
-        expect(cmd.args).not.toContain('model_reasoning_effort=xhigh');
+        expect(cmd.args).not.toContain('model_reasoning_effort=ultra');
       });
 
-      it('should reject max reasoning_effort for codex', () => {
+      it('should build all GPT-5.6 model and effort combinations', () => {
+        for (const model of ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna']) {
+          for (const effort of ['low', 'medium', 'high', 'xhigh', 'max', 'ultra']) {
+            const cmd = buildCliCommand({
+              prompt: 'test',
+              workFolder: '/tmp',
+              model,
+              reasoning_effort: effort,
+              cliPaths: DEFAULT_CLI_PATHS,
+            });
+
+            expect(cmd.agent).toBe('codex');
+            expect(cmd.resolvedModel).toBe(model);
+            expect(cmd.args).toContain(model);
+            expect(cmd.args).toContain(`model_reasoning_effort=${effort}`);
+          }
+        }
+      });
+
+      it('should reject max reasoning_effort for legacy codex', () => {
         expect(() =>
           buildCliCommand({
             prompt: 'test',
@@ -446,39 +482,69 @@ describe('cli-builder', () => {
             reasoning_effort: 'max',
             cliPaths: DEFAULT_CLI_PATHS,
           })
-        ).toThrow('Codex reasoning_effort supports only low, medium, high, xhigh.');
+        ).toThrow('Codex model gpt-5.4 reasoning_effort supports only low, medium, high, xhigh.');
       });
     });
 
-    describe('gemini agent', () => {
-      it('should build gemini command', () => {
+    describe('gemini agent (Antigravity CLI / agy)', () => {
+      it('should build gemini command with agy yolo flags', () => {
         const cmd = buildCliCommand({
           prompt: 'test',
           workFolder: '/tmp',
-          model: 'gemini-2.5-pro',
+          model: 'gemini-3.5-flash-high',
           cliPaths: DEFAULT_CLI_PATHS,
         });
 
         expect(cmd.agent).toBe('gemini');
         expect(cmd.cliPath).toBe('/usr/bin/gemini');
-        expect(cmd.args).toContain('-y');
-        expect(cmd.args).toContain('--output-format');
-        expect(cmd.args).toContain('stream-json');
+        expect(cmd.args).toContain('--dangerously-skip-permissions');
         expect(cmd.args).toContain('--model');
-        expect(cmd.args).toContain('gemini-2.5-pro');
+        expect(cmd.args).toContain('Gemini 3.5 Flash (High)');
+        expect(cmd.args).toContain('-p');
+        expect(cmd.args).toContain('test');
+        // agy NÃO usa as flags do gemini-cli legado.
+        expect(cmd.args).not.toContain('-y');
+        expect(cmd.args).not.toContain('--output-format');
+        expect(cmd.args).not.toContain('stream-json');
       });
 
-      it('should build gemini command with session_id', () => {
+      it('should accept the display-name model directly', () => {
         const cmd = buildCliCommand({
           prompt: 'test',
           workFolder: '/tmp',
-          model: 'gemini-2.5-pro',
+          model: 'Gemini 3.5 Flash (High)',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.agent).toBe('gemini');
+        expect(cmd.resolvedModel).toBe('Gemini 3.5 Flash (High)');
+      });
+
+      it('should resume via --conversation with session_id', () => {
+        const cmd = buildCliCommand({
+          prompt: 'test',
+          workFolder: '/tmp',
+          model: 'gemini-3.5-flash-high',
           session_id: 'gem-789',
           cliPaths: DEFAULT_CLI_PATHS,
         });
 
-        expect(cmd.args).toContain('-r');
+        expect(cmd.args).toContain('--conversation');
         expect(cmd.args).toContain('gem-789');
+        expect(cmd.args).not.toContain('-r');
+      });
+
+      it('should pass internal agy log file path when provided', () => {
+        const cmd = buildCliCommand({
+          prompt: 'test',
+          workFolder: '/tmp',
+          model: 'gemini-3.5-flash-high',
+          log_file: '/tmp/agy.log',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.args).toContain('--log-file');
+        expect(cmd.args).toContain('/tmp/agy.log');
       });
 
       it('should resolve gemini-ultra alias', () => {
@@ -490,7 +556,7 @@ describe('cli-builder', () => {
         });
 
         expect(cmd.agent).toBe('gemini');
-        expect(cmd.resolvedModel).toBe('gemini-3.1-pro-preview');
+        expect(cmd.resolvedModel).toBe('Gemini 3.1 Pro (High)');
       });
     });
 

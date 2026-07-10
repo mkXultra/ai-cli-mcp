@@ -10,7 +10,12 @@ import {
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { debugLog, getCliDoctorStatus, type CliBinaryStatus } from '../cli-utils.js';
-import { getModelParameterDescription, getModelsPayload, getSupportedModelsDescription } from '../model-catalog.js';
+import {
+  getModelParameterDescription,
+  getModelsPayload,
+  getReasoningEffortParameterDescription,
+  getSupportedModelsDescription,
+} from '../model-catalog.js';
 import { validatePeekPids, validatePeekTimeSec } from '../peek.js';
 import { ProcessService } from '../process-service.js';
 
@@ -88,7 +93,7 @@ export class ClaudeCodeServer {
     this.opencodeCliPath = this.resolveDoctorCliPath(doctorStatus.opencode);
     console.error(`[Setup] Using Claude CLI command/path: ${this.claudeCliPath}`);
     console.error(`[Setup] Using Codex CLI command/path: ${this.codexCliPath}`);
-    console.error(`[Setup] Using Gemini CLI command/path: ${this.geminiCliPath}`);
+    console.error(`[Setup] Using Gemini/Antigravity CLI command/path: ${this.geminiCliPath}`);
     console.error(`[Setup] Using Forge CLI command/path: ${this.forgeCliPath}`);
     console.error(`[Setup] Using OpenCode CLI command/path: ${this.opencodeCliPath}`);
     this.processService = new ProcessService({
@@ -186,7 +191,7 @@ ${getSupportedModelsDescription()}
               },
               reasoning_effort: {
                 type: 'string',
-                description: 'Reasoning control for Claude and Codex. Claude uses --effort with "low", "medium", "high", "xhigh", "max". Codex uses model_reasoning_effort with "low", "medium", "high", "xhigh". Gemini, Forge, and OpenCode do not support reasoning_effort in this integration.',
+                description: getReasoningEffortParameterDescription(),
               },
               session_id: {
                 type: 'string',
@@ -300,7 +305,7 @@ ${getSupportedModelsDescription()}
         },
         {
           name: 'models',
-          description: 'List supported model names, model aliases, and dynamic backend discovery hints.',
+          description: 'List supported model names, model aliases, per-model Codex reasoning capabilities, and dynamic backend discovery hints.',
           inputSchema: {
             type: 'object',
             properties: {},

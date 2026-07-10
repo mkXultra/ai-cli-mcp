@@ -78,6 +78,62 @@ function isGeminiStreamJsonEvent(parsed: any): boolean {
   return parsed && typeof parsed === 'object' && !Array.isArray(parsed) && GEMINI_STREAM_EVENT_TYPES.has(parsed.type);
 }
 
+function isPlainObject(value: any): value is Record<string, any> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isGeminiLegacyFinalOutput(parsed: any): boolean {
+  if (!isPlainObject(parsed)) {
+    return false;
+  }
+
+  return (
+    typeof parsed.session_id === 'string' ||
+    (isPlainObject(parsed.stats) && (typeof parsed.response === 'string' || typeof parsed.message === 'string'))
+  );
+}
+
+function parseAgyConversationId(logText: string): string | null {
+  let conversationId: string | null = null;
+
+  for (const line of logText.split(/\r?\n/)) {
+    const createdMatch = line.match(/\bCreated conversation ([A-Za-z0-9._:-]+)/);
+    if (createdMatch?.[1]) {
+      conversationId = createdMatch[1];
+      continue;
+    }
+
+    const printModeMatch = line.match(/\bPrint mode: conversation=([A-Za-z0-9._:-]+)/);
+    if (printModeMatch?.[1]) {
+      conversationId = printModeMatch[1];
+      continue;
+    }
+
+    const startingMatch = line.match(/\bconversationID="([^"]+)"/);
+    if (startingMatch?.[1]) {
+      conversationId = startingMatch[1];
+    }
+  }
+
+  return conversationId;
+}
+
+function attachGeminiLogSession<T>(output: T, logText: string): T {
+  if (!isPlainObject(output) || output.session_id) {
+    return output;
+  }
+
+  const conversationId = parseAgyConversationId(logText);
+  if (!conversationId) {
+    return output;
+  }
+
+  return {
+    ...output,
+    session_id: conversationId,
+  };
+}
+
 function oneLine(value: unknown): string {
   return String(value ?? '').replace(/\s+/g, ' ').trim();
 }
@@ -419,6 +475,9 @@ export class PeekEventExtractor {
       } catch {
         debugLog(`[Debug] Skipping invalid peek JSON line: ${line}`);
         events.push(...this.flushGeminiAssistantBuffer(observedAt));
+        if (this.agent === 'gemini' && this.source === 'stdout') {
+          events.push({ kind: 'message', ts: observedAt, text: line });
+        }
       }
     }
 
@@ -739,13 +798,18 @@ export function parseClaudeOutput(stdout: string): any {
   return null;
 }
 
-export function parseGeminiOutput(stdout: string): any {
-  if (!stdout) return null;
+export function parseGeminiOutput(stdout: string, agyLogText = ''): any {
+  if (!stdout) {
+    const conversationId = parseAgyConversationId(agyLogText);
+    return conversationId ? { session_id: conversationId } : null;
+  }
 
   try {
     const parsed = JSON.parse(stdout.trim());
     if (!isGeminiStreamJsonEvent(parsed)) {
-      return parsed;
+      if (isGeminiLegacyFinalOutput(parsed)) {
+        return attachGeminiLogSession(parsed, agyLogText);
+      }
     }
   } catch (e) {
     debugLog(`[Debug] Failed to parse Gemini JSON output: ${e}`);
@@ -831,11 +895,19 @@ export function parseGeminiOutput(stdout: string): any {
 
   flushAssistantMessage();
   const tools = [...toolsById.values(), ...toolsWithoutId];
+  const logSessionId = sessionId || parseAgyConversationId(agyLogText);
 
-  if (lastMessage || sessionId || stats || tools.length > 0) {
+  // Antigravity CLI (agy) em modo -p emite TEXTO PURO (sem stream-json). Quando
+  // nenhum evento estruturado foi reconhecido, devolve a saída como a mensagem.
+  const plainText = stdout.trim();
+  if (!lastMessage && !stats && tools.length === 0 && plainText) {
+    return logSessionId ? { message: plainText, session_id: logSessionId } : { message: plainText };
+  }
+
+  if (lastMessage || logSessionId || stats || tools.length > 0) {
     return {
       message: lastMessage,
-      session_id: sessionId,
+      session_id: logSessionId,
       stats: stats || undefined,
       tools: tools.length > 0 ? tools : undefined,
     };

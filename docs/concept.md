@@ -27,7 +27,7 @@ MCP Client (Cursor, Claude Code, etc.)
   │
   ├─ run(prompt, model="opus")     → PID 1234 (即座に返却)
   ├─ run(prompt, model="gpt-5.3-codex")  → PID 1235
-  ├─ run(prompt, model="gemini-2.5-pro") → PID 1236
+  ├─ run(prompt, model="gemini-3.5-flash-high") → PID 1236
   │
   ├─ list_processes()  → 実行状況一覧
   ├─ peek(pids)        → 実行中出力の短時間観測
@@ -62,13 +62,13 @@ wait([PID 1, 2, 3]) → ブロック → 全完了後に結果をまとめて返
 
 ### 1. どのAI CLIからでも同じプロンプトで使える
 
-このMCPサーバーは Claude Code / Gemini CLI / Codex CLI のいずれをホスト（呼び出し元）としても、同じツール名・同じ引数・同じプロンプトで動作する。ホスト側のAIがどのプロバイダーであっても、統一されたMCPインターフェースを通じて同一の体験を提供する。
+このMCPサーバーは Claude Code / Gemini エージェント経路の Antigravity CLI / Codex CLI のいずれをホスト（呼び出し元）としても、同じツール名・同じ引数・同じプロンプトで動作する。ホスト側のAIがどのプロバイダーであっても、統一されたMCPインターフェースを通じて同一の体験を提供する。
 
 ### 2. CLI差異の完全な隠蔽
 
 利用者（主にAIエージェント）は Claude Code / Codex / Gemini の個別仕様を一切知る必要がない。
 
-- パーミッションフラグの違い（`--dangerously-skip-permissions` / `--full-auto` / `-y`）
+- パーミッションフラグの違い（`--dangerously-skip-permissions` / `--dangerously-bypass-approvals-and-sandbox`）
 - 出力形式の違い（Claude の JSON / Codex のログ / Gemini の出力）
 - セッション管理の違い（`--session-id` / `--session` / `-s`）
 - モデル名の指定方法の違い
@@ -122,19 +122,21 @@ src/
 
 ```
 claude-ultra  → opus (+ reasoning_effort: max)
-codex-ultra   → gpt-5.5 (+ reasoning_effort: xhigh)
-gemini-ultra  → gemini-3.1-pro-preview
+codex-ultra   → gpt-5.6-sol (+ reasoning_effort: ultra)
+gemini-ultra  → Gemini 3.1 Pro (High)
 ```
 
 **設計意図**: AI プロバイダーのモデル名は頻繁に変わる。利用者（特にAIエージェント）が個々のモデル名の変遷を追う必要がないよう、「そのプロバイダーの最強モデル」を指す安定したエイリアスを提供する。マッピング先はサーバー側で更新するだけで、利用者のプロンプトを変更する必要がない。
+
+`codex-ultra` はこの設計に従って `gpt-5.5` + `xhigh` から `gpt-5.6-sol` + `ultra` へ移行した。再現性のため旧モデルを固定したい呼び出しは、エイリアスではなくモデルと effort を明示する。
 
 ## Security Model
 
 このツールは **信頼された環境でのみ使用する** ことを前提としている。
 
 - Claude Code は `--dangerously-skip-permissions` で実行される（すべてのファイル操作・コマンド実行が無許可で行われる）
-- Codex は `--full-auto` で実行される
-- Gemini は `-y`（自動承認）で実行される
+- Codex は `--dangerously-bypass-approvals-and-sandbox` で実行される
+- Gemini エージェント経路の Antigravity は `--dangerously-skip-permissions -p` で実行される
 
 つまり、このMCPサーバーに接続できるクライアントは、ローカルマシン上で **任意のコード実行が可能** である。ネットワーク越しの不特定多数への公開や、信頼できないクライアントからのアクセスは想定していない。
 
@@ -153,7 +155,7 @@ gemini-ultra  → gemini-3.1-pro-preview
 |---|---|
 | `node:child_process.spawn` でプロセス管理 | 軽量で直接的。外部依存なしにPIDベースの管理が可能 |
 | `--dangerously-skip-permissions` (Claude) | MCP経由の自動実行には非対話モードが必須 |
-| `--full-auto` (Codex) / `-y` (Gemini) | 同上。各CLIの自動承認モード |
+| `--dangerously-bypass-approvals-and-sandbox` (Codex) / `--dangerously-skip-permissions -p` (Antigravity) | 同上。各CLIの自動承認・非対話モード |
 | `session_id` サポート | コンテキストキャッシュにより、大規模コードベースの読み込みコストを複数タスクで共有 |
 | 出力パーサーの分離 | CLI出力形式の変更に対して個別に対応可能 |
 | npx 配布 | インストール不要でMCP設定に直接記述可能 |

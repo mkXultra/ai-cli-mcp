@@ -116,6 +116,11 @@ describe('MCP Contract Tests', () => {
     expect(runTool.description).toContain('OpenCode');
     expect(runTool.inputSchema.properties.model.description).toContain('opencode');
     expect(runTool.inputSchema.properties.model.description).toContain('oc-<provider/model>');
+    expect(runTool.inputSchema.properties.model.description).toContain('gpt-5.6-sol');
+    expect(runTool.inputSchema.properties.reasoning_effort.enum).toBeUndefined();
+    expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('GPT-5.6 Sol, Terra, Luna');
+    expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('Codex CLI >= 0.144.0');
+    expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('case-insensitive');
     expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('OpenCode do not support reasoning_effort');
     expect(runTool.inputSchema.properties.session_id.description).toBe(
       'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, and OpenCode. OpenCode resumes in-place via --session and may also be combined with explicit oc-<provider/model> selection.'
@@ -171,6 +176,9 @@ describe('MCP Contract Tests', () => {
     );
     expect(modelsData.claude).toContain('sonnet');
     expect(modelsData.codex).toEqual([
+      'gpt-5.6-sol',
+      'gpt-5.6-terra',
+      'gpt-5.6-luna',
       'gpt-5.4',
       'gpt-5.5',
       'gpt-5.4-mini',
@@ -178,6 +186,16 @@ describe('MCP Contract Tests', () => {
       'gpt-5.3-codex-spark',
       'gpt-5.2',
     ]);
+    expect(modelsData.codexMinimumCliVersionForGpt56).toBe('0.144.0');
+    expect(modelsData.codexReasoningEfforts.byModel['gpt-5.6-sol']).toEqual([
+      'low', 'medium', 'high', 'xhigh', 'max', 'ultra',
+    ]);
+    expect(modelsData.codexReasoningEfforts.byModel['gpt-5.6-terra']).toEqual(
+      modelsData.codexReasoningEfforts.byModel['gpt-5.6-sol']
+    );
+    expect(modelsData.codexReasoningEfforts.byModel['gpt-5.6-luna']).toEqual(
+      modelsData.codexReasoningEfforts.byModel['gpt-5.6-sol']
+    );
     expect(modelsData.opencode).toEqual(['opencode']);
     expect(modelsData.dynamicModelBackends.opencode.explicitPattern).toBe('oc-<provider/model>');
 

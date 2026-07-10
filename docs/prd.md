@@ -20,7 +20,7 @@ AI支援開発において、以下の制約がユーザーの生産性を阻害
 
 ## Goals
 
-- **ホスト非依存**: Claude Code / Gemini CLI / Codex CLI のどれをホスト（呼び出し元）として使っても、同じプロンプト・同じインターフェースで動作すること
+- **ホスト非依存**: Claude Code / Gemini エージェント経路の Antigravity CLI / Codex CLI のどれをホスト（呼び出し元）として使っても、同じプロンプト・同じインターフェースで動作すること
 - **CLI差異の隠蔽**: 利用者が呼び出し先の Claude Code / Codex / Gemini の個別仕様（フラグ、出力形式、セッション管理等）を意識せず、モデル名とプロンプトだけで使えること
 - **AI-Friendly な返り値**: 各CLIの生出力をパースし、AIエージェントが次のアクションを判断しやすい構造化データとして返すこと
 - **並行実行**: MCP対応の任意のクライアントから、複数のAI CLIエージェントを並行実行できること
@@ -108,8 +108,8 @@ AI支援開発において、以下の制約がユーザーの生産性を阻害
 | Provider | Models |
 |---|---|
 | Claude | `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku` |
-| Codex | `gpt-5.4`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2` |
-| Gemini | `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview` |
+| Codex | `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2` |
+| Gemini/Antigravity | `gemini-3.5-flash-high`, `gemini-3.5-flash`, `gemini-3.5-flash-low`, `gemini-3.1-pro`, `gemini-3.1-pro-low` |
 | Ultra aliases | `claude-ultra`, `codex-ultra`, `gemini-ultra` |
 
 ## User Scenarios
@@ -138,7 +138,7 @@ AI支援開発において、以下の制約がユーザーの生産性を阻害
 
 本プロダクトは **信頼されたローカル環境** での使用を前提とする。
 
-- 各AI CLIは自動承認モード（`--dangerously-skip-permissions` / `--full-auto` / `-y`）で実行されるため、接続クライアントはローカルマシン上で任意のコード実行が可能になる
+- 各AI CLIは自動承認モード（`--dangerously-skip-permissions` / `--dangerously-bypass-approvals-and-sandbox`）で実行されるため、接続クライアントはローカルマシン上で任意のコード実行が可能になる
 - ネットワーク越しの不特定多数への公開は想定しない
 - セキュリティ境界は「MCPサーバーへの接続可否」で制御される
 

@@ -214,8 +214,11 @@ function getCliBinaryConfig(name: CliBinaryName): {
   return {
     envVarName: 'GEMINI_CLI_NAME',
     customCliName: process.env.GEMINI_CLI_NAME,
-    defaultCliName: 'gemini',
-    localInstallPath: join(homedir(), '.gemini', 'local', 'gemini'),
+    // O agente "gemini" agora é servido pelo Antigravity CLI (agy), via o wrapper
+    // agy-mcp (remove envs SSH p/ o agy usar o keyring da subscrição). O gemini-cli
+    // foi descontinuado neste ambiente. Override por GEMINI_CLI_NAME se necessário.
+    defaultCliName: 'agy-mcp',
+    localInstallPath: join(homedir(), '.local', 'bin', 'agy-mcp'),
   };
 }
 
@@ -240,7 +243,7 @@ export function getCliDoctorStatus(): CliDoctorStatus {
 }
 
 export function findGeminiCli(): string {
-  debugLog('[Debug] Attempting to find Gemini CLI...');
+  debugLog('[Debug] Attempting to find Gemini/Antigravity CLI...');
   const status = getCliBinaryStatus('gemini');
   return getCliCommandOrThrow(status);
 }
