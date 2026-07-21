@@ -316,6 +316,7 @@ describe('ai-cli app', () => {
       ])
     );
     expect(payload.claude).toContain('sonnet');
+    expect(payload.claude).toContain('fable');
     expect(payload.codex).not.toContain('codex');
     expect(payload.codex).toContain('gpt-5.4');
     expect(payload.codex).toContain('gpt-5.6-sol');

@@ -172,6 +172,7 @@ describe('MCP Contract Tests', () => {
       ])
     );
     expect(modelsData.claude).toContain('sonnet');
+    expect(modelsData.claude).toContain('fable');
     expect(modelsData.codex).toEqual([
       'gpt-5.4',
       'gpt-5.6-sol',

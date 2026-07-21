@@ -48,6 +48,7 @@ describe('cli-builder', () => {
 
     it('should pass through non-alias model names', () => {
       expect(resolveModelAlias('sonnet')).toBe('sonnet');
+      expect(resolveModelAlias('fable')).toBe('fable');
       expect(resolveModelAlias('gpt-5.3-codex')).toBe('gpt-5.3-codex');
     });
 
@@ -237,6 +238,21 @@ describe('cli-builder', () => {
         expect(cmd.args).toContain('--model');
         expect(cmd.args).toContain('sonnet');
         expect(cmd.resolvedModel).toBe('sonnet');
+      });
+
+      it('should build claude command with the explicit fable model', () => {
+        const cmd = buildCliCommand({
+          prompt: 'test',
+          workFolder: '/tmp',
+          model: 'fable',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.agent).toBe('claude');
+        expect(cmd.resolvedModel).toBe('fable');
+        expect(cmd.args).toContain('--model');
+        expect(cmd.args).toContain('fable');
+        expect(cmd.args).not.toContain('--effort');
       });
 
       it('should build claude command with session_id', () => {

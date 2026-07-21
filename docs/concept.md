@@ -126,6 +126,8 @@ codex-ultra   → gpt-5.6-sol (+ reasoning_effort: ultra)
 gemini-ultra  → gemini-3.1-pro-preview
 ```
 
+`fable` は、別料金の usage credits が必要になる場合があるため、明示的に選択する Claude モデルとして扱う。`claude-ultra` はサブスクリプションで使いやすい Opus エイリアスのまま維持する。
+
 **設計意図**: AI プロバイダーのモデル名は頻繁に変わる。利用者（特にAIエージェント）が個々のモデル名の変遷を追う必要がないよう、「そのプロバイダーの最強モデル」を指す安定したエイリアスを提供する。マッピング先はサーバー側で更新するだけで、利用者のプロンプトを変更する必要がない。
 
 ## Security Model

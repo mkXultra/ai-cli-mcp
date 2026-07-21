@@ -23,7 +23,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 - Forge CLI を非対話モードで実行（`forge -C <workFolder> -p <prompt>` を使用）
 - OpenCode を非対話 JSON モードで実行（`opencode run --format json --dir <workFolder> <prompt>` を使用）
 - 複数のAIモデルのサポート：
-    - Claude (sonnet, sonnet[1m], opus, opusplan, haiku)
+    - Claude (sonnet, sonnet[1m], opus, opusplan, fable, haiku)
     - Codex (gpt-5.4, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-5.5, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2)
     - Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview)
     - Forge (`forge`)
@@ -259,8 +259,9 @@ Claude CLI、Codex CLI、Gemini CLI、Forge CLI、または OpenCode を使用�
 - `prompt_file` (string, 任意): プロンプトを含むファイルへのパス。`prompt` または `prompt_file` のいずれかが必須です。絶対パス、または `workFolder` からの相対パスが指定可能です。
 - `workFolder` (string, 必須): CLIを実行する作業ディレクトリ。絶対パスである必要があります。
 - **モデル (Models):**
-    - **Ultra エイリアス:** `claude-ultra` (自動的に max effort に設定), `codex-ultra` (`gpt-5.6-sol`、自動的に ultra reasoning に設定), `gemini-ultra`
-    - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
+    - **Ultra エイリアス:** `claude-ultra` (`opus`、自動的に max effort に設定。Fable は選択しません), `codex-ultra` (`gpt-5.6-sol`、自動的に ultra reasoning に設定), `gemini-ultra`
+    - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `fable`, `haiku`
+      - `fable` は Claude Code の最新 Fable モデルを明示的に選択します。Fable には別料金の usage credits が必要な場合があり、`claude-ultra` から暗黙には選択されません。
     - Codex: `gpt-5.4`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
     - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
     - Forge: `forge`
