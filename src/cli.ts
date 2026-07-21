@@ -35,12 +35,12 @@ function parseArgs(argv: string[]): Record<string, string> {
 const USAGE = `Usage: npm run -s cli.run -- --model <model> --workFolder <path> --prompt "..." [options]
 
 Options:
-  --model              Model name or alias (e.g. sonnet, opus, gpt-5.3-codex, gemini-2.5-pro, forge, opencode, oc-openai/gpt-5.4)
+  --model              Model name or alias (e.g. sonnet, opus, gpt-5.6-sol, gemini-2.5-pro, forge, opencode, oc-openai/gpt-5.4)
   --workFolder         Working directory (absolute path)
   --prompt             Prompt string (mutually exclusive with --prompt_file)
   --prompt_file        Path to a file containing the prompt
   --session_id         Session ID to resume, including OpenCode in-place resumes
-  --reasoning_effort   Claude/Codex only: Claude=low|medium|high|xhigh|max, Codex=low|medium|high|xhigh; unsupported for Gemini, Forge, and OpenCode
+  --reasoning_effort   Claude/Codex only: Claude=low|medium|high|xhigh|max, Codex=low|medium|high|xhigh (GPT-5.6: max; Sol/Terra: ultra); unsupported for Gemini, Forge, and OpenCode
   --help               Show this help message
 
 Raw CLI output goes to stdout. Use cli.run.parse to parse the output:

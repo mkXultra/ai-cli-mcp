@@ -28,7 +28,7 @@ Options:
   --cwd <path>                 Working directory
   --prompt <text>              Prompt text
   --prompt-file <path>         Path to a prompt file
-  --model <model>              Model name or alias (e.g. sonnet, claude-ultra, gpt-5.3-codex, codex-ultra, gemini-2.5-pro, gemini-ultra, forge, opencode, oc-openai/gpt-5.4)
+  --model <model>              Model name or alias (e.g. sonnet, claude-ultra, gpt-5.6-sol, codex-ultra, gemini-2.5-pro, gemini-ultra, forge, opencode, oc-openai/gpt-5.4)
   --session-id <id>            Resume a previous session, including OpenCode in-place resumes
   --reasoning-effort <level>   Reasoning level for Claude/Codex only; unsupported for Gemini, Forge, and OpenCode
   --help, -h                   Show this help message

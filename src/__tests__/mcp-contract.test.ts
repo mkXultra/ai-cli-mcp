@@ -116,6 +116,8 @@ describe('MCP Contract Tests', () => {
     expect(runTool.description).toContain('OpenCode');
     expect(runTool.inputSchema.properties.model.description).toContain('opencode');
     expect(runTool.inputSchema.properties.model.description).toContain('oc-<provider/model>');
+    expect(runTool.inputSchema.properties.model.description).toContain('auto ultra reasoning');
+    expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('"ultra"');
     expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('OpenCode do not support reasoning_effort');
     expect(runTool.inputSchema.properties.session_id.description).toBe(
       'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, and OpenCode. OpenCode resumes in-place via --session and may also be combined with explicit oc-<provider/model> selection.'
@@ -172,6 +174,9 @@ describe('MCP Contract Tests', () => {
     expect(modelsData.claude).toContain('sonnet');
     expect(modelsData.codex).toEqual([
       'gpt-5.4',
+      'gpt-5.6-sol',
+      'gpt-5.6-terra',
+      'gpt-5.6-luna',
       'gpt-5.5',
       'gpt-5.4-mini',
       'gpt-5.3-codex',

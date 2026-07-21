@@ -108,7 +108,7 @@ AI支援開発において、以下の制約がユーザーの生産性を阻害
 | Provider | Models |
 |---|---|
 | Claude | `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku` |
-| Codex | `gpt-5.4`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2` |
+| Codex | `gpt-5.4`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2` |
 | Gemini | `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview` |
 | Ultra aliases | `claude-ultra`, `codex-ultra`, `gemini-ultra` |
 
