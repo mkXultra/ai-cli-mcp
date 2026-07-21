@@ -1,3 +1,11 @@
+# [2.22.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.21.0...v2.22.0) (2026-07-21)
+
+
+### Features
+
+* add explicit Claude Fable model support ([e38d496](https://github.com/mkXultra/ai-cli-mcp/commit/e38d496e35b23793dfeb29472e28b9d65f566198))
+* add GPT-5.6 Codex model family ([4656baf](https://github.com/mkXultra/ai-cli-mcp/commit/4656baf02f4fe9691cabc4abe7306a5d14e3a3c4))
+
 # [2.21.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.20.1...v2.21.0) (2026-04-23)
 
 
