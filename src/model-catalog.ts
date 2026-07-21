@@ -1,6 +1,9 @@
-export const CLAUDE_MODELS = ['sonnet', 'sonnet[1m]', 'opus', 'opusplan', 'haiku'] as const;
+export const CLAUDE_MODELS = ['sonnet', 'sonnet[1m]', 'opus', 'opusplan', 'fable', 'haiku'] as const;
 export const CODEX_MODELS = [
   'gpt-5.4',
+  'gpt-5.6-sol',
+  'gpt-5.6-terra',
+  'gpt-5.6-luna',
   'gpt-5.5',
   'gpt-5.4-mini',
   'gpt-5.3-codex',
@@ -19,13 +22,13 @@ export const OPENCODE_MODELS = ['opencode'] as const;
 
 export const MODEL_ALIASES: Record<string, string> = {
   'claude-ultra': 'opus',
-  'codex-ultra': 'gpt-5.5',
+  'codex-ultra': 'gpt-5.6-sol',
   'gemini-ultra': 'gemini-3.1-pro-preview',
 };
 
 export const MODEL_ALIAS_DETAILS = [
   { name: 'claude-ultra', resolvesTo: 'opus', agent: 'claude', defaultReasoningEffort: 'max' },
-  { name: 'codex-ultra', resolvesTo: 'gpt-5.5', agent: 'codex', defaultReasoningEffort: 'xhigh' },
+  { name: 'codex-ultra', resolvesTo: 'gpt-5.6-sol', agent: 'codex', defaultReasoningEffort: 'ultra' },
   { name: 'gemini-ultra', resolvesTo: 'gemini-3.1-pro-preview', agent: 'gemini' },
 ] as const;
 
@@ -49,7 +52,7 @@ export function getSupportedModelsDescription(): string {
 }
 
 export function getModelParameterDescription(): string {
-  return `The model to use. Aliases: "claude-ultra" (auto max effort), "codex-ultra" (auto xhigh reasoning), "gemini-ultra". Standard: ${[...CLAUDE_MODELS, ...CODEX_MODELS, ...GEMINI_MODELS, ...FORGE_MODELS, ...OPENCODE_MODELS].map((model) => `"${model}"`).join(', ')}. OpenCode also accepts explicit dynamic models using "oc-<provider/model>". "forge" is a provider key, not a Forge model family selector.`;
+  return `The model to use. Aliases: "claude-ultra" (Opus with auto max effort; does not select Fable), "codex-ultra" (auto ultra reasoning), "gemini-ultra". Standard: ${[...CLAUDE_MODELS, ...CODEX_MODELS, ...GEMINI_MODELS, ...FORGE_MODELS, ...OPENCODE_MODELS].map((model) => `"${model}"`).join(', ')}. Fable is an explicit selection and may require usage credits. OpenCode also accepts explicit dynamic models using "oc-<provider/model>". "forge" is a provider key, not a Forge model family selector.`;
 }
 
 export function getModelsPayload(): {

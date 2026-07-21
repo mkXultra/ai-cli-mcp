@@ -3,9 +3,11 @@ import { resolve as pathResolve, isAbsolute } from 'node:path';
 import type { CliPaths } from './cli-utils.js';
 import { MODEL_ALIASES } from './model-catalog.js';
 
-export const ALLOWED_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
+export const ALLOWED_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
 const CLAUDE_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
 const CODEX_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
+const CODEX_MAX_REASONING_MODELS = new Set(['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna']);
+const CODEX_ULTRA_REASONING_MODELS = new Set(['gpt-5.6-sol', 'gpt-5.6-terra']);
 const OPENCODE_MODEL_ERROR = 'Invalid OpenCode model. Expected exact syntax oc-<provider/model>.';
 
 type Agent = 'codex' | 'claude' | 'gemini' | 'forge' | 'opencode';
@@ -105,7 +107,7 @@ export function getReasoningEffort(model: string, rawValue: unknown): string {
   const normalized = trimmed.toLowerCase();
   if (!ALLOWED_REASONING_EFFORTS.has(normalized)) {
     throw new Error(
-      `Invalid reasoning_effort: ${rawValue}. Allowed values: low, medium, high, xhigh, max.`
+      `Invalid reasoning_effort: ${rawValue}. Allowed values: low, medium, high, xhigh, max, ultra.`
     );
   }
   const agent = getStandardAgentForModel(model);
@@ -122,9 +124,19 @@ export function getReasoningEffort(model: string, rawValue: unknown): string {
       'Claude reasoning_effort supports only low, medium, high, xhigh, max.'
     );
   }
-  if (agent === 'codex' && !CODEX_REASONING_EFFORTS.has(normalized)) {
+  if (agent === 'codex') {
+    const supportedEfforts = new Set(CODEX_REASONING_EFFORTS);
+    if (CODEX_MAX_REASONING_MODELS.has(model)) {
+      supportedEfforts.add('max');
+    }
+    if (CODEX_ULTRA_REASONING_MODELS.has(model)) {
+      supportedEfforts.add('ultra');
+    }
+    if (supportedEfforts.has(normalized)) {
+      return normalized;
+    }
     throw new Error(
-      'Codex reasoning_effort supports only low, medium, high, xhigh.'
+      `Codex reasoning_effort for ${model} supports only ${[...supportedEfforts].join(', ')}.`
     );
   }
   return normalized;
@@ -195,7 +207,7 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
   let reasoningEffortArg: string | undefined = options.reasoning_effort;
   if (!reasoningEffortArg) {
     if (rawModel === 'codex-ultra') {
-      reasoningEffortArg = 'xhigh';
+      reasoningEffortArg = 'ultra';
     } else if (rawModel === 'claude-ultra') {
       reasoningEffortArg = 'max';
     }

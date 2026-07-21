@@ -1,0 +1,22 @@
+[mcp_servers.acm-dev]
+command = "npm"
+args = ["run", "dev"]
+cwd = "."
+enabled = true
+startup_timeout_sec = 20.0
+tool_timeout_sec = 240.0
+
+[mcp_servers.acm-dev.tools.doctor]
+approval_mode = "approve"
+
+[mcp_servers.acm-dev.tools.models]
+approval_mode = "approve"
+
+[mcp_servers.acm-dev.tools.run]
+approval_mode = "approve"
+
+[mcp_servers.acm-dev.tools.wait]
+approval_mode = "approve"
+
+[mcp_servers.acm-dev.tools.cleanup_processes]
+approval_mode = "approve"

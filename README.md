@@ -24,7 +24,7 @@ This MCP server provides tools that can be used by LLMs to interact with AI CLI 
 - Execute Gemini CLI with automatic approval mode (using `-y`)
 - Execute Forge CLI in non-interactive mode (using `forge -C <workFolder> -p <prompt>`)
 - Execute OpenCode in non-interactive JSON mode (using `opencode run --format json --dir <workFolder> <prompt>`)
-- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, haiku), Codex (gpt-5.4, gpt-5.5, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2), Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview), Forge (`forge`), and OpenCode (`opencode` plus explicit `oc-<provider/model>` wrappers such as `oc-openai/gpt-5.4`)
+- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, fable, haiku), Codex (gpt-5.4, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-5.5, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2), Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview), Forge (`forge`), and OpenCode (`opencode` plus explicit `oc-<provider/model>` wrappers such as `oc-openai/gpt-5.4`)
 - Manage background processes with PID tracking
 - Parse and return structured outputs from both tools
 
@@ -256,13 +256,14 @@ Executes a prompt using Claude CLI, Codex CLI, Gemini CLI, Forge CLI, or OpenCod
 - `prompt_file` (string, optional): Path to a file containing the prompt. Either `prompt` or `prompt_file` is required. Can be absolute path or relative to `workFolder`.
 - `workFolder` (string, required): The working directory for the CLI execution. Must be an absolute path.
 **Models:**
-- **Ultra Aliases:** `claude-ultra` (defaults to max effort), `codex-ultra` (`gpt-5.5`, defaults to xhigh reasoning), `gemini-ultra`
-- Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `haiku`
-- Codex: `gpt-5.4`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
+- **Ultra Aliases:** `claude-ultra` (`opus`, defaults to max effort and does not select Fable), `codex-ultra` (`gpt-5.6-sol`, defaults to ultra reasoning), `gemini-ultra`
+- Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `fable`, `haiku`
+  - `fable` explicitly selects Claude Code's latest Fable model. Fable may require separately billed usage credits and is never selected implicitly by `claude-ultra`.
+- Codex: `gpt-5.4`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
 - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
 - Forge: `forge`
 - OpenCode: `opencode` for the configured default backend model, plus explicit wrappers like `oc-openai/gpt-5.4`
-- `reasoning_effort` (string, optional): Reasoning control for Claude and Codex. Claude uses `--effort` (allowed: "low", "medium", "high", "xhigh", "max"). Codex uses `model_reasoning_effort` (allowed: "low", "medium", "high", "xhigh"). Gemini, Forge, and OpenCode do not support `reasoning_effort`.
+- `reasoning_effort` (string, optional): Reasoning control for Claude and Codex. Claude uses `--effort` (allowed: "low", "medium", "high", "xhigh", "max"). Codex uses `model_reasoning_effort` (base levels: "low", "medium", "high", "xhigh"; GPT-5.6 Sol/Terra also support "max" and "ultra", while Luna supports "max"). Gemini, Forge, and OpenCode do not support `reasoning_effort`.
 - `session_id` (string, optional): Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, and OpenCode. OpenCode resumes in place via `--session` and may also be combined with an explicit `oc-<provider/model>` selection.
 
 ### `wait`

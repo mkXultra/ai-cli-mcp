@@ -38,8 +38,8 @@ describe('cli-builder', () => {
       expect(resolveModelAlias('claude-ultra')).toBe('opus');
     });
 
-    it('should resolve codex-ultra to gpt-5.5', () => {
-      expect(resolveModelAlias('codex-ultra')).toBe('gpt-5.5');
+    it('should resolve codex-ultra to gpt-5.6-sol', () => {
+      expect(resolveModelAlias('codex-ultra')).toBe('gpt-5.6-sol');
     });
 
     it('should resolve gemini-ultra to gemini-3.1-pro-preview', () => {
@@ -48,6 +48,7 @@ describe('cli-builder', () => {
 
     it('should pass through non-alias model names', () => {
       expect(resolveModelAlias('sonnet')).toBe('sonnet');
+      expect(resolveModelAlias('fable')).toBe('fable');
       expect(resolveModelAlias('gpt-5.3-codex')).toBe('gpt-5.3-codex');
     });
 
@@ -78,6 +79,10 @@ describe('cli-builder', () => {
       expect(getReasoningEffort('gpt-5.2', 'medium')).toBe('medium');
       expect(getReasoningEffort('gpt-5.2', 'high')).toBe('high');
       expect(getReasoningEffort('gpt-5.2', 'xhigh')).toBe('xhigh');
+      expect(getReasoningEffort('gpt-5.6-sol', 'max')).toBe('max');
+      expect(getReasoningEffort('gpt-5.6-sol', 'ultra')).toBe('ultra');
+      expect(getReasoningEffort('gpt-5.6-terra', 'ultra')).toBe('ultra');
+      expect(getReasoningEffort('gpt-5.6-luna', 'max')).toBe('max');
       expect(getReasoningEffort('sonnet', 'xhigh')).toBe('xhigh');
       expect(getReasoningEffort('sonnet', 'max')).toBe('max');
       expect(getReasoningEffort('sonnet', 'high')).toBe('high');
@@ -85,14 +90,23 @@ describe('cli-builder', () => {
     });
 
     it('should throw for invalid reasoning effort value', () => {
-      expect(() => getReasoningEffort('gpt-5.2', 'ultra')).toThrow(
-        'Invalid reasoning_effort: ultra. Allowed values: low, medium, high, xhigh, max.'
+      expect(() => getReasoningEffort('gpt-5.2', 'extreme')).toThrow(
+        'Invalid reasoning_effort: extreme. Allowed values: low, medium, high, xhigh, max, ultra.'
       );
     });
 
-    it('should reject max for codex models', () => {
-      expect(() => getReasoningEffort('gpt-5.2', 'max')).toThrow(
-        'Codex reasoning_effort supports only low, medium, high, xhigh.'
+    it('should reject unsupported extended reasoning efforts for codex models', () => {
+      expect(() => getReasoningEffort('gpt-5.4', 'max')).toThrow(
+        'Codex reasoning_effort for gpt-5.4 supports only low, medium, high, xhigh.'
+      );
+      expect(() => getReasoningEffort('gpt-5.6-luna', 'ultra')).toThrow(
+        'Codex reasoning_effort for gpt-5.6-luna supports only low, medium, high, xhigh, max.'
+      );
+    });
+
+    it('should reject ultra for claude models', () => {
+      expect(() => getReasoningEffort('sonnet', 'ultra')).toThrow(
+        'Claude reasoning_effort supports only low, medium, high, xhigh, max.'
       );
     });
 
@@ -224,6 +238,21 @@ describe('cli-builder', () => {
         expect(cmd.args).toContain('--model');
         expect(cmd.args).toContain('sonnet');
         expect(cmd.resolvedModel).toBe('sonnet');
+      });
+
+      it('should build claude command with the explicit fable model', () => {
+        const cmd = buildCliCommand({
+          prompt: 'test',
+          workFolder: '/tmp',
+          model: 'fable',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.agent).toBe('claude');
+        expect(cmd.resolvedModel).toBe('fable');
+        expect(cmd.args).toContain('--model');
+        expect(cmd.args).toContain('fable');
+        expect(cmd.args).not.toContain('--effort');
       });
 
       it('should build claude command with session_id', () => {
@@ -383,6 +412,23 @@ describe('cli-builder', () => {
         expect(cmd.args).toContain('gpt-5.3-codex');
       });
 
+      it.each(['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'])(
+        'should build codex command for %s',
+        (model) => {
+          const cmd = buildCliCommand({
+            prompt: 'test',
+            workFolder: '/tmp',
+            model,
+            cliPaths: DEFAULT_CLI_PATHS,
+          });
+
+          expect(cmd.agent).toBe('codex');
+          expect(cmd.resolvedModel).toBe(model);
+          expect(cmd.args).toContain('--model');
+          expect(cmd.args).toContain(model);
+        }
+      );
+
       it('should build codex command with session_id using exec resume', () => {
         const cmd = buildCliCommand({
           prompt: 'test',
@@ -410,7 +456,7 @@ describe('cli-builder', () => {
         expect(cmd.args).toContain('model_reasoning_effort=high');
       });
 
-      it('should resolve codex-ultra and default to xhigh reasoning', () => {
+      it('should resolve codex-ultra and default to ultra reasoning', () => {
         const cmd = buildCliCommand({
           prompt: 'test',
           workFolder: '/tmp',
@@ -419,9 +465,9 @@ describe('cli-builder', () => {
         });
 
         expect(cmd.agent).toBe('codex');
-        expect(cmd.resolvedModel).toBe('gpt-5.5');
+        expect(cmd.resolvedModel).toBe('gpt-5.6-sol');
         expect(cmd.args).toContain('-c');
-        expect(cmd.args).toContain('model_reasoning_effort=xhigh');
+        expect(cmd.args).toContain('model_reasoning_effort=ultra');
       });
 
       it('should allow overriding reasoning_effort for codex-ultra', () => {
@@ -434,7 +480,7 @@ describe('cli-builder', () => {
         });
 
         expect(cmd.args).toContain('model_reasoning_effort=low');
-        expect(cmd.args).not.toContain('model_reasoning_effort=xhigh');
+        expect(cmd.args).not.toContain('model_reasoning_effort=ultra');
       });
 
       it('should reject max reasoning_effort for codex', () => {
@@ -446,7 +492,7 @@ describe('cli-builder', () => {
             reasoning_effort: 'max',
             cliPaths: DEFAULT_CLI_PATHS,
           })
-        ).toThrow('Codex reasoning_effort supports only low, medium, high, xhigh.');
+        ).toThrow('Codex reasoning_effort for gpt-5.4 supports only low, medium, high, xhigh.');
       });
     });
 
