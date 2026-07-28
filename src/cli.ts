@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
 import { buildCliCommand } from './cli-builder.js';
-import { findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli } from './cli-utils.js';
+import { findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli, maybeQuoteWindowsArgs, quoteWindowsCmdArg } from './cli-utils.js';
 
 /**
  * Minimal argv parser. No external dependencies.
@@ -99,11 +99,17 @@ async function main(): Promise<void> {
   process.stderr.write(`[cli.run] agent=${cmd.agent} model=${cmd.resolvedModel || '(default)'}\n`);
 
   // Spawn foreground process — raw output passthrough
-  const child = spawn(cmd.cliPath, cmd.args, {
-    cwd: cmd.cwd,
-    stdio: 'inherit',
-    detached: false,
-  });
+  const isWin = process.platform === 'win32';
+  const child = spawn(
+    isWin ? quoteWindowsCmdArg(cmd.cliPath) : cmd.cliPath,
+    maybeQuoteWindowsArgs(cmd.args),
+    {
+      cwd: cmd.cwd,
+      stdio: 'inherit',
+      detached: false,
+      shell: isWin,
+    },
+  );
 
   const exitCode = await new Promise<number>((resolve) => {
     child.on('close', (code) => {

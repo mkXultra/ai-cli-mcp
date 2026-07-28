@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { EventEmitter } from 'node:events';
+import { maybeQuoteWindowsArgs } from '../cli-utils.js';
 
 // Mock dependencies
 vi.mock('node:child_process');
@@ -531,10 +532,11 @@ describe('Process Management Tests', () => {
       const response = JSON.parse(result.content[0].text);
       expect(response.pid).toBe(12360);
       
-      // Verify spawn was called with the correct prompt including newlines
+      // Verify spawn was called with the correct prompt including newlines.
+      // On Windows, the args are quoted via maybeQuoteWindowsArgs to survive cmd.exe.
       expect(mockSpawn).toHaveBeenCalledWith(
         expect.any(String),
-        expect.arrayContaining(['-p', japanesePrompt]),
+        expect.arrayContaining(maybeQuoteWindowsArgs(['-p', japanesePrompt])),
         expect.any(Object)
       );
       
@@ -607,9 +609,10 @@ describe('Process Management Tests', () => {
       expect(response.pid).toBe(12361);
       
       // Verify spawn was called with the complete long prompt
+      // (Windows-quoted via maybeQuoteWindowsArgs for cmd.exe survival).
       expect(mockSpawn).toHaveBeenCalledWith(
         expect.any(String),
-        expect.arrayContaining(['-p', longJapanesePrompt]),
+        expect.arrayContaining(maybeQuoteWindowsArgs(['-p', longJapanesePrompt])),
         expect.any(Object)
       );
 
@@ -664,9 +667,10 @@ Unicodeテスト: 🎌 🗾 ✨
       expect(response.pid).toBe(12362);
       
       // Verify spawn was called with the special characters intact
+      // (Windows-quoted via maybeQuoteWindowsArgs for cmd.exe survival).
       expect(mockSpawn).toHaveBeenCalledWith(
         expect.any(String),
-        expect.arrayContaining(['-p', specialPrompt]),
+        expect.arrayContaining(maybeQuoteWindowsArgs(['-p', specialPrompt])),
         expect.any(Object)
       );
     });

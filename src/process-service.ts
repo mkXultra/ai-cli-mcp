@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
+import { maybeQuoteWindowsArgs, quoteWindowsCmdArg } from './cli-utils.js';
 import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekEventExtractor } from './parsers.js';
 import {
   appendPeekEvents,
@@ -86,11 +87,17 @@ export class ProcessService {
     });
 
     const { cliPath, args: processArgs, cwd: effectiveCwd, agent, prompt } = cmd;
-    const childProcess = spawn(cliPath, processArgs, {
-      cwd: effectiveCwd,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      detached: false,
-    });
+    const isWin = process.platform === 'win32';
+    const childProcess = spawn(
+      isWin ? quoteWindowsCmdArg(cliPath) : cliPath,
+      maybeQuoteWindowsArgs(processArgs),
+      {
+        cwd: effectiveCwd,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        detached: false,
+        shell: isWin,
+      },
+    );
 
     const pid = childProcess.pid;
     if (!pid) {

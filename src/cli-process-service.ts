@@ -18,7 +18,7 @@ import {
 import { join, basename, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
-import { findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli } from './cli-utils.js';
+import { findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli, quoteWindowsCmdArg } from './cli-utils.js';
 import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekEventExtractor } from './parsers.js';
 import { buildProcessResult } from './process-result.js';
 import {
@@ -357,11 +357,18 @@ export class CliProcessService {
     const cwdKey = this.resolveCwdKey(cmd.cwd);
     const wrapperPath = this.ensureDetachedWrapperScript();
 
-    const childProcess = spawn(wrapperPath, [this.stateDir, cwdKey, cmd.cliPath, ...cmd.args], {
-      cwd: cmd.cwd,
-      detached: true,
-      stdio: 'ignore',
-    });
+    const isWin = process.platform === 'win32';
+    const wrapperArgs = [this.stateDir, cwdKey, cmd.cliPath, ...cmd.args];
+    const childProcess = spawn(
+      isWin ? quoteWindowsCmdArg(wrapperPath) : wrapperPath,
+      isWin ? wrapperArgs.map(quoteWindowsCmdArg) : wrapperArgs,
+      {
+        cwd: cmd.cwd,
+        detached: true,
+        stdio: 'ignore',
+        shell: isWin,
+      },
+    );
 
     const pid = childProcess.pid;
     childProcess.unref();
