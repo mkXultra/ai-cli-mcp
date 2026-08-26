@@ -57,6 +57,7 @@ describe('Wait Tool Tests', () => {
   let handlers: Map<string, Function>;
   let mockServerInstance: any;
   let server: any;
+  const originalPlatform = process.platform;
 
   // Setup function to initialize server with mocks
   const setupServer = async () => {
@@ -81,6 +82,7 @@ describe('Wait Tool Tests', () => {
   };
 
   beforeEach(async () => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
     mockHomedir.mockReturnValue('/home/user');
     mockExistsSync.mockReturnValue(true);
     await setupServer();
@@ -89,6 +91,7 @@ describe('Wait Tool Tests', () => {
   afterEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
   });
 
   const createMockProcess = (pid: number) => {

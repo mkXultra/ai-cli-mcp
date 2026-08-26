@@ -43,31 +43,38 @@ export interface CliDoctorStatus {
   opencode: CliBinaryStatus;
 }
 
-function getPathDelimiter(): string {
-  return process.platform === 'win32' ? ';' : ':';
-}
-
-function getPathExtensions(): string[] {
-  if (process.platform !== 'win32') {
-    return [''];
+function getCommandCandidates(commandName: string): string[] {
+  if (process.platform !== 'win32' || /\.[^\\/.]+$/.test(commandName)) {
+    return [commandName];
   }
 
-  const rawPathext = process.env.PATHEXT || '.EXE;.CMD;.BAT;.COM';
-  return ['', ...rawPathext.split(';').filter(Boolean)];
+  return ['.exe', '.cmd', '.bat', '.com'].map((extension) => `${commandName}${extension}`);
 }
 
-function findExecutableOnPath(commandName: string): string | null {
-  const rawPath = process.env.PATH || '';
-  if (!rawPath) {
+export function resolveCliCommandOnPath(
+  commandName: string,
+  options: { path?: string; pathBaseDirectory?: string; searchDirectories?: string[] } = {},
+): string | null {
+  const rawPath = options.path ?? process.env.PATH ?? '';
+  const pathDelimiter = process.platform === 'win32' ? ';' : ':';
+  const pathEntries = [
+    ...(options.searchDirectories || []),
+    ...rawPath.split(pathDelimiter),
+  ]
+    .filter(Boolean)
+    .map((entry) => (
+      options.pathBaseDirectory && !path.isAbsolute(entry)
+        ? path.resolve(options.pathBaseDirectory, entry)
+        : entry
+    ));
+  if (pathEntries.length === 0) {
     return null;
   }
-
-  const pathEntries = rawPath.split(getPathDelimiter()).filter(Boolean);
-  const extensions = getPathExtensions();
+  const candidates = getCommandCandidates(commandName);
 
   for (const entry of pathEntries) {
-    for (const extension of extensions) {
-      const candidate = join(entry, `${commandName}${extension}`);
+    for (const commandCandidate of candidates) {
+      const candidate = join(entry, commandCandidate);
       if (isExecutableFile(candidate)) {
         return candidate;
       }
@@ -122,7 +129,7 @@ function inspectCliBinary(options: {
       };
     }
 
-    const resolvedPath = findExecutableOnPath(configuredCommand);
+    const resolvedPath = resolveCliCommandOnPath(configuredCommand);
     return {
       configuredCommand,
       resolvedPath,
@@ -140,7 +147,7 @@ function inspectCliBinary(options: {
     };
   }
 
-  const resolvedPath = findExecutableOnPath(configuredCommand);
+  const resolvedPath = resolveCliCommandOnPath(configuredCommand);
   return {
     configuredCommand,
     resolvedPath,
@@ -155,6 +162,9 @@ function getCliCommandOrThrow(status: CliBinaryStatus): string {
   }
 
   if (status.lookup === 'env' && !path.isAbsolute(status.configuredCommand)) {
+    if (process.platform === 'win32' && status.resolvedPath) {
+      return status.resolvedPath;
+    }
     return status.configuredCommand;
   }
 

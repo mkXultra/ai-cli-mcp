@@ -106,7 +106,7 @@ describe('CliProcessService', () => {
     expect(runResult.pid).toBeGreaterThan(0);
     expect(runResult.status).toBe('started');
     expect(existsSync(legacyWrapperPath)).toBe(false);
-    expect(existsSync(join(stateDir, 'detached-runner-v2.sh'))).toBe(true);
+    expect(existsSync(join(stateDir, 'detached-runner-v2.sh'))).toBe(false);
     expect(existsSync(join(processDir, 'meta.json'))).toBe(true);
     expect(existsSync(join(processDir, 'stdout.log'))).toBe(true);
     expect(existsSync(join(processDir, 'stderr.log'))).toBe(true);
