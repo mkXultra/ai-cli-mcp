@@ -13,6 +13,7 @@ describe('Version Print on First Use', () => {
   let client: MCPTestClient;
   let testDir: string;
   let consoleErrorSpy: any;
+  let startedPids: number[];
 
   beforeEach(async () => {
     // Ensure mock exists
@@ -20,6 +21,7 @@ describe('Version Print on First Use', () => {
 
     // Create a temporary directory for test files
     testDir = mkdtempSync(join(tmpdir(), 'claude-code-test-'));
+    startedPids = [];
 
     // Spy on console.error
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -29,11 +31,15 @@ describe('Version Print on First Use', () => {
   });
 
   afterEach(async () => {
+    if (startedPids.length > 0) {
+      await client.callTool('wait', { pids: startedPids, timeout: 5 });
+    }
+
     // Disconnect client
     await client.disconnect();
     
     // Clean up test directory
-    rmSync(testDir, { recursive: true, force: true });
+    rmSync(testDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
     
     // Restore console.error spy
     consoleErrorSpy.mockRestore();
@@ -41,10 +47,11 @@ describe('Version Print on First Use', () => {
 
   it('should print version and startup time only on first use', async () => {
     // First tool call
-    await client.callTool('run', {
+    const firstRun = await client.callTool('run', {
       prompt: 'echo "test 1"',
       workFolder: testDir,
     });
+    startedPids.push(JSON.parse(firstRun[0].text).pid);
     
     // Find the version print in the console.error calls
     const findVersionCall = (calls: any[][]) => {
@@ -64,20 +71,22 @@ describe('Version Print on First Use', () => {
     consoleErrorSpy.mockClear();
     
     // Second tool call
-    await client.callTool('run', {
+    const secondRun = await client.callTool('run', {
       prompt: 'echo "test 2"',
       workFolder: testDir,
     });
+    startedPids.push(JSON.parse(secondRun[0].text).pid);
     
     // Check that version was NOT printed on second use
     const secondVersionCall = findVersionCall(consoleErrorSpy.mock.calls);
     expect(secondVersionCall).toBeUndefined();
     
     // Third tool call
-    await client.callTool('run', {
+    const thirdRun = await client.callTool('run', {
       prompt: 'echo "test 3"',
       workFolder: testDir,
     });
+    startedPids.push(JSON.parse(thirdRun[0].text).pid);
     
     // Should still not have been called with version print
     const thirdVersionCall = findVersionCall(consoleErrorSpy.mock.calls);
