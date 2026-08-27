@@ -1,5 +1,6 @@
 import { spawn, ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
+import { getClaudeMockPath } from './claude-mock.js';
 
 export interface MCPResponse {
   jsonrpc: string;
@@ -157,7 +158,7 @@ export function createTestClient(options: {
 } = {}): MCPTestClient {
   const {
     serverPath = DEFAULT_SERVER_PATH,
-    claudeCliName = process.env.TEST_CLAUDE_CLI_NAME || '/tmp/claude-code-test-mock/claudeMocked',
+    claudeCliName = process.env.TEST_CLAUDE_CLI_NAME || getClaudeMockPath('claudeMocked'),
     debug = true,
     env = {},
   } = options;
