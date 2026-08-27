@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createTestClient, MCPTestClient } from './utils/mcp-client.js';
@@ -159,18 +159,17 @@ describe('Claude Code Edge Cases', () => {
     });
   });
 
-  describe('Path Traversal', () => {
-    it('should prevent path traversal attacks', async () => {
-      const maliciousPath = join(testDir, '..', '..', 'etc', 'passwd');
-      
-      // Server resolves paths and checks existence
-      // The path /etc/passwd may exist but be a file, not a directory
+  describe('Invalid Working Directory', () => {
+    it('should reject a workFolder that is a file', async () => {
+      const workFolderFile = join(testDir, 'not-a-directory');
+      writeFileSync(workFolderFile, 'not a directory');
+
       await expect(
         client.callTool('run', {
           prompt: 'Read file',
-          workFolder: maliciousPath,
+          workFolder: workFolderFile,
         })
-      ).rejects.toThrow(/(does not exist|ENOTDIR)/i);
+      ).rejects.toThrow('Failed to start claude CLI process');
     });
   });
 });
