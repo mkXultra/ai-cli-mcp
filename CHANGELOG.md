@@ -1,3 +1,10 @@
+## [2.22.1](https://github.com/mkXultra/ai-cli-mcp/compare/v2.22.0...v2.22.1) (2026-08-28)
+
+
+### Bug Fixes
+
+* support Windows CLI process execution ([49d2f8d](https://github.com/mkXultra/ai-cli-mcp/commit/49d2f8d7e2a6415b2556fd9d1b7f4f8df201ca40))
+
 # [2.22.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.21.0...v2.22.0) (2026-07-21)
 
 
