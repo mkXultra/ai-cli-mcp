@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 const tempDirs: string[] = [];
@@ -20,12 +20,14 @@ const expectedPackageFiles = [
   'dist/cli-process-service.js',
   'dist/cli-utils.js',
   'dist/cli.js',
+  'dist/detached-runner.cjs',
   'dist/model-catalog.js',
   'dist/parsers.js',
   'dist/peek.js',
   'dist/process-result.js',
   'dist/process-service.js',
   'dist/server.js',
+  'dist/spawn-cli.js',
   'package.json',
   'server.json',
 ].sort();
@@ -53,9 +55,16 @@ afterEach(() => {
 describe('npm package smoke', () => {
   it('packs only the runtime files needed by the published package', () => {
     const packDir = makeTempDir('ai-cli-pack-smoke-');
+    const npmArgs = ['pack', '--json', '--pack-destination', packDir];
+    const executable = process.platform === 'win32' ? process.execPath : 'npm';
+    if (process.platform === 'win32') {
+      npmArgs.unshift(
+        process.env.npm_execpath || join(dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+      );
+    }
     const output = execFileSync(
-      'npm',
-      ['pack', '--json', '--pack-destination', packDir],
+      executable,
+      npmArgs,
       {
         cwd: process.cwd(),
         encoding: 'utf8',

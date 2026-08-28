@@ -61,6 +61,7 @@ describe('ClaudeCodeServer Unit Tests', () => {
   let consoleErrorSpy: any;
   let consoleWarnSpy: any;
   let originalEnv: any;
+  const originalPlatform = process.platform;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -71,6 +72,7 @@ describe('ClaudeCodeServer Unit Tests', () => {
     originalEnv = { ...process.env };
     // Reset env
     process.env = { ...originalEnv };
+    Object.defineProperty(process, 'platform', { value: 'linux' });
     mockAccessSync.mockImplementation((filePath) => {
       if (typeof filePath === 'string' && mockExistsSync(filePath)) {
         return undefined;
@@ -83,6 +85,7 @@ describe('ClaudeCodeServer Unit Tests', () => {
     consoleErrorSpy.mockRestore();
     consoleWarnSpy.mockRestore();
     process.env = originalEnv;
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
   });
 
   describe('debugLog function', () => {

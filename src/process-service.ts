@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
 import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekEventExtractor } from './parsers.js';
 import {
@@ -11,6 +11,7 @@ import {
   type PeekResponse,
 } from './peek.js';
 import { buildProcessResult } from './process-result.js';
+import { spawnCli } from './spawn-cli.js';
 
 export type AgentType = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode';
 export type ProcessStatus = 'running' | 'completed' | 'failed';
@@ -86,10 +87,23 @@ export class ProcessService {
     });
 
     const { cliPath, args: processArgs, cwd: effectiveCwd, agent, prompt } = cmd;
-    const childProcess = spawn(cliPath, processArgs, {
-      cwd: effectiveCwd,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      detached: false,
+    let childProcess: ChildProcess;
+    try {
+      childProcess = spawnCli(cliPath, processArgs, {
+        cwd: effectiveCwd,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        detached: false,
+      });
+    } catch {
+      throw new Error(`Failed to start ${agent} CLI process`);
+    }
+
+    let processEntry: TrackedProcess | undefined;
+    childProcess.on('error', (error) => {
+      if (processEntry) {
+        processEntry.status = 'failed';
+        processEntry.stderr += `\nProcess error: ${error.message}`;
+      }
     });
 
     const pid = childProcess.pid;
@@ -97,7 +111,7 @@ export class ProcessService {
       throw new Error(`Failed to start ${agent} CLI process`);
     }
 
-    const processEntry: TrackedProcess = {
+    processEntry = {
       pid,
       process: childProcess,
       prompt,
@@ -112,14 +126,14 @@ export class ProcessService {
 
     this.processManager.set(pid, processEntry);
 
-    childProcess.stdout.on('data', (data) => {
+    childProcess.stdout?.on('data', (data) => {
       const entry = this.processManager.get(pid);
       if (entry) {
         entry.stdout += data.toString();
       }
     });
 
-    childProcess.stderr.on('data', (data) => {
+    childProcess.stderr?.on('data', (data) => {
       const entry = this.processManager.get(pid);
       if (entry) {
         entry.stderr += data.toString();
@@ -131,14 +145,6 @@ export class ProcessService {
       if (entry) {
         entry.status = code === 0 ? 'completed' : 'failed';
         entry.exitCode = code !== null ? code : undefined;
-      }
-    });
-
-    childProcess.on('error', (error) => {
-      const entry = this.processManager.get(pid);
-      if (entry) {
-        entry.status = 'failed';
-        entry.stderr += `\nProcess error: ${error.message}`;
       }
     });
 

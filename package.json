@@ -18,12 +18,14 @@
     "dist/cli-process-service.js",
     "dist/cli-utils.js",
     "dist/cli.js",
+    "dist/detached-runner.cjs",
     "dist/model-catalog.js",
     "dist/parsers.js",
     "dist/peek.js",
     "dist/process-result.js",
     "dist/process-service.js",
     "dist/server.js",
+    "dist/spawn-cli.js",
     "server.json",
     "README.ja.md",
     "CHANGELOG.md"
@@ -50,6 +52,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "cross-spawn": "^7.0.6",
     "zod": "^3.24.4"
   },
   "engines": {

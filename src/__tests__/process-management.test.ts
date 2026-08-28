@@ -46,6 +46,7 @@ describe('Process Management Tests', () => {
   let originalEnv: any;
   let mockServerInstance: any;
   let handlers: Map<string, Function>;
+  const originalPlatform = process.platform;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -53,6 +54,7 @@ describe('Process Management Tests', () => {
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     originalEnv = { ...process.env };
     process.env = { ...originalEnv };
+    Object.defineProperty(process, 'platform', { value: 'linux' });
     handlers = new Map();
     
     // Set up default mocks
@@ -63,6 +65,7 @@ describe('Process Management Tests', () => {
   afterEach(() => {
     consoleErrorSpy.mockRestore();
     process.env = originalEnv;
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
   });
 
   async function setupServer() {
@@ -697,6 +700,9 @@ Unicodeテスト: 🎌 🗾 ✨
         expect(error.message).toContain('Failed to start claude CLI process');
         expect(error.code).toBe('InternalError');
       }
+
+      expect(mockProcess.listenerCount('error')).toBeGreaterThan(0);
+      expect(() => mockProcess.emit('error', new Error('spawn ENOENT'))).not.toThrow();
     });
   });
 

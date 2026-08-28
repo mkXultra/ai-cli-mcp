@@ -1,9 +1,8 @@
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { getClaudeMockPath } from './claude-mock.js';
 
 export function verifyMockExists(binaryName: string): boolean {
-  const mockPath = join('/tmp', 'claude-code-test-mock', binaryName);
-  return existsSync(mockPath);
+  return existsSync(getClaudeMockPath(binaryName));
 }
 
 export async function ensureMockExists(mock: any): Promise<void> {

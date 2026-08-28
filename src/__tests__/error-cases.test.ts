@@ -50,6 +50,7 @@ describe('Error Handling Tests', () => {
   let consoleErrorSpy: any;
   let originalEnv: any;
   let errorHandler: any = null;
+  const originalPlatform = process.platform;
 
   function setupServerMock() {
     errorHandler = null;
@@ -73,11 +74,13 @@ describe('Error Handling Tests', () => {
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     originalEnv = { ...process.env };
     process.env = { ...originalEnv };
+    Object.defineProperty(process, 'platform', { value: 'linux' });
   });
 
   afterEach(() => {
     consoleErrorSpy.mockRestore();
     process.env = originalEnv;
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
   });
 
   describe('CallToolRequest Error Cases', () => {

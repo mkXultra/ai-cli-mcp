@@ -1,7 +1,6 @@
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import {
   appendFileSync,
-  chmodSync,
   closeSync,
   existsSync,
   mkdirSync,
@@ -15,6 +14,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { join, basename, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
@@ -297,7 +297,7 @@ export class CliProcessService {
       };
     }
 
-    this.killPidOrGroup(pid, 'SIGTERM');
+    this.killPidOrGroup(refreshed, 'SIGTERM');
     await this.waitForProcessExit(pid, 250);
 
     if (isProcessRunning(pid)) {
@@ -355,12 +355,14 @@ export class CliProcessService {
     model: string | undefined,
   ): Promise<{ pid: number; status: 'started'; agent: AgentType; message: string }> {
     const cwdKey = this.resolveCwdKey(cmd.cwd);
-    const wrapperPath = this.ensureDetachedWrapperScript();
+    const runnerPath = this.resolveDetachedRunnerPath();
+    this.removeLegacyDetachedWrappers();
 
-    const childProcess = spawn(wrapperPath, [this.stateDir, cwdKey, cmd.cliPath, ...cmd.args], {
+    const childProcess = spawn(process.execPath, [runnerPath, this.stateDir, cwdKey, cmd.cliPath, ...cmd.args], {
       cwd: cmd.cwd,
       detached: true,
       stdio: 'ignore',
+      windowsHide: true,
     });
 
     const pid = childProcess.pid;
@@ -574,71 +576,16 @@ export class CliProcessService {
     return join(processDir, 'exit-status.json');
   }
 
-  private resolveDetachedWrapperPath(): string {
-    return join(this.stateDir, 'detached-runner-v2.sh');
-  }
-
-  private ensureDetachedWrapperScript(): string {
-    const wrapperPath = this.resolveDetachedWrapperPath();
-    this.removeLegacyDetachedWrappers();
-    if (existsSync(wrapperPath)) {
-      return wrapperPath;
+  private resolveDetachedRunnerPath(): string {
+    const runnerPath = fileURLToPath(new URL('./detached-runner.cjs', import.meta.url));
+    if (!existsSync(runnerPath)) {
+      throw new Error(`Detached runner not found: ${runnerPath}`);
     }
-
-    writeFileSync(
-      wrapperPath,
-      `#!/bin/sh
-set +e
-state_dir="$1"
-cwd_key="$2"
-shift 2
-pid="$$"
-process_dir="$state_dir/cwds/$cwd_key/$pid"
-stdout_path="$process_dir/stdout.log"
-stderr_path="$process_dir/stderr.log"
-exit_meta_path="$process_dir/exit-status.json"
-mkdir -p "$process_dir"
-: > "$stdout_path"
-: > "$stderr_path"
-write_exit_status() {
-  status="$1"
-  exit_code="$2"
-  tmp_exit_meta_path="$exit_meta_path.$$"
-  printf '{\n  "status": "%s",\n  "exitCode": %s\n}\n' "$status" "$exit_code" > "$tmp_exit_meta_path"
-  mv "$tmp_exit_meta_path" "$exit_meta_path"
-}
-handle_signal() {
-  signal="$1"
-  exit_code="$2"
-  if [ -n "\${child_pid:-}" ]; then
-    kill "-$signal" "$child_pid" 2>/dev/null || true
-    wait "$child_pid" 2>/dev/null
-  fi
-  write_exit_status "failed" "$exit_code"
-  exit "$exit_code"
-}
-trap 'handle_signal TERM 143' TERM
-trap 'handle_signal INT 130' INT
-trap 'handle_signal HUP 129' HUP
-"$@" >> "$stdout_path" 2>> "$stderr_path" &
-child_pid="$!"
-wait "$child_pid"
-exit_code="$?"
-trap - TERM INT HUP
-status="completed"
-if [ "$exit_code" -ne 0 ]; then
-  status="failed"
-fi
-write_exit_status "$status" "$exit_code"
-exit "$exit_code"
-`,
-    );
-    chmodSync(wrapperPath, 0o755);
-    return wrapperPath;
+    return runnerPath;
   }
 
   private removeLegacyDetachedWrappers(): void {
-    for (const fileName of ['detached-runner-v1.sh']) {
+    for (const fileName of ['detached-runner-v1.sh', 'detached-runner-v2.sh']) {
       const legacyPath = join(this.stateDir, fileName);
       if (!existsSync(legacyPath)) {
         continue;
@@ -650,7 +597,38 @@ exit "$exit_code"
     }
   }
 
-  private killPidOrGroup(pid: number, signal: NodeJS.Signals): void {
+  private killPidOrGroup(process: StoredProcess, signal: NodeJS.Signals): void {
+    const pid = process.pid;
+    if (globalThis.process.platform === 'win32') {
+      if (signal === 'SIGTERM') {
+        const result = spawnSync('taskkill.exe', ['/pid', String(pid), '/t', '/f'], {
+          stdio: 'ignore',
+          windowsHide: true,
+        });
+        if (result.status === 0) {
+          return;
+        }
+      }
+      const childPid = this.readChildPid(process);
+      if (childPid && isProcessRunning(childPid)) {
+        try {
+          globalThis.process.kill(childPid, signal);
+        } catch (error: any) {
+          if (error.code !== 'ESRCH') {
+            throw error;
+          }
+        }
+      }
+      try {
+        globalThis.process.kill(pid, signal);
+      } catch (error: any) {
+        if (error.code !== 'ESRCH') {
+          throw error;
+        }
+      }
+      return;
+    }
+
     try {
       globalThis.process.kill(-pid, signal);
     } catch (error: any) {
@@ -663,6 +641,16 @@ exit "$exit_code"
       }
       globalThis.process.kill(pid, signal);
     }
+  }
+
+  private readChildPid(process: StoredProcess): number | null {
+    const childPidPath = join(this.resolveStoredProcessDir(process), 'child-pid');
+    if (!existsSync(childPidPath)) {
+      return null;
+    }
+
+    const childPid = Number.parseInt(readFileSync(childPidPath, 'utf8').trim(), 10);
+    return Number.isSafeInteger(childPid) && childPid > 0 ? childPid : null;
   }
 
   private async waitForProcessExit(pid: number, timeoutMs: number): Promise<void> {

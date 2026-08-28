@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { accessSync } from 'node:fs';
+import { join } from 'node:path';
 
 vi.mock('node:fs', () => ({
   accessSync: vi.fn(),
@@ -11,6 +12,7 @@ const mockAccessSync = vi.mocked(accessSync);
 describe('cli-utils doctor status', () => {
   const originalEnv = process.env;
   const originalPlatform = process.platform;
+  const mockBinDir = join('mock-root', 'bin');
 
   beforeEach(() => {
     vi.resetModules();
@@ -21,7 +23,8 @@ describe('cli-utils doctor status', () => {
     delete process.env.GEMINI_CLI_NAME;
     delete process.env.FORGE_CLI_NAME;
     delete process.env.OPENCODE_CLI_NAME;
-    process.env.PATH = '/mock/bin:/usr/bin';
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+    process.env.PATH = `${mockBinDir}:/usr/bin`;
   });
 
   afterEach(() => {
@@ -31,7 +34,7 @@ describe('cli-utils doctor status', () => {
 
   it('marks PATH binaries available when they are executable', async () => {
     mockAccessSync.mockImplementation((filePath) => {
-      if (filePath === '/mock/bin/claude') {
+      if (filePath === join(mockBinDir, 'claude')) {
         return undefined;
       }
       throw new Error('not executable');
@@ -48,7 +51,7 @@ describe('cli-utils doctor status', () => {
     });
     expect(status.claude).toEqual({
       configuredCommand: 'claude',
-      resolvedPath: '/mock/bin/claude',
+      resolvedPath: join(mockBinDir, 'claude'),
       available: true,
       lookup: 'path',
     });
@@ -141,31 +144,54 @@ describe('cli-utils doctor status', () => {
 
   it('supports Windows commands that already include an executable suffix', async () => {
     Object.defineProperty(process, 'platform', { value: 'win32' });
-    process.env.PATHEXT = '.EXE;.CMD';
     process.env.CLAUDE_CLI_NAME = 'claude.cmd';
-    process.env.PATH = '/mock/bin';
+    process.env.PATH = mockBinDir;
     mockAccessSync.mockImplementation((filePath) => {
-      if (filePath === '/mock/bin/claude.cmd') {
+      if (filePath === join(mockBinDir, 'claude.cmd')) {
         return undefined;
       }
       throw new Error('not executable');
     });
 
-    const { getCliDoctorStatus } = await import('../cli-utils.js');
+    const { findClaudeCli, getCliDoctorStatus } = await import('../cli-utils.js');
     const status = getCliDoctorStatus();
 
     expect(status.claude).toEqual({
       configuredCommand: 'claude.cmd',
-      resolvedPath: '/mock/bin/claude.cmd',
+      resolvedPath: join(mockBinDir, 'claude.cmd'),
       available: true,
       lookup: 'env',
     });
+    expect(findClaudeCli()).toBe(join(mockBinDir, 'claude.cmd'));
+  });
+
+  it('returns the resolved Windows path for an extensionless custom command name', async () => {
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    process.env.CLAUDE_CLI_NAME = 'claude-custom';
+    process.env.PATH = mockBinDir;
+    mockAccessSync.mockImplementation((filePath) => {
+      if (filePath === join(mockBinDir, 'claude-custom.cmd')) {
+        return undefined;
+      }
+      throw new Error('not executable');
+    });
+
+    const { findClaudeCli, getCliDoctorStatus } = await import('../cli-utils.js');
+    const status = getCliDoctorStatus();
+
+    expect(status.claude).toEqual({
+      configuredCommand: 'claude-custom',
+      resolvedPath: join(mockBinDir, 'claude-custom.cmd'),
+      available: true,
+      lookup: 'env',
+    });
+    expect(findClaudeCli()).toBe(join(mockBinDir, 'claude-custom.cmd'));
   });
 
   it('supports forge lookup via FORGE_CLI_NAME', async () => {
     process.env.FORGE_CLI_NAME = 'forge-custom';
     mockAccessSync.mockImplementation((filePath) => {
-      if (filePath === '/mock/bin/forge-custom') {
+      if (filePath === join(mockBinDir, 'forge-custom')) {
         return undefined;
       }
       throw new Error('not executable');
@@ -176,7 +202,7 @@ describe('cli-utils doctor status', () => {
 
     expect(status.forge).toEqual({
       configuredCommand: 'forge-custom',
-      resolvedPath: '/mock/bin/forge-custom',
+      resolvedPath: join(mockBinDir, 'forge-custom'),
       available: true,
       lookup: 'env',
     });
@@ -186,7 +212,7 @@ describe('cli-utils doctor status', () => {
   it('supports OpenCode lookup via OPENCODE_CLI_NAME', async () => {
     process.env.OPENCODE_CLI_NAME = 'opencode-custom';
     mockAccessSync.mockImplementation((filePath) => {
-      if (filePath === '/mock/bin/opencode-custom') {
+      if (filePath === join(mockBinDir, 'opencode-custom')) {
         return undefined;
       }
       throw new Error('not executable');
@@ -197,10 +223,54 @@ describe('cli-utils doctor status', () => {
 
     expect(status.opencode).toEqual({
       configuredCommand: 'opencode-custom',
-      resolvedPath: '/mock/bin/opencode-custom',
+      resolvedPath: join(mockBinDir, 'opencode-custom'),
       available: true,
       lookup: 'env',
     });
     expect(findOpencodeCli()).toBe('opencode-custom');
+  });
+
+  it('uses a fixed Windows extension order and does not select an extensionless shim', async () => {
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    process.env.PATH = mockBinDir;
+    const claudeCandidates: string[] = [];
+    mockAccessSync.mockImplementation((filePath) => {
+      if (String(filePath).startsWith(join(mockBinDir, 'claude'))) {
+        claudeCandidates.push(String(filePath));
+      }
+      if (filePath === join(mockBinDir, 'claude.cmd')) {
+        return undefined;
+      }
+      throw new Error('not executable');
+    });
+
+    const { getCliDoctorStatus } = await import('../cli-utils.js');
+    const status = getCliDoctorStatus();
+
+    expect(status.claude.resolvedPath).toBe(join(mockBinDir, 'claude.cmd'));
+    expect(claudeCandidates).toEqual([
+      join(mockBinDir, 'claude.exe'),
+      join(mockBinDir, 'claude.cmd'),
+    ]);
+    expect(claudeCandidates).not.toContain(join(mockBinDir, 'claude'));
+  });
+
+  it('keeps the extensionless PATH lookup unchanged on macOS', async () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    process.env.PATH = `${mockBinDir}:/usr/bin`;
+    mockAccessSync.mockImplementation((filePath) => {
+      if (filePath === join(mockBinDir, 'claude')) {
+        return undefined;
+      }
+      throw new Error('not executable');
+    });
+
+    const { getCliDoctorStatus } = await import('../cli-utils.js');
+    const status = getCliDoctorStatus();
+
+    expect(status.claude.resolvedPath).toBe(join(mockBinDir, 'claude'));
+    expect(mockAccessSync.mock.calls.map(([filePath]) => filePath)).not.toContain(
+      join(mockBinDir, 'claude.exe'),
+    );
   });
 });

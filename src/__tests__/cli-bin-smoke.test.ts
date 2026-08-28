@@ -13,9 +13,14 @@ function makeTempDir(prefix: string): string {
 }
 
 function writeExecutable(dir: string, name: string): void {
-  const filePath = join(dir, name);
-  writeFileSync(filePath, '#!/bin/sh\nexit 0\n', 'utf8');
-  chmodSync(filePath, 0o755);
+  const filePath = join(dir, process.platform === 'win32' ? `${name}.cmd` : name);
+  const script = process.platform === 'win32'
+    ? '@ECHO off\r\nexit /b 0\r\n'
+    : '#!/bin/sh\nexit 0\n';
+  writeFileSync(filePath, script, 'utf8');
+  if (process.platform !== 'win32') {
+    chmodSync(filePath, 0o755);
+  }
 }
 
 afterEach(() => {
