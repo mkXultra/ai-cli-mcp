@@ -70,7 +70,8 @@ describe('CliProcessService', () => {
 
   afterEach(() => {
     for (const dir of tempDirs.splice(0)) {
-      rmSync(dir, { recursive: true, force: true });
+      // On Windows the detached runner can briefly retain its cwd after writing exit status.
+      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
     }
   });
 
