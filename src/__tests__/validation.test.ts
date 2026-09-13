@@ -9,6 +9,9 @@ vi.mock('node:child_process', () => ({
   spawn: vi.fn()
 }));
 vi.mock('node:fs');
+vi.mock('../model-config.js', () => ({
+  loadUserModelAliases: () => ({ path: '/test/config.json', aliases: new Map() }),
+}));
 vi.mock('node:os');
 vi.mock('node:path', () => ({
   resolve: vi.fn((path) => path),

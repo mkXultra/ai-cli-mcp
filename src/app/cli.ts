@@ -1,4 +1,5 @@
 import { runMcpServer } from './mcp.js';
+import { addUserAlias, listAliases, removeUserAlias } from './aliases.js';
 import { CliProcessService } from '../cli-process-service.js';
 import { getCliDoctorStatus } from '../cli-utils.js';
 import { getModelsPayload } from '../model-catalog.js';
@@ -16,8 +17,12 @@ Commands:
   cleanup   Remove completed and failed tracked processes
   doctor    Check supported AI CLI binaries
   models    List supported models and aliases
+  alias     List, add, update, or remove model aliases
   mcp       Start the MCP server
   help      Show this help message
+
+User model aliases: ~/.config/ai-cli/config.json
+Set AI_CLI_CONFIG_PATH to use a different config file.
 `;
 
 export const RUN_HELP_TEXT = `Usage: ai-cli run --cwd <path> [options]
@@ -100,8 +105,29 @@ export const MODELS_HELP_TEXT = `Usage: ai-cli models
 
 List supported models and aliases.
 
+Includes user aliases from ~/.config/ai-cli/config.json (or AI_CLI_CONFIG_PATH).
+
 Options:
   --help, -h                   Show this help message
+`;
+
+export const ALIAS_HELP_TEXT = `Usage:
+  ai-cli alias list
+  ai-cli alias add <name> <model> [--effort <level>]
+  ai-cli alias rm <name>
+
+Manage aliases in ~/.config/ai-cli/config.json (or AI_CLI_CONFIG_PATH).
+list prints JSON with the config path and effective built-in/user aliases without writing files.
+add creates the file if needed and replaces any existing definition of the name.
+Omitting --effort uses the target CLI's default reasoning effort.
+rm removes a user definition; removing a built-in override restores its default.
+Use ai-cli models to list aliases together with supported models.
+
+Options:
+  --effort <level>      Default reasoning effort for this alias (Claude/Codex only)
+  --help, -h            Show this help message
+
+Compatibility aliases: --reasoning-effort, --reasoning_effort
 `;
 
 export const DOCTOR_HELP_TEXT = `Usage: ai-cli doctor
@@ -164,7 +190,7 @@ const defaultDeps: CliDeps = {
 
 function parseArgs(argv: string[]): { positionals: string[]; flags: Record<string, string> } {
   const positionals: string[] = [];
-  const flags: Record<string, string> = {};
+  const flags: Record<string, string> = Object.create(null);
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -243,6 +269,53 @@ export async function runCli(argv: string[], deps: Partial<CliDeps> = {}): Promi
 
   if (!command || command === 'help' || command === '--help' || command === '-h') {
     stdout(CLI_HELP_TEXT);
+    return 0;
+  }
+
+  if (command === 'alias') {
+    const args = argv.slice(1);
+    if (!args.length || args.includes('--help') || args.includes('-h')) {
+      stdout(ALIAS_HELP_TEXT);
+      return 0;
+    }
+    const { positionals, flags } = parseArgs(args);
+    const [action, name, model] = positionals;
+    const fail = (message: string): number => {
+      stderr(`${message}\n`);
+      stdout(ALIAS_HELP_TEXT);
+      return 1;
+    };
+    if (action !== 'list' && action !== 'add' && action !== 'rm') {
+      return fail('Expected alias subcommand: list, add or rm');
+    }
+    const effortFlags = ['effort', 'reasoning-effort', 'reasoning_effort'];
+    const unknownFlag = Object.keys(flags).find((flag) => !effortFlags.includes(flag));
+    if (unknownFlag !== undefined) return fail(`Unknown alias option: --${unknownFlag}`);
+    if (action === 'list') {
+      if (positionals.length !== 1 || Object.keys(flags).length) {
+        return fail('Usage: ai-cli alias list (no name, model or effort options)');
+      }
+      writeJson(stdout, listAliases());
+      return 0;
+    }
+    if (action === 'rm') {
+      if (positionals.length !== 2 || Object.keys(flags).length) {
+        return fail('Usage: ai-cli alias rm <name> (no model or effort options)');
+      }
+      writeJson(stdout, removeUserAlias(name));
+      return 0;
+    }
+    if (positionals.length !== 3) {
+      return fail('Usage: ai-cli alias add <name> <model> [--effort <level>]');
+    }
+    if (args.filter((arg) => /^--(?:effort|reasoning-effort|reasoning_effort)(?:=|$)/.test(arg)).length > 1) {
+      return fail('Specify the alias effort only once.');
+    }
+    const effort = getFirstFlag(flags, effortFlags);
+    if (effort !== undefined && !effort.trim()) {
+      return fail('Missing value for alias effort.');
+    }
+    writeJson(stdout, addUserAlias(name, model, effort));
     return 0;
   }
 

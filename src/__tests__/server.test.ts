@@ -10,6 +10,9 @@ import { EventEmitter } from 'node:events';
 // Mock dependencies
 vi.mock('node:child_process');
 vi.mock('node:fs');
+vi.mock('../model-config.js', () => ({
+  loadUserModelAliases: () => ({ path: '/test/config.json', aliases: new Map() }),
+}));
 vi.mock('node:os');
 vi.mock('node:path', () => ({
   resolve: vi.fn((path) => path),

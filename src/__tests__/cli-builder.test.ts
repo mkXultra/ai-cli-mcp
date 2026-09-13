@@ -3,6 +3,9 @@ import { existsSync, readFileSync } from 'node:fs';
 
 // Mock dependencies
 vi.mock('node:fs');
+vi.mock('../model-config.js', () => ({
+  loadUserModelAliases: () => ({ path: '/test/config.json', aliases: new Map() }),
+}));
 vi.mock('node:path', () => ({
   resolve: vi.fn((...args: string[]) => args[args.length - 1]),
   isAbsolute: vi.fn((p: string) => p.startsWith('/')),

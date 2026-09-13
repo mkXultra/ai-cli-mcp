@@ -31,6 +31,9 @@ Supported commands:
 - `ai-cli kill`
 - `ai-cli cleanup`
 - `ai-cli models`
+- `ai-cli alias list`
+- `ai-cli alias add <name> <model> [--effort <level>]`
+- `ai-cli alias rm <name>`
 - `ai-cli doctor`
 - `ai-cli mcp`
 
@@ -126,12 +129,34 @@ Properties:
 
 ### `ai-cli models`
 
-Returns the supported model list and aliases.
+Returns the supported model list and effective aliases using the same payload as MCP `models`.
 
 Properties:
 
-- Behavior should stay close to MCP-supported model documentation
-- Static model definitions are acceptable in this phase
+- Built-in aliases are merged with user definitions on each request
+- Each alias exposes `name`, `resolvesTo`, `agent`, and optional `defaultReasoningEffort`
+
+### `ai-cli alias list` / `ai-cli alias add` / `ai-cli alias rm`
+
+Manage aliases shared by CLI and MCP across projects:
+
+```bash
+ai-cli alias add codex-coding gpt-5.6-terra --effort xhigh
+ai-cli alias list
+ai-cli alias rm codex-coding
+```
+
+Properties:
+
+- `list` returns `{ configPath, aliases }` with the effective built-in/user aliases, matching the `aliases` array in `ai-cli models`; it does not create or modify configuration
+- `add` creates or replaces a complete user definition; omitting effort uses the target CLI's default
+- `rm` removes a user definition; deleting a built-in alias override restores the built-in default
+- Configuration lives in `~/.config/ai-cli/config.json`, with `XDG_CONFIG_HOME` and `AI_CLI_CONFIG_PATH` overrides; there is no project-level lookup
+- Definitions are validated before saving; invalid input leaves the file unchanged
+- Successful commands return JSON containing the config path and the change made
+- CLI and MCP read the configuration for each run and model-discovery request, so changes apply without restarting the MCP server
+
+See [User Model Aliases](../README.md#user-model-aliases) for usage and configuration rules.
 
 ### `ai-cli mcp`
 

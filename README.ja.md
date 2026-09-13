@@ -185,6 +185,7 @@ macOSでは、これらのツールを初めて実行する際にフォルダへ
 - `cleanup`
 - `doctor`
 - `models`
+- `alias list` / `alias add` / `alias rm`
 - `mcp`
 
 基本的な流れ:
@@ -218,6 +219,86 @@ OpenCode のモデル指定は次の 2 つを受け付けます。
 Codex のモデル指定では、公開デフォルトモデルとして `gpt-5.4` を使用します。
 
 `doctor` は CLI バイナリの利用可否と path 解決だけを確認します。JSON 出力には `checks` ブロックが含まれ、ログイン状態と利用規約同意は未確認として示されます。
+
+## ユーザー共通のモデルエイリアス
+
+モデルと既定の推論強度を名前付きで保存し、全プロジェクトで利用できます。CLI と MCP は同じユーザー設定を使います。
+
+### CLI から登録・実行する
+
+```bash
+ai-cli alias add codex-coding gpt-5.6-terra --effort xhigh
+ai-cli alias add claude-review opus --effort max
+ai-cli alias list
+ai-cli run --cwd "$PWD" --model codex-coding --prompt "失敗しているテストを修正して"
+```
+
+この例では、`codex-coding` で `gpt-5.6-terra` を推論強度 `xhigh` で実行します。その実行だけ推論強度を変える場合は、`run` に `--reasoning-effort low` を指定します。
+
+`alias list` は、設定パス `configPath` と、ユーザー設定を反映した組み込み・独自エイリアスの配列 `aliases` を JSON で返します。各項目は `name`、`resolvesTo`、`agent`、省略可能な `defaultReasoningEffort` を持ち、`ai-cli models` のエイリアス一覧と一致します。一覧取得では設定ファイルを作成・変更しません。対応モデル一覧も含めて確認する場合は `ai-cli models` を使います。
+
+`alias add <name> <model> [--effort <level>]` は、設定ファイルと親ディレクトリがなければ作成します。`AI_CLI_CONFIG_PATH` で明示したパスも作成対象です。同名の定義は置き換え、`--effort` を省略すると以前の推論強度指定を解除します。`--reasoning-effort` / `--reasoning_effort` も使えます。不正な指定ではファイルを書き換えません。
+
+```bash
+# 既定の推論強度を更新
+ai-cli alias add codex-coding gpt-5.6-terra --effort high
+# 推論強度の指定を解除し、対象 CLI の既定値を使う
+ai-cli alias add codex-coding gpt-5.6-terra
+# ユーザー定義を削除
+ai-cli alias rm codex-coding
+```
+
+`alias rm <name>` はユーザー定義だけを削除します。`codex-ultra` などの上書きを削除すると組み込みの既定値に戻ります。存在しない名前や、上書きのない組み込みエイリアスの削除はエラーになります。成功時には設定ファイルのパスと変更内容を JSON で返します。使い方は `ai-cli alias --help` で確認できます。
+
+```bash
+# 組み込みエイリアスを上書き
+ai-cli alias add codex-ultra gpt-5.6-terra --effort xhigh
+# 組み込みの gpt-6-astra / ultra に戻す
+ai-cli alias rm codex-ultra
+```
+
+### MCP から使う
+
+上の例で `codex-coding` を登録した状態で、MCP の `run` ツールに指定します。
+
+```json
+{
+  "workFolder": "/absolute/path/to/project",
+  "model": "codex-coding",
+  "prompt": "失敗しているテストを修正して"
+}
+```
+
+そのリクエストだけ推論強度を変える場合は `"reasoning_effort": "low"` を追加します。`ai-cli models` と MCP の `models` は、設定反映後の定義を `aliases` に返します。各項目には `name`、`resolvesTo`（実際のモデル）、`agent`（バックエンド）、省略可能な `defaultReasoningEffort` が含まれます。
+
+設定は `run`、`models`、MCP のツール一覧取得のたびに読み直します。CLI と MCP が同じ設定パスを使っていれば、MCP サーバーを再起動せずに次のリクエストから変更が反映されます。
+
+### 設定ファイルとルール
+
+上記コマンドは `~/.config/ai-cli/config.json` を編集します。直接編集することもでき、最初の例にある 2 つのエイリアスは次のように定義します。
+
+```json
+{
+  "model_aliases": {
+    "codex-coding": {
+      "model": "gpt-5.6-terra",
+      "reasoning_effort": "xhigh"
+    },
+    "claude-review": {
+      "model": "opus",
+      "reasoning_effort": "max"
+    }
+  }
+}
+```
+
+- `model` は必須、`reasoning_effort` は省略可能です。バックエンドはエイリアス名ではなく、指定先のモデルから選びます。
+- 推論強度の優先順位は「実行時の明示指定 → エイリアスの既定値 → 対象 CLI の既定値」です。対象モデルが対応する値を指定してください。Gemini・Forge・OpenCode のエイリアスでは省略が必要です。
+- `codex-ultra` などの組み込みエイリアスも上書きできます。定義全体を置き換えるため、推論強度を省略した場合は組み込みの値を引き継がず、対象 CLI の既定値を使います。
+- 指定先は `gpt-5.6-terra`、`opus`、`oc-openai/gpt-5.4` などのモデル名です。別のエイリアスを指定する連鎖には対応しません。エイリアス名は大文字・小文字を区別し、半角英字で始まり、半角英数字・`_`・`-` のみ使えます。一覧にある実モデル名、`codex`、`oc-` 接頭辞は予約されています。
+- 既定の設定ファイルがなければ組み込みエイリアスを使います。不正な JSON や無効なモデルと推論強度の組み合わせは、ファイルパスを含むエラーになります。明示した設定ファイルの欠落もエラーになりますが、`alias add` では新規作成できます。
+
+絶対パスの `XDG_CONFIG_HOME` を設定すると、既定の場所は `$XDG_CONFIG_HOME/ai-cli/config.json` になります。`AI_CLI_CONFIG_PATH` を指定すると、そちらのファイルを優先します。相対パスは CLI/MCP プロセスの起動ディレクトリを基準に解決します。MCP で別のパスを使う場合は、サーバー設定の `env` に `AI_CLI_CONFIG_PATH` を追加してください。プロジェクトごとの設定ファイルは探索しません。設定ファイルはコメントなしの JSON で、現在の対応項目は `model_aliases` のみです。
 
 ## CLI の状態保存先
 
@@ -259,9 +340,9 @@ Claude CLI、Codex CLI、Gemini CLI、Forge CLI、または OpenCode を使用�
 - `prompt_file` (string, 任意): プロンプトを含むファイルへのパス。`prompt` または `prompt_file` のいずれかが必須です。絶対パス、または `workFolder` からの相対パスが指定可能です。
 - `workFolder` (string, 必須): CLIを実行する作業ディレクトリ。絶対パスである必要があります。
 - **モデル (Models):**
-    - **Ultra エイリアス:** `claude-ultra` (`opus`、自動的に max effort に設定。Fable は選択しません), `codex-ultra` (`gpt-6-astra`、自動的に ultra reasoning に設定), `gemini-ultra`
+    - **Ultra エイリアス（組み込みの既定値。ユーザー設定で上書き可能）:** `claude-ultra` (`opus`、自動的に max effort に設定。Fable は選択しません), `codex-ultra` (`gpt-6-astra`、自動的に ultra reasoning に設定), `gemini-ultra`
     - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `fable`, `haiku`
-      - `fable` は Claude Code の最新 Fable モデルを明示的に選択します。Fable には別料金の usage credits が必要な場合があり、`claude-ultra` から暗黙には選択されません。
+      - `fable` は Claude Code の最新 Fable モデルを明示的に選択します。Fable には別料金の usage credits が必要な場合があり、組み込みの `claude-ultra` の既定値からは選択されません。
     - Codex: `gpt-6-astra`, `gpt-5.4`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
     - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
     - Forge: `forge`
@@ -349,6 +430,8 @@ MCP クライアントから、対応する AI CLI バイナリの利用可否�
 ### `models`
 
 MCP クライアントから、対応モデル名、エイリアス、動的バックエンドの discovery hint を確認します。`ai-cli models` と同じ構造化 payload を返します。
+
+`aliases` 配列は、組み込みの既定値に[ユーザー定義](#ユーザー共通のモデルエイリアス)を反映した一覧です。各項目には `name`、`resolvesTo`、`agent`、省略可能な `defaultReasoningEffort` が含まれます。
 
 ### `get_result`
 

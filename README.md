@@ -182,6 +182,7 @@ macOS might ask for folder permissions the first time any of these tools run. If
 - `cleanup`
 - `doctor`
 - `models`
+- `alias list` / `alias add` / `alias rm`
 - `mcp`
 
 Example flow:
@@ -215,6 +216,86 @@ OpenCode model selection accepts either:
 Codex model selection uses `gpt-5.4` as the default advertised model.
 
 `doctor` checks only binary availability and path resolution. Its JSON output includes a `checks` block that marks login state and terms acceptance as unchecked.
+
+## User Model Aliases
+
+Save a model and its default reasoning effort under a name you can use across projects. CLI and MCP share the same user configuration.
+
+### Manage and use aliases from the CLI
+
+```bash
+ai-cli alias add codex-coding gpt-5.6-terra --effort xhigh
+ai-cli alias add claude-review opus --effort max
+ai-cli alias list
+ai-cli run --cwd "$PWD" --model codex-coding --prompt "fix failing tests"
+```
+
+Here, `codex-coding` runs `gpt-5.6-terra` with `xhigh` reasoning. Override the effort for a single run with `--reasoning-effort low`.
+
+`alias list` prints JSON with `configPath` and an `aliases` array containing the effective built-in and user aliases. Each entry has `name`, `resolvesTo`, `agent`, and optional `defaultReasoningEffort`, matching the aliases in `ai-cli models`. Listing does not create or modify the config file. Use `ai-cli models` to include the supported model catalog as well.
+
+`alias add <name> <model> [--effort <level>]` creates the config file and its parent directories if needed, including an explicitly selected `AI_CLI_CONFIG_PATH`. Reusing a name replaces its definition; omitting `--effort` clears any previous alias effort. `--reasoning-effort` and `--reasoning_effort` are also accepted. Invalid definitions leave the file unchanged.
+
+```bash
+# Update the default effort
+ai-cli alias add codex-coding gpt-5.6-terra --effort high
+# Clear the alias effort and use the target CLI's default
+ai-cli alias add codex-coding gpt-5.6-terra
+# Remove the user alias
+ai-cli alias rm codex-coding
+```
+
+`alias rm <name>` removes only a user definition. Removing an override such as `codex-ultra` restores the built-in default. Removing an unknown name or a built-in alias without a user override returns an error. Successful commands print JSON with the config path and the change made. Use `ai-cli alias --help` for usage.
+
+```bash
+# Override a built-in alias
+ai-cli alias add codex-ultra gpt-5.6-terra --effort xhigh
+# Restore its built-in gpt-6-astra / ultra definition
+ai-cli alias rm codex-ultra
+```
+
+### Use aliases through MCP
+
+After registering `codex-coding` as above, pass its name to the MCP `run` tool:
+
+```json
+{
+  "workFolder": "/absolute/path/to/project",
+  "model": "codex-coding",
+  "prompt": "fix failing tests"
+}
+```
+
+Add `"reasoning_effort": "low"` to override the effort for that request. `ai-cli models` and the MCP `models` tool expose the effective aliases as `aliases` entries with `name`, `resolvesTo`, `agent`, and optional `defaultReasoningEffort` fields.
+
+Config is read for each `run`, `models`, and MCP tool-list request. Changes apply to subsequent requests without restarting the MCP server, provided CLI and MCP use the same config path.
+
+### Configuration file and rules
+
+The commands above edit `~/.config/ai-cli/config.json`. You can also edit it directly; for example, this file defines both aliases from the first example:
+
+```json
+{
+  "model_aliases": {
+    "codex-coding": {
+      "model": "gpt-5.6-terra",
+      "reasoning_effort": "xhigh"
+    },
+    "claude-review": {
+      "model": "opus",
+      "reasoning_effort": "max"
+    }
+  }
+}
+```
+
+- `model` is required; `reasoning_effort` is optional. The backend is selected from the target model, regardless of the alias name.
+- Effort precedence is: explicit run argument → alias default → target CLI default. Effort must be supported by the target model; Gemini, Forge, and OpenCode aliases must omit it.
+- User entries can override built-in aliases such as `codex-ultra`. Each entry replaces the entire definition; omitting `reasoning_effort` uses the target CLI's default rather than inheriting the built-in effort.
+- Targets must be native model names such as `gpt-5.6-terra`, `opus`, or `oc-openai/gpt-5.4`; alias chaining is not supported. Alias names are case-sensitive, start with an ASCII letter, and contain only ASCII letters, digits, `_`, or `-`. Listed native model names, `codex`, and the `oc-` prefix are reserved.
+- Missing default config files preserve built-in behavior. Malformed files and invalid model/effort combinations produce errors with the config path. A missing explicitly configured file also produces an error, except that `alias add` can create it.
+
+An absolute `XDG_CONFIG_HOME` changes the default location to `$XDG_CONFIG_HOME/ai-cli/config.json`. `AI_CLI_CONFIG_PATH` overrides that location entirely; relative paths are resolved from the CLI/MCP process's working directory. For an MCP-specific path, set `AI_CLI_CONFIG_PATH` in the server's `env` settings. There is no project-level config lookup. The file uses JSON without comments and currently supports only `model_aliases`.
 
 ## CLI State Storage
 
@@ -256,9 +337,9 @@ Executes a prompt using Claude CLI, Codex CLI, Gemini CLI, Forge CLI, or OpenCod
 - `prompt_file` (string, optional): Path to a file containing the prompt. Either `prompt` or `prompt_file` is required. Can be absolute path or relative to `workFolder`.
 - `workFolder` (string, required): The working directory for the CLI execution. Must be an absolute path.
 **Models:**
-- **Ultra Aliases:** `claude-ultra` (`opus`, defaults to max effort and does not select Fable), `codex-ultra` (`gpt-6-astra`, defaults to ultra reasoning), `gemini-ultra`
+- **Ultra Aliases (built-in defaults; user config can override):** `claude-ultra` (`opus`, defaults to max effort and does not select Fable), `codex-ultra` (`gpt-6-astra`, defaults to ultra reasoning), `gemini-ultra`
 - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `fable`, `haiku`
-  - `fable` explicitly selects Claude Code's latest Fable model. Fable may require separately billed usage credits and is never selected implicitly by `claude-ultra`.
+  - `fable` explicitly selects Claude Code's latest Fable model. Fable may require separately billed usage credits and is not selected by the built-in `claude-ultra` default.
 - Codex: `gpt-6-astra`, `gpt-5.4`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
 - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
 - Forge: `forge`
@@ -346,6 +427,8 @@ Checks supported AI CLI binary availability and path resolution from MCP clients
 ### `models`
 
 Lists supported model names, aliases, and dynamic backend discovery hints from MCP clients. This returns the same structured payload as `ai-cli models`.
+
+The `aliases` array includes built-in defaults merged with [user model aliases](#user-model-aliases). Each entry contains `name`, `resolvesTo`, `agent`, and optional `defaultReasoningEffort`.
 
 ### `get_result`
 

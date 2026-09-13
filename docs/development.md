@@ -22,7 +22,13 @@ npm run dev
 ```
 src/
 ├── server.ts          # MCP server — tool registration, process management, spawn
-├── cli-builder.ts     # Pure function: CLI command assembly (model alias, validation, args)
+├── cli-builder.ts     # CLI command assembly (model alias, validation, args)
+├── model-catalog.ts   # Built-in models and effective user aliases
+├── model-config.ts    # User JSON config loading, validation, and atomic writes
+├── model-selection.ts # Backend routing and reasoning capability validation
+├── app/
+│   ├── cli.ts         # Public ai-cli command dispatcher
+│   └── aliases.ts     # Alias list/add/rm handlers
 ├── cli.ts             # CLI entrypoint for foreground execution (npm run cli.run)
 ├── parsers.ts         # Output parsers for Claude / Codex / Gemini
 └── __tests__/
@@ -33,6 +39,8 @@ src/
     ├── validation.test.ts
     ├── wait.test.ts
     ├── model-alias.test.ts
+    ├── alias-command.test.ts
+    ├── user-alias-integration.test.ts
     ├── version-print.test.ts
     ├── error-cases.test.ts
     └── e2e.test.ts
@@ -43,6 +51,10 @@ src/
 | Module | Role |
 |--------|------|
 | `cli-builder.ts` | `buildCliCommand()` — validates inputs (prompt, workFolder, model) and returns `{ cliPath, args, cwd, agent, prompt, resolvedModel }`. No MCP dependency; throws plain `Error`. |
+| `model-catalog.ts` | Merges user aliases with built-in defaults for command assembly and CLI/MCP discovery. |
+| `model-config.ts` | Reads `~/.config/ai-cli/config.json` (or `AI_CLI_CONFIG_PATH`), validates the schema, and writes config edits through an atomic file replacement. |
+| `app/aliases.ts` | Implements `ai-cli alias list/add/rm`, reading effective aliases without writing for `list` and validating definitions against the model catalog before saving edits. |
+| `model-selection.ts` | Resolves native model backends and validates model-specific reasoning effort without reading configuration. |
 | `server.ts` | MCP server. Calls `buildCliCommand()` inside `handleRun`, wraps errors in `McpError`, then spawns the process in the background. |
 | `cli.ts` | Standalone CLI. Parses `process.argv`, calls `buildCliCommand()`, spawns the process in the **foreground**, parses output, and prints JSON to stdout. |
 | `parsers.ts` | `parseClaudeOutput`, `parseCodexOutput`, `parseGeminiOutput` — parse CLI stdout into structured objects. |
@@ -88,6 +100,12 @@ npm run test:coverage
 ```
 
 For detailed testing documentation, see our [E2E Testing Guide](./e2e-testing.md).
+
+### Alias configuration tests
+
+`model-alias.test.ts` covers configuration parsing, model routing, and effort precedence. `alias-command.test.ts` covers read-only listing, add/update/remove behavior, validation without changing existing files, and config path handling. `user-alias-integration.test.ts` exercises the built CLI and a running MCP server with a fake Codex binary, including configuration changes made through `ai-cli alias` while the server is running.
+
+Test setup points `AI_CLI_CONFIG_PATH` at `src/__tests__/fixtures/empty-config.json` so a developer's personal aliases do not affect the suite. Tests that edit aliases use temporary files. These checks run in `npm run test:release` without calling external model providers.
 
 ## CLI Direct Execution (`cli.run` / `cli.run.parse`)
 
@@ -161,6 +179,8 @@ Example test: Select the `run` tool and provide:
 | `CLAUDE_CLI_NAME` | Claude CLI binary name or absolute path (default: `claude`) |
 | `CODEX_CLI_NAME` | Codex CLI binary name or absolute path (default: `codex`) |
 | `GEMINI_CLI_NAME` | Gemini CLI binary name or absolute path (default: `gemini`) |
+| `AI_CLI_CONFIG_PATH` | User alias JSON config path; overrides the default. Relative paths use the CLI/MCP process cwd. |
+| `XDG_CONFIG_HOME` | Absolute base directory for `ai-cli/config.json` (default: `~/.config`). |
 | `MCP_CLAUDE_DEBUG` | Enable debug logging — `true` / `false` (default: `false`) |
 
 These can be set in your shell environment or within the `env` block of your `mcp.json` server configuration.

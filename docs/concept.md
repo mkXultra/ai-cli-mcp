@@ -116,9 +116,9 @@ src/
 
 詳細は [Session Stacking](./session-stacking.md) を参照。
 
-## Model Aliases (Ultra)
+## Model Aliases
 
-`claude-ultra` / `codex-ultra` / `gemini-ultra` というエイリアスを提供している。
+`claude-ultra` / `codex-ultra` / `gemini-ultra` を組み込みエイリアスとして提供している。既定値は次のとおり。
 
 ```
 claude-ultra  → opus (+ reasoning_effort: max)
@@ -126,9 +126,18 @@ codex-ultra   → gpt-6-astra (+ reasoning_effort: ultra)
 gemini-ultra  → gemini-3.1-pro-preview
 ```
 
-`fable` は、別料金の usage credits が必要になる場合があるため、明示的に選択する Claude モデルとして扱う。`claude-ultra` はサブスクリプションで使いやすい Opus エイリアスのまま維持する。
+`fable` は、別料金の usage credits が必要になる場合があるため、明示的に選択する Claude モデルとして扱う。組み込みの `claude-ultra` の既定値は Opus とする。
 
-**設計意図**: AI プロバイダーのモデル名は頻繁に変わる。利用者（特にAIエージェント）が個々のモデル名の変遷を追う必要がないよう、「そのプロバイダーの最強モデル」を指す安定したエイリアスを提供する。マッピング先はサーバー側で更新するだけで、利用者のプロンプトを変更する必要がない。
+ユーザー共通の `~/.config/ai-cli/config.json` の `model_aliases` で、独自エイリアスの追加や組み込み定義の上書きができる。各定義は `model` と省略可能な `reasoning_effort` を持ち、例えば `codex-coding` を `gpt-5.6-terra` / `xhigh` に設定できる。呼び出し時の推論強度を優先し、CLI/MCP の実行とモデル一覧で同じ設定を使う。
+
+```bash
+ai-cli alias add codex-coding gpt-5.6-terra --effort xhigh
+ai-cli run --cwd "$PWD" --model codex-coding --prompt "失敗しているテストを修正して"
+```
+
+追加・更新は `ai-cli alias add`、削除は `ai-cli alias rm`、エイリアスだけの一覧確認は `ai-cli alias list` を使う。`ai-cli models` では対応モデルも含めて確認できる。組み込みエイリアスの上書きを削除すると元の定義に戻る。設定はユーザー共通で、変更は起動中の MCP サーバーにも次のリクエストから反映される。設定パスや優先順位の詳細は [README のモデルエイリアス](../README.ja.md#ユーザー共通のモデルエイリアス) を参照。
+
+**設計意図**: AI プロバイダーのモデル名は頻繁に変わる。組み込みエイリアスに加え、ユーザーが用途別の名前とモデル・推論強度の対応を管理できるようにする。例えば `codex-coding` の指定先を変更すれば、呼び出し元のプロンプトやコマンドを変更せずにモデルを切り替えられる。
 
 ## Security Model
 
