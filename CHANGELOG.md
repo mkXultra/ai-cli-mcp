@@ -1,3 +1,11 @@
+# [2.24.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.23.0...v2.24.0) (2026-09-13)
+
+
+### Features
+
+* add alias list command ([52fa11a](https://github.com/mkXultra/ai-cli-mcp/commit/52fa11a0ee605af8667f5cff9b8fb993a97570a9))
+* add user model aliases and alias management commands ([5477ae7](https://github.com/mkXultra/ai-cli-mcp/commit/5477ae73255d61153840907f2541ce59522b7001))
+
 # [2.23.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.22.1...v2.23.0) (2026-09-06)
 
 
