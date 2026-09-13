@@ -185,7 +185,7 @@ macOSでは、これらのツールを初めて実行する際にフォルダへ
 - `cleanup`
 - `doctor`
 - `models`
-- `alias add` / `alias rm`
+- `alias list` / `alias add` / `alias rm`
 - `mcp`
 
 基本的な流れ:
@@ -229,11 +229,13 @@ Codex のモデル指定では、公開デフォルトモデルとして `gpt-5.
 ```bash
 ai-cli alias add codex-coding gpt-5.6-terra --effort xhigh
 ai-cli alias add claude-review opus --effort max
-ai-cli models
+ai-cli alias list
 ai-cli run --cwd "$PWD" --model codex-coding --prompt "失敗しているテストを修正して"
 ```
 
 この例では、`codex-coding` で `gpt-5.6-terra` を推論強度 `xhigh` で実行します。その実行だけ推論強度を変える場合は、`run` に `--reasoning-effort low` を指定します。
+
+`alias list` は、設定パス `configPath` と、ユーザー設定を反映した組み込み・独自エイリアスの配列 `aliases` を JSON で返します。各項目は `name`、`resolvesTo`、`agent`、省略可能な `defaultReasoningEffort` を持ち、`ai-cli models` のエイリアス一覧と一致します。一覧取得では設定ファイルを作成・変更しません。対応モデル一覧も含めて確認する場合は `ai-cli models` を使います。
 
 `alias add <name> <model> [--effort <level>]` は、設定ファイルと親ディレクトリがなければ作成します。`AI_CLI_CONFIG_PATH` で明示したパスも作成対象です。同名の定義は置き換え、`--effort` を省略すると以前の推論強度指定を解除します。`--reasoning-effort` / `--reasoning_effort` も使えます。不正な指定ではファイルを書き換えません。
 

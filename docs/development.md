@@ -28,7 +28,7 @@ src/
 ├── model-selection.ts # Backend routing and reasoning capability validation
 ├── app/
 │   ├── cli.ts         # Public ai-cli command dispatcher
-│   └── aliases.ts     # User alias add/rm handlers
+│   └── aliases.ts     # Alias list/add/rm handlers
 ├── cli.ts             # CLI entrypoint for foreground execution (npm run cli.run)
 ├── parsers.ts         # Output parsers for Claude / Codex / Gemini
 └── __tests__/
@@ -53,7 +53,7 @@ src/
 | `cli-builder.ts` | `buildCliCommand()` — validates inputs (prompt, workFolder, model) and returns `{ cliPath, args, cwd, agent, prompt, resolvedModel }`. No MCP dependency; throws plain `Error`. |
 | `model-catalog.ts` | Merges user aliases with built-in defaults for command assembly and CLI/MCP discovery. |
 | `model-config.ts` | Reads `~/.config/ai-cli/config.json` (or `AI_CLI_CONFIG_PATH`), validates the schema, and writes config edits through an atomic file replacement. |
-| `app/aliases.ts` | Implements `ai-cli alias add/rm`, validating definitions against the model catalog before saving them. |
+| `app/aliases.ts` | Implements `ai-cli alias list/add/rm`, reading effective aliases without writing for `list` and validating definitions against the model catalog before saving edits. |
 | `model-selection.ts` | Resolves native model backends and validates model-specific reasoning effort without reading configuration. |
 | `server.ts` | MCP server. Calls `buildCliCommand()` inside `handleRun`, wraps errors in `McpError`, then spawns the process in the background. |
 | `cli.ts` | Standalone CLI. Parses `process.argv`, calls `buildCliCommand()`, spawns the process in the **foreground**, parses output, and prints JSON to stdout. |
@@ -103,7 +103,7 @@ For detailed testing documentation, see our [E2E Testing Guide](./e2e-testing.md
 
 ### Alias configuration tests
 
-`model-alias.test.ts` covers configuration parsing, model routing, and effort precedence. `alias-command.test.ts` covers add/update/remove behavior, validation without changing existing files, and config path handling. `user-alias-integration.test.ts` exercises the built CLI and a running MCP server with a fake Codex binary, including configuration changes made through `ai-cli alias` while the server is running.
+`model-alias.test.ts` covers configuration parsing, model routing, and effort precedence. `alias-command.test.ts` covers read-only listing, add/update/remove behavior, validation without changing existing files, and config path handling. `user-alias-integration.test.ts` exercises the built CLI and a running MCP server with a fake Codex binary, including configuration changes made through `ai-cli alias` while the server is running.
 
 Test setup points `AI_CLI_CONFIG_PATH` at `src/__tests__/fixtures/empty-config.json` so a developer's personal aliases do not affect the suite. Tests that edit aliases use temporary files. These checks run in `npm run test:release` without calling external model providers.
 

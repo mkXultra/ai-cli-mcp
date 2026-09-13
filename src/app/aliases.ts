@@ -1,6 +1,11 @@
 import { getModelAliases, MODEL_ALIAS_DETAILS } from '../model-catalog.js';
 import { loadUserModelAliases, parseUserModelAliases, saveUserModelAliases, serializeUserModelAliases } from '../model-config.js';
 
+export function listAliases() {
+  const config = loadUserModelAliases();
+  return { configPath: config.path, aliases: getModelAliases(config) };
+}
+
 export function addUserAlias(name: string, model: string, reasoning_effort?: string) {
   const config = loadUserModelAliases({ allowMissing: true });
   const existed = config.aliases.has(name);

@@ -31,6 +31,45 @@ afterEach(() => {
 });
 
 describe('ai-cli alias commands', () => {
+  it('lists built-in aliases without creating a missing default config', async () => {
+    vi.stubEnv('AI_CLI_CONFIG_PATH', undefined);
+    vi.stubEnv('XDG_CONFIG_HOME', join(root, 'xdg'));
+    const result = await cli('list');
+    expect(result.code).toBe(0);
+    expect(result.stderr).not.toHaveBeenCalled();
+    const payload = JSON.parse(result.stdout.mock.calls[0][0]);
+    expect(Object.keys(payload).sort()).toEqual(['aliases', 'configPath']);
+    expect(payload.configPath).toBe(join(root, 'xdg', 'ai-cli', 'config.json'));
+    expect(payload.aliases.map((alias: any) => alias.name)).toEqual(['claude-ultra', 'codex-ultra', 'gemini-ultra']);
+    expect(payload.aliases).toContainEqual({
+      name: 'codex-ultra', resolvesTo: 'gpt-6-astra', agent: 'codex', defaultReasoningEffort: 'ultra',
+    });
+    expect(existsSync(join(root, 'xdg'))).toBe(false);
+  });
+
+  it('lists effective user aliases and built-in overrides without changing config', async () => {
+    await cli('add', 'coding', 'gpt-5.6-terra', '--effort', 'xhigh');
+    await cli('add', 'codex-ultra', 'gpt-5.6-luna');
+    const original = readFileSync(configPath, 'utf8');
+    const result = await cli('list');
+    expect(result.code).toBe(0);
+    const payload = JSON.parse(result.stdout.mock.calls[0][0]);
+    expect(payload.configPath).toBe(configPath);
+    expect(payload.aliases).toHaveLength(4);
+    expect(payload.aliases).toContainEqual({
+      name: 'coding', resolvesTo: 'gpt-5.6-terra', agent: 'codex', defaultReasoningEffort: 'xhigh',
+    });
+    expect(payload.aliases.filter((alias: any) => alias.name === 'codex-ultra')).toEqual([
+      { name: 'codex-ultra', resolvesTo: 'gpt-5.6-luna', agent: 'codex' },
+    ]);
+    expect(readFileSync(configPath, 'utf8')).toBe(original);
+  });
+
+  it('does not create a missing explicitly configured file when listing aliases', async () => {
+    await expect(cli('list')).rejects.toThrow(configPath);
+    expect(existsSync(dirname(configPath))).toBe(false);
+  });
+
   it('creates a missing config and adds an alias with normalized effort', async () => {
     const result = await cli('add', 'codex-coding', 'gpt-5.6-terra', '--effort', ' XHIGH ');
     expect(result.code).toBe(0);
@@ -109,6 +148,7 @@ describe('ai-cli alias commands', () => {
     writeFileSync(configPath, '{broken config');
     await expect(cli('add', 'coding', 'gpt-5.6-terra')).rejects.toThrow('expected valid JSON');
     await expect(cli('rm', 'coding')).rejects.toThrow('expected valid JSON');
+    await expect(cli('list')).rejects.toThrow('expected valid JSON');
     expect(readFileSync(configPath, 'utf8')).toBe('{broken config');
   });
 
@@ -116,6 +156,7 @@ describe('ai-cli alias commands', () => {
     configPath = join(root, 'config.json');
     vi.stubEnv('AI_CLI_CONFIG_PATH', configPath);
     writeFileSync(configPath, JSON.stringify({ model_aliases: { coding: { model: 'opus', reasoning_effort: 'ultra' } } }));
+    await expect(cli('list')).rejects.toThrow('supports only');
     expect((await cli('rm', 'coding')).code).toBe(0);
     expect(config()).toEqual({ model_aliases: {} });
   });
@@ -136,6 +177,7 @@ describe('ai-cli alias commands', () => {
   });
 
   it.each([
+    ['list', 'coding'], ['list', '--effort', 'high'], ['list', '--unknown'],
     ['add'], ['add', 'coding'], ['add', 'coding', 'opus', 'extra'],
     ['add', 'coding', 'opus', '--effort'], ['add', 'coding', 'opus', '--effort='],
     ['add', 'coding', 'opus', '--effrot', 'high'],
@@ -151,7 +193,7 @@ describe('ai-cli alias commands', () => {
     expect(existsSync(dirname(configPath))).toBe(false);
   });
 
-  it.each([[], ['--help'], ['add', '--help'], ['rm', '-h']])('shows alias help without writing: %j', async (...args) => {
+  it.each([[], ['--help'], ['list', '--help'], ['add', '--help'], ['rm', '-h']])('shows alias help without writing: %j', async (...args) => {
     const result = await cli(...args);
     expect(result.code).toBe(0);
     expect(result.stdout).toHaveBeenCalledWith(ALIAS_HELP_TEXT);

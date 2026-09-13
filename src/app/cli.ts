@@ -1,5 +1,5 @@
 import { runMcpServer } from './mcp.js';
-import { addUserAlias, removeUserAlias } from './aliases.js';
+import { addUserAlias, listAliases, removeUserAlias } from './aliases.js';
 import { CliProcessService } from '../cli-process-service.js';
 import { getCliDoctorStatus } from '../cli-utils.js';
 import { getModelsPayload } from '../model-catalog.js';
@@ -17,7 +17,7 @@ Commands:
   cleanup   Remove completed and failed tracked processes
   doctor    Check supported AI CLI binaries
   models    List supported models and aliases
-  alias     Add, update, or remove user model aliases
+  alias     List, add, update, or remove model aliases
   mcp       Start the MCP server
   help      Show this help message
 
@@ -112,14 +112,16 @@ Options:
 `;
 
 export const ALIAS_HELP_TEXT = `Usage:
+  ai-cli alias list
   ai-cli alias add <name> <model> [--effort <level>]
   ai-cli alias rm <name>
 
-Edit user aliases in ~/.config/ai-cli/config.json (or AI_CLI_CONFIG_PATH).
+Manage aliases in ~/.config/ai-cli/config.json (or AI_CLI_CONFIG_PATH).
+list prints JSON with the config path and effective built-in/user aliases without writing files.
 add creates the file if needed and replaces any existing definition of the name.
 Omitting --effort uses the target CLI's default reasoning effort.
 rm removes a user definition; removing a built-in override restores its default.
-Use ai-cli models to list the effective aliases.
+Use ai-cli models to list aliases together with supported models.
 
 Options:
   --effort <level>      Default reasoning effort for this alias (Claude/Codex only)
@@ -283,12 +285,19 @@ export async function runCli(argv: string[], deps: Partial<CliDeps> = {}): Promi
       stdout(ALIAS_HELP_TEXT);
       return 1;
     };
-    if (action !== 'add' && action !== 'rm') {
-      return fail('Expected alias subcommand: add or rm');
+    if (action !== 'list' && action !== 'add' && action !== 'rm') {
+      return fail('Expected alias subcommand: list, add or rm');
     }
     const effortFlags = ['effort', 'reasoning-effort', 'reasoning_effort'];
     const unknownFlag = Object.keys(flags).find((flag) => !effortFlags.includes(flag));
     if (unknownFlag !== undefined) return fail(`Unknown alias option: --${unknownFlag}`);
+    if (action === 'list') {
+      if (positionals.length !== 1 || Object.keys(flags).length) {
+        return fail('Usage: ai-cli alias list (no name, model or effort options)');
+      }
+      writeJson(stdout, listAliases());
+      return 0;
+    }
     if (action === 'rm') {
       if (positionals.length !== 2 || Object.keys(flags).length) {
         return fail('Usage: ai-cli alias rm <name> (no model or effort options)');

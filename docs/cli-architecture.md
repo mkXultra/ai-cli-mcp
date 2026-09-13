@@ -31,6 +31,7 @@ Supported commands:
 - `ai-cli kill`
 - `ai-cli cleanup`
 - `ai-cli models`
+- `ai-cli alias list`
 - `ai-cli alias add <name> <model> [--effort <level>]`
 - `ai-cli alias rm <name>`
 - `ai-cli doctor`
@@ -135,17 +136,19 @@ Properties:
 - Built-in aliases are merged with user definitions on each request
 - Each alias exposes `name`, `resolvesTo`, `agent`, and optional `defaultReasoningEffort`
 
-### `ai-cli alias add` / `ai-cli alias rm`
+### `ai-cli alias list` / `ai-cli alias add` / `ai-cli alias rm`
 
 Manage aliases shared by CLI and MCP across projects:
 
 ```bash
 ai-cli alias add codex-coding gpt-5.6-terra --effort xhigh
+ai-cli alias list
 ai-cli alias rm codex-coding
 ```
 
 Properties:
 
+- `list` returns `{ configPath, aliases }` with the effective built-in/user aliases, matching the `aliases` array in `ai-cli models`; it does not create or modify configuration
 - `add` creates or replaces a complete user definition; omitting effort uses the target CLI's default
 - `rm` removes a user definition; deleting a built-in alias override restores the built-in default
 - Configuration lives in `~/.config/ai-cli/config.json`, with `XDG_CONFIG_HOME` and `AI_CLI_CONFIG_PATH` overrides; there is no project-level lookup

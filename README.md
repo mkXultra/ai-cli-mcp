@@ -182,7 +182,7 @@ macOS might ask for folder permissions the first time any of these tools run. If
 - `cleanup`
 - `doctor`
 - `models`
-- `alias add` / `alias rm`
+- `alias list` / `alias add` / `alias rm`
 - `mcp`
 
 Example flow:
@@ -226,11 +226,13 @@ Save a model and its default reasoning effort under a name you can use across pr
 ```bash
 ai-cli alias add codex-coding gpt-5.6-terra --effort xhigh
 ai-cli alias add claude-review opus --effort max
-ai-cli models
+ai-cli alias list
 ai-cli run --cwd "$PWD" --model codex-coding --prompt "fix failing tests"
 ```
 
 Here, `codex-coding` runs `gpt-5.6-terra` with `xhigh` reasoning. Override the effort for a single run with `--reasoning-effort low`.
+
+`alias list` prints JSON with `configPath` and an `aliases` array containing the effective built-in and user aliases. Each entry has `name`, `resolvesTo`, `agent`, and optional `defaultReasoningEffort`, matching the aliases in `ai-cli models`. Listing does not create or modify the config file. Use `ai-cli models` to include the supported model catalog as well.
 
 `alias add <name> <model> [--effort <level>]` creates the config file and its parent directories if needed, including an explicitly selected `AI_CLI_CONFIG_PATH`. Reusing a name replaces its definition; omitting `--effort` clears any previous alias effort. `--reasoning-effort` and `--reasoning_effort` are also accepted. Invalid definitions leave the file unchanged.
 
