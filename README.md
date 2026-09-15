@@ -123,6 +123,7 @@ ai-cli result 12345
 ai-cli result 12345 --verbose
 ai-cli peek 12345 --time 10
 ai-cli wait 12345 --timeout 300
+ai-cli wait 12345 --timeout 0
 ai-cli wait 12345 --verbose
 ai-cli kill 12345
 ai-cli cleanup
@@ -351,11 +352,13 @@ Executes a prompt using Claude CLI, Codex CLI, Gemini CLI, Forge CLI, or OpenCod
 
 Waits for multiple AI agent processes to complete and returns their combined results. Blocks until all specified PIDs finish or a timeout occurs.
 
+Set `timeout` to `0` to wait until all specified processes finish without an ai-cli deadline. For example, call MCP `wait` with `{ "pids": [12345], "timeout": 0 }`, or use `ai-cli wait 12345 --timeout 0`. MCP client or transport timeouts still apply independently. A finite wait timeout returns an error and leaves the processes running.
+
 By default, each returned result item uses the compact shape shared with `get_result(verbose: false)`: operational fields such as `pid`, `agent`, `status`, `exitCode`, `model`, parsed output such as `agentOutput`, and top-level `session_id` when available. Set `verbose: true` to include full metadata like `startTime`, `workFolder`, `prompt`, and detailed parsed output such as `agentOutput.tools`.
 
 **Arguments:**
 - `pids` (array of numbers, required): List of process IDs to wait for (returned by the `run` tool).
-- `timeout` (number, optional): Maximum wait time in seconds. Defaults to 180 (3 minutes).
+- `timeout` (number, optional): Non-negative maximum wait time in seconds. Defaults to 180 (3 minutes); `0` disables the wait timeout.
 - `verbose` (boolean, optional): If `true`, each result item uses the full result shape. Defaults to `false`.
 
 ### `peek`

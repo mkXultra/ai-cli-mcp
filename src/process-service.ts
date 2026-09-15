@@ -213,17 +213,21 @@ export class ProcessService {
       });
     });
 
-    const timeoutMs = timeoutSeconds * 1000;
+    const allFinished = Promise.all(waitPromises);
     let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
-    const timeoutPromise = new Promise<void>((_, reject) => {
-      timeoutHandle = setTimeout(() => {
-        reject(new Error(`Timed out after ${timeoutSeconds} seconds waiting for processes`));
-      }, timeoutMs);
-      timeoutHandle.unref?.();
-    });
 
     try {
-      await Promise.race([Promise.all(waitPromises), timeoutPromise]);
+      if (timeoutSeconds === 0) {
+        await allFinished;
+      } else {
+        const timeoutPromise = new Promise<void>((_, reject) => {
+          timeoutHandle = setTimeout(() => {
+            reject(new Error(`Timed out after ${timeoutSeconds} seconds waiting for processes`));
+          }, timeoutSeconds * 1000);
+          timeoutHandle.unref?.();
+        });
+        await Promise.race([allFinished, timeoutPromise]);
+      }
       return pids.map((pid) => this.getProcessResult(pid, verbose));
     } finally {
       if (timeoutHandle) {

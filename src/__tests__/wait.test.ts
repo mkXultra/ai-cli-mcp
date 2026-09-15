@@ -152,7 +152,7 @@ describe('Wait Tool Tests', () => {
     // expect(response[0].stdout).toBe('Process output'); // Flaky test
   });
 
-  it('should return immediately if process is already completed', async () => {
+  it.each([undefined, 0])('returns immediately for a completed process with timeout %s', async (timeout) => {
     const callToolHandler = handlers.get('callTool')!;
     const mockProcess = createMockProcess(12346);
     mockSpawn.mockReturnValue(mockProcess);
@@ -176,7 +176,7 @@ describe('Wait Tool Tests', () => {
       params: {
         name: 'wait',
         arguments: {
-          pids: [12346]
+          pids: [12346], timeout
         }
       }
     });
@@ -223,6 +223,45 @@ describe('Wait Tool Tests', () => {
     expect(response.find((r: any) => r.pid === 102).status).toBe('completed');
   });
 
+  it('waits without a deadline for all processes when timeout is zero', async () => {
+    const callToolHandler = handlers.get('callTool')!;
+    const p1 = createMockProcess(201);
+    const p2 = createMockProcess(202);
+    for (const child of [p1, p2]) {
+      mockSpawn.mockReturnValueOnce(child);
+      await callToolHandler({
+        params: { name: 'run', arguments: { prompt: 'test', workFolder: '/tmp' } }
+      });
+    }
+
+    vi.useFakeTimers();
+    let settled = false;
+    const outcome = callToolHandler({
+      params: { name: 'wait', arguments: { pids: [201, 202], timeout: 0, verbose: true } }
+    }).then(
+      (result: any) => { settled = true; return { result }; },
+      (error: any) => { settled = true; return { error }; },
+    );
+
+    await vi.advanceTimersByTimeAsync(181_000);
+    expect(settled).toBe(false);
+    p1.emit('close', 0);
+    await vi.advanceTimersByTimeAsync(181_000);
+    expect(settled).toBe(false);
+    p2.emit('close', 1);
+
+    const completed = await outcome;
+    expect(completed.error).toBeUndefined();
+    const results = JSON.parse(completed.result.content[0].text);
+    expect(results).toMatchObject([
+      { pid: 201, status: 'completed', exitCode: 0, workFolder: '/tmp' },
+      { pid: 202, status: 'failed', exitCode: 1, workFolder: '/tmp' },
+    ]);
+    expect(p1.kill).not.toHaveBeenCalled();
+    expect(p2.kill).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('should clear timeout timers after wait resolves', async () => {
     vi.useFakeTimers();
 
@@ -260,14 +299,14 @@ describe('Wait Tool Tests', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('should throw error for non-existent PID', async () => {
+  it.each([undefined, 0])('rejects a non-existent PID with timeout %s', async (timeout) => {
     const callToolHandler = handlers.get('callTool')!;
     
     try {
       await callToolHandler({
         params: {
           name: 'wait',
-          arguments: { pids: [99999] }
+          arguments: { pids: [99999], timeout }
         }
       });
       expect.fail('Should have thrown');
@@ -276,7 +315,13 @@ describe('Wait Tool Tests', () => {
     }
   });
 
-  it('should handle timeout', async () => {
+  it.each([-1, NaN, Infinity, '0', null])('rejects invalid MCP timeout %s', async (timeout) => {
+    await expect(handlers.get('callTool')!({
+      params: { name: 'wait', arguments: { pids: [12347], timeout } }
+    })).rejects.toMatchObject({ code: 'InvalidParams', message: expect.stringContaining('Invalid timeout') });
+  });
+
+  it.each([undefined, 0.1])('preserves finite waiting with timeout %s', async (timeout) => {
     const callToolHandler = handlers.get('callTool')!;
     const mockProcess = createMockProcess(12347);
     mockSpawn.mockReturnValue(mockProcess);
@@ -285,24 +330,20 @@ describe('Wait Tool Tests', () => {
       params: { name: 'run', arguments: { prompt: 'test', workFolder: '/tmp' } }
     });
 
-    // Call wait with short timeout
+    vi.useFakeTimers();
     const waitPromise = callToolHandler({
       params: {
         name: 'wait',
         arguments: { 
           pids: [12347],
-          timeout: 0.1 // 100ms
+          timeout
         }
       }
     });
 
-    // Don't emit close event
-
-    try {
-      await waitPromise;
-      expect.fail('Should have thrown');
-    } catch (error: any) {
-      expect(error.message).toContain('Timed out');
-    }
+    const assertion = expect(waitPromise).rejects.toThrow('Timed out');
+    await vi.advanceTimersByTimeAsync((timeout ?? 180) * 1000);
+    await assertion;
+    expect(mockProcess.kill).not.toHaveBeenCalled();
   });
 });

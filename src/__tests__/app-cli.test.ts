@@ -129,13 +129,13 @@ describe('ai-cli app', () => {
     expect(stdout).toHaveBeenCalledWith(CLI_HELP_TEXT);
   });
 
-  it('dispatches wait with pid arguments and timeout', async () => {
+  it.each(['5', '0'])('dispatches wait with pid arguments and timeout %s', async (timeout) => {
     const stdout = vi.fn();
     const stderr = vi.fn();
     const waitForProcesses = vi.fn().mockResolvedValue([{ pid: 123, status: 'completed' }]);
 
     const exitCode = await runCli(
-      ['wait', '123', '456', '--timeout', '5'],
+      ['wait', '123', '456', '--timeout', timeout],
       {
         stdout,
         stderr,
@@ -144,7 +144,7 @@ describe('ai-cli app', () => {
     );
 
     expect(exitCode).toBe(0);
-    expect(waitForProcesses).toHaveBeenCalledWith([123, 456], 5, false);
+    expect(waitForProcesses).toHaveBeenCalledWith([123, 456], Number(timeout), false);
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"status": "completed"'));
   });
 
@@ -166,12 +166,12 @@ describe('ai-cli app', () => {
     expect(waitForProcesses).toHaveBeenCalledWith([123], undefined, true);
   });
 
-  it('rejects invalid wait timeout values', async () => {
+  it.each(['abc', '-1', 'NaN', 'Infinity', '', ' '])('rejects invalid wait timeout %s', async (timeout) => {
     const stdout = vi.fn();
     const stderr = vi.fn();
     const waitForProcesses = vi.fn();
 
-    const exitCode = await runCli(['wait', '123', '--timeout', 'abc'], {
+    const exitCode = await runCli(['wait', '123', '--timeout', timeout], {
       stdout,
       stderr,
       waitForProcesses,
