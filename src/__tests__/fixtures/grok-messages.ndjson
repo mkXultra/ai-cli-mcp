@@ -1,0 +1,5 @@
+{"type":"system","subtype":"init","session_id":"grok-session-test","model":"grok-4.6"}
+{"type":"assistant","session_id":"grok-session-test","message":{"role":"assistant","content":[{"type":"thinking","thinking":"PRIVATE_THINKING"},{"type":"text","text":"Starting bounded check."},{"type":"tool_use","id":"tool-test","name":"run_terminal_command","input":{"command":"sleep 1"}}]}}
+{"type":"user","session_id":"grok-session-test","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tool-test","content":"PRIVATE_TOOL_OUTPUT","is_error":false}]}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Check complete."}]}}
+{"type":"result","subtype":"success","is_error":false,"session_id":"grok-session-test","result":"Check complete.","stop_reason":"end_turn","usage":{"input_tokens":20,"output_tokens":5,"cache_read_input_tokens":10},"modelUsage":{"grok-4.6":{"inputTokens":20,"outputTokens":5}},"total_cost_usd":0.001,"num_turns":2}

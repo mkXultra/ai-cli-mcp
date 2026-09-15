@@ -19,7 +19,7 @@ export interface CliBinaryStatus {
   error?: string;
 }
 
-export type CliBinaryName = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode';
+export type CliBinaryName = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode' | 'grok';
 
 export interface CliPaths {
   claude: string;
@@ -27,6 +27,7 @@ export interface CliPaths {
   gemini: string;
   forge: string;
   opencode: string;
+  grok: string;
 }
 
 export interface CliDoctorStatus {
@@ -41,6 +42,7 @@ export interface CliDoctorStatus {
   gemini: CliBinaryStatus;
   forge: CliBinaryStatus;
   opencode: CliBinaryStatus;
+  grok: CliBinaryStatus;
 }
 
 function getCommandCandidates(commandName: string): string[] {
@@ -213,6 +215,15 @@ function getCliBinaryConfig(name: CliBinaryName): {
     };
   }
 
+  if (name === 'grok') {
+    return {
+      envVarName: 'GROK_CLI_NAME',
+      customCliName: process.env.GROK_CLI_NAME,
+      defaultCliName: 'grok',
+      localInstallPath: join(homedir(), '.grok', 'bin', 'grok'),
+    };
+  }
+
   if (name === 'opencode') {
     return {
       envVarName: 'OPENCODE_CLI_NAME',
@@ -246,6 +257,7 @@ export function getCliDoctorStatus(): CliDoctorStatus {
     gemini: getCliBinaryStatus('gemini'),
     forge: getCliBinaryStatus('forge'),
     opencode: getCliBinaryStatus('opencode'),
+    grok: getCliBinaryStatus('grok'),
   };
 }
 
@@ -271,6 +283,10 @@ export function findOpencodeCli(): string {
   debugLog('[Debug] Attempting to find OpenCode CLI...');
   const status = getCliBinaryStatus('opencode');
   return getCliCommandOrThrow(status);
+}
+
+export function findGrokCli(): string {
+  return getCliCommandOrThrow(getCliBinaryStatus('grok'));
 }
 
 export function findClaudeCli(): string {

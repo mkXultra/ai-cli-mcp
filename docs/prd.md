@@ -40,10 +40,10 @@ AI支援開発において、以下の制約がユーザーの生産性を阻害
 
 - ユーザーがプロンプト（文字列 or ファイルパス）、作業ディレクトリ、モデル名を指定してAIエージェントを起動できる
 - プロセスはバックグラウンドで実行され、即座にPIDが返却される
-- モデル名から適切なCLI（Claude / Codex / Gemini / Forge / OpenCode）が自動選択される
+- モデル名から適切なCLI（Claude / Codex / Gemini / Forge / OpenCode / Grok）が自動選択される
 - Ultra エイリアス（`claude-ultra`, `codex-ultra`, `gemini-ultra`）とユーザー定義エイリアスによるモデル指定をサポート
-- `session_id` による前回セッションの継続をサポート（Claude / Codex / Gemini / Forge / OpenCode）
-- `reasoning_effort` による推論深度の指定をサポート（Claude / Codex）
+- `session_id` による前回セッションの継続をサポート（Claude / Codex / Gemini / Forge / OpenCode / Grok）
+- `reasoning_effort` による推論深度の指定をサポート（Claude / Codex / Grok）
 
 ### FR-2: プロセス一覧 (`list_processes`)
 

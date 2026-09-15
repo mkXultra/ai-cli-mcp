@@ -289,7 +289,8 @@ function extractPeekEventsFromParsedEvent(agent: PeekAgent, parsed: any, observe
     return [];
   }
 
-  if (agent === 'claude') {
+  // Grok streaming-messages-json uses the same whole Messages events.
+  if (agent === 'claude' || agent === 'grok') {
     if (parsed.type === 'assistant' && Array.isArray(parsed.message?.content)) {
       const events: PeekEvent[] = [];
       for (const content of parsed.message.content) {
@@ -368,7 +369,7 @@ export class PeekEventExtractor {
   }
 
   push(chunk: string, observedAt = new Date().toISOString()): PeekEvent[] {
-    if (this.agent === 'forge' && this.source === 'stderr') {
+    if ((this.agent === 'forge' || this.agent === 'grok') && this.source === 'stderr') {
       return [];
     }
 
@@ -382,7 +383,7 @@ export class PeekEventExtractor {
   }
 
   flush(observedAt = new Date().toISOString(), options: PeekFlushOptions = {}): PeekEvent[] {
-    if (this.agent === 'forge' && this.source === 'stderr') {
+    if ((this.agent === 'forge' || this.agent === 'grok') && this.source === 'stderr') {
       this.pending = '';
       return [];
     }
@@ -652,6 +653,62 @@ export function parseCodexOutput(stdout: string): any {
   }
 
   return null;
+}
+
+// Parse whole Messages events without the single-JSON passthrough used by Claude.
+// Even one init/assistant/result line is a stream event, not an already shaped result.
+export function parseGrokOutput(stdout: string): any {
+  let sessionId: string | undefined;
+  let model: string | undefined;
+  let terminal: any;
+  const messages: string[] = [];
+  const tools = new Map<string, any>();
+  for (const line of stdout.split(/\r?\n/)) {
+    let event: any;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue; // Diagnostics, malformed lines and incomplete writes are expected.
+    }
+    if (!event || typeof event !== 'object') continue;
+    if (typeof event.session_id === 'string') sessionId = event.session_id;
+    if (typeof event.model === 'string') model = event.model;
+    if (event.type === 'result') terminal = event;
+    if (event.type === 'assistant') {
+      if (typeof event.message?.model === 'string') model = event.message.model;
+      if (!Array.isArray(event.message?.content)) continue;
+      const text: string[] = [];
+      for (const block of event.message.content) {
+        if (block?.type === 'text' && typeof block.text === 'string') text.push(block.text);
+        if (block?.type === 'tool_use' && typeof block.id === 'string') {
+          tools.set(block.id, { tool: block.name, input: block.input, output: null });
+        }
+      }
+      if (text.length) messages.push(text.join(''));
+    }
+    if (event.type === 'user' && Array.isArray(event.message?.content)) {
+      for (const block of event.message.content) {
+        if (block?.type !== 'tool_result') continue;
+        const tool = tools.get(block.tool_use_id);
+        if (tool) {
+          tool.output = block.content;
+          if (typeof block.is_error === 'boolean') tool.is_error = block.is_error;
+        }
+      }
+    }
+  }
+  const result: any = {};
+  const message = typeof terminal?.result === 'string' && terminal.result.trim()
+    ? terminal.result : messages.join('\n\n');
+  if (message) result.message = message;
+  if (sessionId) result.session_id = sessionId;
+  if (model) result.model = model;
+  if (tools.size) result.tools = [...tools.values()];
+  // Keep failure details even when a final result has no text after partial output.
+  for (const key of ['is_error', 'subtype', 'errors', 'stop_reason', 'usage', 'modelUsage', 'total_cost_usd', 'num_turns', 'duration_ms', 'duration_api_ms']) {
+    if (terminal?.[key] !== undefined) result[key] = terminal[key];
+  }
+  return Object.keys(result).length ? result : null;
 }
 
 export function parseClaudeOutput(stdout: string): any {

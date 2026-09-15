@@ -27,6 +27,7 @@ const DEFAULT_CLI_PATHS = {
   gemini: '/usr/bin/gemini',
   forge: '/usr/bin/forge',
   opencode: '/usr/bin/opencode',
+  grok: '/usr/bin/grok',
 };
 
 describe('cli-builder', () => {
@@ -117,7 +118,7 @@ describe('cli-builder', () => {
 
     it('should throw for unsupported model families', () => {
       expect(() => getReasoningEffort('gemini-2.5-pro', 'high')).toThrow(
-        'reasoning_effort is only supported for Claude and Codex models.'
+        'reasoning_effort is only supported for Claude, Codex, and Grok models.'
       );
     });
 

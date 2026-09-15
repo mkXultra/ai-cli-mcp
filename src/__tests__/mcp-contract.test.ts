@@ -114,6 +114,9 @@ describe('MCP Contract Tests', () => {
       'workFolder',
     ]);
     expect(runTool.description).toContain('OpenCode');
+    expect(runTool.description).toContain('Grok');
+    expect(runTool.inputSchema.properties.model.description).toContain('grok-4.6');
+    expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('grok-4.5');
     expect(runTool.inputSchema.properties.model.description).toContain('opencode');
     expect(runTool.inputSchema.properties.model.description).toContain('oc-<provider/model>');
     expect(runTool.inputSchema.properties.model.description).toContain('auto ultra reasoning');
@@ -121,7 +124,7 @@ describe('MCP Contract Tests', () => {
     expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('"ultra"');
     expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('OpenCode do not support reasoning_effort');
     expect(runTool.inputSchema.properties.session_id.description).toBe(
-      'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, and OpenCode. OpenCode resumes in-place via --session and may also be combined with explicit oc-<provider/model> selection.'
+      'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, OpenCode, and Grok. Grok resumes via --resume, preserving the session ID. OpenCode resumes in-place via --session and may also be combined with explicit oc-<provider/model> selection.'
     );
 
     const getResultTool = tools.find((tool: any) => tool.name === 'get_result');

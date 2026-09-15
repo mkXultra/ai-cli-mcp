@@ -59,8 +59,8 @@ describe('cli helper entrypoint smoke', () => {
       }
     );
 
-    expect(output).toContain('Usage: npm run -s cli.run.parse -- --agent <claude|codex|gemini|forge|opencode>');
-    expect(output).toContain('Agent type: claude, codex, gemini, forge, or opencode');
+    expect(output).toContain('Usage: npm run -s cli.run.parse -- --agent <claude|codex|gemini|forge|opencode|grok>');
+    expect(output).toContain('Agent type: claude, codex, gemini, forge, opencode, or grok');
     expect(output).toContain('npm run -s cli.run.parse -- --agent opencode < raw.txt');
   });
 

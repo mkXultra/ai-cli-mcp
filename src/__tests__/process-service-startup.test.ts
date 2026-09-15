@@ -12,6 +12,7 @@ describe('ProcessService startup failures', () => {
         gemini: missingCommand,
         forge: missingCommand,
         opencode: missingCommand,
+        grok: missingCommand,
       },
     });
 
@@ -33,6 +34,7 @@ describe('ProcessService startup failures', () => {
         gemini: missingCommand,
         forge: missingCommand,
         opencode: missingCommand,
+        grok: missingCommand,
       },
     });
 

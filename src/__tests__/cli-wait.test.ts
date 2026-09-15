@@ -24,7 +24,7 @@ beforeEach(() => {
   }));
   service = new CliProcessService({
     stateDir: root,
-    cliPaths: { claude: process.execPath, codex: process.execPath, gemini: process.execPath, forge: process.execPath, opencode: process.execPath },
+    cliPaths: { claude: process.execPath, codex: process.execPath, gemini: process.execPath, forge: process.execPath, opencode: process.execPath, grok: process.execPath },
   });
   vi.useFakeTimers();
 });

@@ -97,6 +97,18 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
     }
 
     args.push('--skip-git-repo-check', '--dangerously-bypass-approvals-and-sandbox', '--json', prompt);
+  } else if (agent === 'grok') {
+    cliPath = options.cliPaths.grok;
+    args = [`--single=${prompt}`, '--cwd', cwd, '--output-format', 'streaming-messages-json', '--always-approve', '--no-auto-update'];
+    if (resolvedModel !== 'grok') {
+      args.push('--model', resolvedModel);
+    }
+    if (reasoningEffort) {
+      args.push('--reasoning-effort', reasoningEffort);
+    }
+    if (options.session_id) {
+      args.push(`--resume=${options.session_id}`);
+    }
   } else if (agent === 'gemini') {
     cliPath = options.cliPaths.gemini;
     args = ['-y', '--output-format', 'stream-json'];

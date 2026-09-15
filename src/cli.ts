@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
 import { buildCliCommand } from './cli-builder.js';
-import { findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli } from './cli-utils.js';
+import { findGrokCli, findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli } from './cli-utils.js';
 
 /**
  * Minimal argv parser. No external dependencies.
@@ -35,13 +35,15 @@ function parseArgs(argv: string[]): Record<string, string> {
 const USAGE = `Usage: npm run -s cli.run -- --model <model> --workFolder <path> --prompt "..." [options]
 
 Options:
-  --model              Model name or alias (e.g. sonnet, opus, fable, gpt-6-astra, gemini-2.5-pro, forge, opencode, oc-openai/gpt-5.4)
+  --model              Model name or alias (e.g. sonnet, opus, fable, gpt-6-astra, gemini-2.5-pro, forge, grok, grok-4.6, grok-4.5, opencode, oc-openai/gpt-5.4)
   --workFolder         Working directory (absolute path)
   --prompt             Prompt string (mutually exclusive with --prompt_file)
   --prompt_file        Path to a file containing the prompt
-  --session_id         Session ID to resume, including OpenCode in-place resumes
-  --reasoning_effort   Claude/Codex only: Claude=low|medium|high|xhigh|max, Codex=low|medium|high|xhigh (GPT-6 Astra/GPT-5.6: max; Astra/Sol/Terra: ultra); unsupported for Gemini, Forge, and OpenCode
+  --session_id         Session ID to resume, including Grok (--resume, same session) and OpenCode in-place resumes
+  --reasoning_effort   Claude/Codex/Grok: Claude=low|medium|high|xhigh|max, Codex=low|medium|high|xhigh (GPT-6 Astra/GPT-5.6: max; Astra/Sol/Terra: ultra); unsupported for Gemini, Forge, and OpenCode
   --help               Show this help message
+
+Grok uses its configured model with --model grok. Grok effort: grok-4.6=low|medium|high|xhigh; grok-4.5 and grok=low|medium|high. Omitted effort uses the CLI default.
 
 Raw CLI output goes to stdout. Use cli.run.parse to parse the output:
   npm run -s cli.run -- ... > raw.txt
@@ -76,6 +78,7 @@ async function main(): Promise<void> {
     gemini: findGeminiCli(),
     forge: findForgeCli(),
     opencode: findOpencodeCli(),
+    grok: findGrokCli(),
   };
 
   // Build command

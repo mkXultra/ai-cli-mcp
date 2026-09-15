@@ -1,3 +1,5 @@
+import { StringDecoder } from 'node:string_decoder';
+import { terminateProcessTree } from './process-termination.js';
 import { spawn, spawnSync } from 'node:child_process';
 import {
   appendFileSync,
@@ -18,8 +20,8 @@ import { fileURLToPath } from 'node:url';
 import { join, basename, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
-import { findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli } from './cli-utils.js';
-import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekEventExtractor } from './parsers.js';
+import { findGrokCli, findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli } from './cli-utils.js';
+import { parseGrokOutput, parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekEventExtractor } from './parsers.js';
 import { buildProcessResult } from './process-result.js';
 import {
   appendPeekEvents,
@@ -99,6 +101,9 @@ function parseAgentOutput(agent: AgentType, stdout: string, stderr: string): any
     return null;
   }
 
+  if (agent === 'grok') {
+    return parseGrokOutput(stdout);
+  }
   if (agent === 'claude') {
     return parseClaudeOutput(stdout);
   }
@@ -126,6 +131,7 @@ export class CliProcessService {
       gemini: findGeminiCli(),
       forge: findForgeCli(),
       opencode: findOpencodeCli(),
+      grok: findGrokCli(),
     };
     mkdirSync(this.stateDir, { recursive: true });
   }
@@ -202,6 +208,8 @@ export class CliProcessService {
       result: PeekProcessResult;
       stdoutExtractor: PeekEventExtractor;
       stderrExtractor: PeekEventExtractor;
+      stdoutDecoder: StringDecoder;
+      stderrDecoder: StringDecoder;
       stdoutOffset: number;
       stderrOffset: number;
     }> = [];
@@ -229,6 +237,8 @@ export class CliProcessService {
         result,
         stdoutExtractor: new PeekEventExtractor(process.toolType, { includeToolCalls, source: 'stdout' }),
         stderrExtractor: new PeekEventExtractor(process.toolType, { includeToolCalls, source: 'stderr' }),
+        stdoutDecoder: new StringDecoder('utf8'),
+        stderrDecoder: new StringDecoder('utf8'),
         stdoutOffset: this.fileSizeSafe(process.stdoutPath),
         stderrOffset: this.fileSizeSafe(process.stderrPath),
       });
@@ -243,11 +253,11 @@ export class CliProcessService {
       let allTerminal = true;
 
       for (const observer of observers) {
-        const stdoutRead = this.readTextFromOffset(observer.process.stdoutPath, observer.stdoutOffset);
+        const stdoutRead = this.readTextFromOffset(observer.process.stdoutPath, observer.stdoutOffset, observer.stdoutDecoder);
         observer.stdoutOffset = stdoutRead.offset;
         appendPeekEvents(observer.result, observer.stdoutExtractor.push(stdoutRead.text, observedAt));
 
-        const stderrRead = this.readTextFromOffset(observer.process.stderrPath, observer.stderrOffset);
+        const stderrRead = this.readTextFromOffset(observer.process.stderrPath, observer.stderrOffset, observer.stderrDecoder);
         observer.stderrOffset = stderrRead.offset;
         appendPeekEvents(observer.result, observer.stderrExtractor.push(stderrRead.text, observedAt));
 
@@ -274,6 +284,13 @@ export class CliProcessService {
       observer.process = this.refreshStatus(this.readProcess(observer.process.pid));
       observer.result.status = observer.process.status;
       const terminal = observer.process.status !== 'running';
+      if (terminal) {
+        // Exit metadata may become visible just after the preceding log read.
+        const stdout = this.readTextFromOffset(observer.process.stdoutPath, observer.stdoutOffset, observer.stdoutDecoder);
+        const stderr = this.readTextFromOffset(observer.process.stderrPath, observer.stderrOffset, observer.stderrDecoder);
+        appendPeekEvents(observer.result, observer.stdoutExtractor.push(stdout.text + observer.stdoutDecoder.end(), flushTs));
+        appendPeekEvents(observer.result, observer.stderrExtractor.push(stderr.text + observer.stderrDecoder.end(), flushTs));
+      }
       appendPeekEvents(observer.result, observer.stdoutExtractor.flush(flushTs, { terminal }));
       appendPeekEvents(observer.result, observer.stderrExtractor.flush(flushTs, { terminal }));
     }
@@ -297,7 +314,17 @@ export class CliProcessService {
       };
     }
 
-    this.killPidOrGroup(refreshed, 'SIGTERM');
+    let warning: string | undefined;
+    if (refreshed.toolType === 'grok') {
+      const termination = await terminateProcessTree(pid, { ownedProcessGroup: true });
+      warning = termination.warning;
+      if (warning) this.appendTextFileSafe(refreshed.stderrPath, `\n${warning}`);
+      if (!termination.terminated) {
+        return { pid, status: 'running', message: `Signal sent but process is still running${warning ? `. ${warning}` : ''}` };
+      }
+    } else {
+      this.killPidOrGroup(refreshed, 'SIGTERM');
+    }
     await this.waitForProcessExit(pid, 250);
 
     if (isProcessRunning(pid)) {
@@ -322,7 +349,7 @@ export class CliProcessService {
     return {
       pid,
       status: 'terminated',
-      message: 'Process terminated successfully',
+      message: `Process terminated successfully${warning ? `. ${warning}` : ''}`,
     };
   }
 
@@ -517,7 +544,7 @@ export class CliProcessService {
     return statSync(filePath).size;
   }
 
-  private readTextFromOffset(filePath: string, offset: number): { text: string; offset: number } {
+  private readTextFromOffset(filePath: string, offset: number, decoder: StringDecoder): { text: string; offset: number } {
     if (!existsSync(filePath)) {
       return { text: '', offset };
     }
@@ -533,7 +560,7 @@ export class CliProcessService {
       const buffer = Buffer.alloc(length);
       const bytesRead = readSync(fd, buffer, 0, length, offset);
       return {
-        text: buffer.subarray(0, bytesRead).toString('utf-8'),
+        text: decoder.write(buffer.subarray(0, bytesRead)),
         offset: size,
       };
     } finally {

@@ -95,6 +95,7 @@ describe('CliProcessService', () => {
         gemini: scriptPath,
         forge: scriptPath,
         opencode: scriptPath,
+        grok: scriptPath,
       },
     });
 
@@ -226,6 +227,7 @@ fake forge ok
       gemini: '/bin/sh',
       forge: '/bin/sh',
       opencode: '/bin/sh',
+      grok: '/bin/sh',
     };
     cliPaths[agent] = scriptPath;
 
@@ -282,6 +284,7 @@ fake forge ok
         gemini: scriptPath,
         forge: scriptPath,
         opencode: scriptPath,
+        grok: scriptPath,
       },
     });
 
@@ -333,6 +336,7 @@ printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_
         gemini: scriptPath,
         forge: scriptPath,
         opencode: scriptPath,
+        grok: scriptPath,
       },
     });
 
@@ -402,6 +406,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
         gemini: scriptPath,
         forge: scriptPath,
         opencode: scriptPath,
+        grok: scriptPath,
       },
     });
 
@@ -513,6 +518,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
         gemini: scriptPath,
         forge: scriptPath,
         opencode: scriptPath,
+        grok: scriptPath,
       },
     });
 
@@ -560,6 +566,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
         gemini: '/bin/sh',
         forge: '/bin/sh',
         opencode: '/bin/sh',
+        grok: '/bin/sh',
       },
     });
 
@@ -635,6 +642,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
         gemini: '/bin/sh',
         forge: '/bin/sh',
         opencode: '/bin/sh',
+        grok: '/bin/sh',
       },
     });
 
@@ -695,6 +703,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
         gemini: '/bin/sh',
         forge: '/bin/sh',
         opencode: '/bin/sh',
+        grok: '/bin/sh',
       },
     });
 
@@ -772,6 +781,7 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
         gemini: '/bin/sh',
         forge: '/bin/sh',
         opencode: '/bin/sh',
+        grok: '/bin/sh',
       },
     });
 
@@ -835,6 +845,7 @@ Forge assistant reply
         gemini: '/bin/sh',
         forge: '/bin/sh',
         opencode: '/bin/sh',
+        grok: '/bin/sh',
       },
     });
 
@@ -864,6 +875,7 @@ Forge assistant reply
         gemini: '/bin/sh',
         forge: '/bin/sh',
         opencode: scriptPath,
+        grok: scriptPath,
       },
     });
 
@@ -910,6 +922,7 @@ Forge assistant reply
         gemini: '/bin/sh',
         forge: '/bin/sh',
         opencode: scriptPath,
+        grok: scriptPath,
       },
     });
 

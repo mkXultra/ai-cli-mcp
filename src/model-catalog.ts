@@ -21,6 +21,13 @@ export const GEMINI_MODELS = [
   'gemini-3-pro-preview',
   'gemini-3-flash-preview',
 ] as const;
+export const GROK_MODELS = ['grok', 'grok-4.6', 'grok-4.5'] as const;
+export const GROK_REASONING_EFFORTS = {
+  grok: ['low', 'medium', 'high'],
+  'grok-4.6': ['low', 'medium', 'high', 'xhigh'],
+  'grok-4.5': ['low', 'medium', 'high'],
+} as const;
+
 export const FORGE_MODELS = ['forge'] as const;
 export const OPENCODE_MODELS = ['opencode'] as const;
 
@@ -44,12 +51,13 @@ export const MODEL_ALIASES: Record<string, string> = Object.fromEntries(
 export function getModelAliases(config = loadUserModelAliases()): ModelAliasDetails[] {
   const aliases = new Map(MODEL_ALIAS_DETAILS.map((alias) => [alias.name, alias]));
   const nativeModels = new Set<string>([
-    'codex', ...CLAUDE_MODELS, ...CODEX_MODELS, ...GEMINI_MODELS, ...FORGE_MODELS, ...OPENCODE_MODELS,
+    'codex', ...CLAUDE_MODELS, ...CODEX_MODELS, ...GEMINI_MODELS, ...FORGE_MODELS, ...GROK_MODELS, ...OPENCODE_MODELS,
   ]);
 
   for (const [name, value] of config.aliases) {
     try {
-      if (nativeModels.has(name)) {
+      // Preserve preexisting aliases named grok when introducing the provider key.
+      if (nativeModels.has(name) && name !== 'grok') {
         throw new Error('alias names cannot replace native model names.');
       }
       if (aliases.has(value.model) || config.aliases.has(value.model)) {
@@ -84,6 +92,7 @@ export function getSupportedModelsDescription(): string {
     ...CLAUDE_MODELS.map((model) => `"${model}"`),
     ...CODEX_MODELS.map((model) => `"${model}"`),
     ...GEMINI_MODELS.map((model) => `"${model}"`),
+    ...GROK_MODELS.map((model) => `"${model}"`),
     ...FORGE_MODELS.map((model) => `"${model}"`),
     ...OPENCODE_MODELS.map((model) => `"${model}"`),
     '"oc-<provider/model>"',
@@ -94,7 +103,7 @@ export function getModelParameterDescription(): string {
   const aliases = getModelAliases().map((alias) =>
     `"${alias.name}" (${alias.resolvesTo}${alias.defaultReasoningEffort ? `; auto ${alias.defaultReasoningEffort} reasoning` : ''})`
   ).join(', ');
-  return `The model to use. Aliases (including user config): ${aliases}. An explicit reasoning_effort overrides the alias default. Standard: ${[...CLAUDE_MODELS, ...CODEX_MODELS, ...GEMINI_MODELS, ...FORGE_MODELS, ...OPENCODE_MODELS].map((model) => `"${model}"`).join(', ')}. Fable may require usage credits. OpenCode also accepts explicit dynamic models using "oc-<provider/model>". "forge" is a provider key, not a Forge model family selector.`;
+  return `The model to use. Aliases (including user config): ${aliases}. An explicit reasoning_effort overrides the alias default. Standard: ${[...CLAUDE_MODELS, ...CODEX_MODELS, ...GEMINI_MODELS, ...FORGE_MODELS, ...GROK_MODELS, ...OPENCODE_MODELS].map((model) => `"${model}"`).join(', ')}. Fable may require usage credits. Grok accepts native grok-* model names; grok uses its CLI-configured default unless a user alias named grok exists; that alias retains precedence. Native model names such as grok-4.6 select the Grok backend. Omitted effort uses the CLI default; grok and unknown Grok models accept low/medium/high, grok-4.6 also accepts xhigh. OpenCode also accepts explicit dynamic models using "oc-<provider/model>". "forge" is a provider key, not a Forge model family selector.`;
 }
 
 export function getModelsPayload(): {
@@ -103,6 +112,8 @@ export function getModelsPayload(): {
   codex: ReadonlyArray<string>;
   gemini: ReadonlyArray<string>;
   forge: ReadonlyArray<string>;
+  grok: ReadonlyArray<string>;
+  reasoningEfforts: { grok: typeof GROK_REASONING_EFFORTS };
   opencode: ReadonlyArray<string>;
   dynamicModelBackends: {
     opencode: DynamicModelBackendDescription;
@@ -114,6 +125,8 @@ export function getModelsPayload(): {
     codex: CODEX_MODELS,
     gemini: GEMINI_MODELS,
     forge: FORGE_MODELS,
+    grok: GROK_MODELS,
+    reasoningEfforts: { grok: GROK_REASONING_EFFORTS },
     opencode: OPENCODE_MODELS,
     dynamicModelBackends: {
       opencode: {

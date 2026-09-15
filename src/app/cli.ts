@@ -27,16 +27,18 @@ Set AI_CLI_CONFIG_PATH to use a different config file.
 
 export const RUN_HELP_TEXT = `Usage: ai-cli run --cwd <path> [options]
 
-Start an AI CLI process in the background.
+Start an AI CLI process in the background. Use --model grok for the Grok CLI-configured default, or a native grok-* name. A user alias named grok keeps precedence. Use --prompt=TEXT / --session-id=ID for values beginning with --.
 
 Options:
   --cwd <path>                 Working directory
   --prompt <text>              Prompt text
   --prompt-file <path>         Path to a prompt file
-  --model <model>              Model name or alias (e.g. sonnet, fable, claude-ultra, gpt-6-astra, codex-ultra, gemini-2.5-pro, gemini-ultra, forge, opencode, oc-openai/gpt-5.4)
-  --session-id <id>            Resume a previous session, including OpenCode in-place resumes
-  --reasoning-effort <level>   Reasoning level for Claude/Codex only; unsupported for Gemini, Forge, and OpenCode
+  --model <model>              Model name or alias (e.g. sonnet, fable, claude-ultra, gpt-6-astra, codex-ultra, gemini-2.5-pro, gemini-ultra, forge, grok, grok-4.6, grok-4.5, opencode, oc-openai/gpt-5.4)
+  --session-id <id>            Resume a previous session, including Grok (--resume, same session) and OpenCode in-place resumes
+  --reasoning-effort <level>   Reasoning level for Claude/Codex/Grok; unsupported for Gemini, Forge, and OpenCode
   --help, -h                   Show this help message
+
+Grok: grok-4.6=low/medium/high/xhigh; grok-4.5, grok (configured default), and other grok-* models=low/medium/high. Omitted effort uses the CLI default. Grok never accepts max/ultra.
 
 Compatibility aliases:
   --workFolder, --work-folder
@@ -68,7 +70,7 @@ Options:
 export const PEEK_HELP_TEXT = `Usage: ai-cli peek <pid...> [options]
 
 Observe new natural-language agent messages, and optionally tool calls, for a short one-shot window.
-In v1, message extraction is supported for Codex, Claude, OpenCode, Gemini, and best-effort Forge Summary/Completed successfully lines. Forge tool calls are low-precision Execute/Finished markers and never include command output.
+In v1, message extraction is supported for Codex, Claude, Grok (whole assistant messages), OpenCode, Gemini, and best-effort Forge Summary/Completed successfully lines. Forge tool calls are low-precision Execute/Finished markers and never include command output.
 This is not a history API, gapless streaming, or stdout/stderr tailing. No --follow mode is available in v1.
 
 Options:
@@ -103,7 +105,7 @@ Options:
 
 export const MODELS_HELP_TEXT = `Usage: ai-cli models
 
-List supported models and aliases.
+List supported models and aliases, including Grok model/effort levels.
 
 Includes user aliases from ~/.config/ai-cli/config.json (or AI_CLI_CONFIG_PATH).
 
@@ -124,7 +126,7 @@ rm removes a user definition; removing a built-in override restores its default.
 Use ai-cli models to list aliases together with supported models.
 
 Options:
-  --effort <level>      Default reasoning effort for this alias (Claude/Codex only)
+  --effort <level>      Default reasoning effort for this alias (Claude/Codex/Grok)
   --help, -h            Show this help message
 
 Compatibility aliases: --reasoning-effort, --reasoning_effort
@@ -132,7 +134,7 @@ Compatibility aliases: --reasoning-effort, --reasoning_effort
 
 export const DOCTOR_HELP_TEXT = `Usage: ai-cli doctor
 
-Check whether supported AI CLI binaries are available, including OpenCode.
+Check whether supported AI CLI binaries are available, including OpenCode and Grok (GROK_CLI_NAME override).
 This checks binary availability and path resolution only; it does not verify login state or terms acceptance.
 
 Options:
