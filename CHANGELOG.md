@@ -1,3 +1,10 @@
+# [2.26.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.25.0...v2.26.0) (2026-09-15)
+
+
+### Features
+
+* add Grok Build CLI support ([1c357aa](https://github.com/mkXultra/ai-cli-mcp/commit/1c357aa7705dae34941e86653d563446b57085c1))
+
 # [2.25.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.24.0...v2.25.0) (2026-09-15)
 
 
