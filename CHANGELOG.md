@@ -1,3 +1,10 @@
+# [2.25.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.24.0...v2.25.0) (2026-09-15)
+
+
+### Features
+
+* support indefinite waits with timeout zero ([1404ea4](https://github.com/mkXultra/ai-cli-mcp/commit/1404ea4b8ad7742a1e0e0725ed0ea2386648b52e))
+
 # [2.24.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.23.0...v2.24.0) (2026-09-13)
 
 
