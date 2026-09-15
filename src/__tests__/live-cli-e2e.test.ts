@@ -12,12 +12,12 @@ import { promisify } from 'node:util';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { MCPTestClient } from './utils/mcp-client.js';
 
-type LiveAgent = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode';
+type LiveAgent = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode' | 'grok';
 type LiveSurface = 'cli' | 'mcp' | 'all';
 
 const execFileAsync = promisify(execFile);
 const liveEnabled = process.env.ACM_LIVE_E2E === '1';
-const allAgents: LiveAgent[] = ['claude', 'codex', 'gemini', 'forge', 'opencode'];
+const allAgents: LiveAgent[] = ['claude', 'codex', 'gemini', 'forge', 'opencode', 'grok'];
 const defaultAgents: LiveAgent[] = ['claude', 'codex'];
 const liveToken = process.env.ACM_LIVE_E2E_TOKEN || 'ACM_LIVE_E2E_OK';
 const assertToken = process.env.ACM_LIVE_E2E_ASSERT_TOKEN !== '0';
@@ -36,6 +36,7 @@ const defaultModels: Record<LiveAgent, string> = {
   gemini: 'gemini-2.5-flash',
   forge: 'forge',
   opencode: 'opencode',
+  grok: 'grok-4.6',
 };
 
 function parsePositiveNumber(raw: string | undefined, fallback: number): number {

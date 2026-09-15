@@ -84,5 +84,10 @@ export function buildProcessResult(context: ProcessResultContext, agentOutput: a
     response.agentOutput = shapedAgentOutput;
   }
 
+  // A partial Grok answer must not hide diagnostics from a terminal failure.
+  if (context.agent === 'grok' && (context.status === 'failed' || agentOutput?.is_error === true)) {
+    response.stderr = context.stderr;
+  }
+
   return response;
 }

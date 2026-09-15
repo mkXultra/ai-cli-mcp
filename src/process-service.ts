@@ -1,6 +1,7 @@
+import { terminateProcessTree } from './process-termination.js';
 import type { ChildProcess } from 'node:child_process';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
-import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekEventExtractor } from './parsers.js';
+import { parseGrokOutput, parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekEventExtractor } from './parsers.js';
 import {
   appendPeekEvents,
   buildNotFoundPeekProcess,
@@ -13,7 +14,7 @@ import {
 import { buildProcessResult } from './process-result.js';
 import { spawnCli } from './spawn-cli.js';
 
-export type AgentType = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode';
+export type AgentType = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode' | 'grok';
 export type ProcessStatus = 'running' | 'completed' | 'failed';
 
 interface TrackedProcess {
@@ -28,6 +29,13 @@ interface TrackedProcess {
   stderr: string;
   status: ProcessStatus;
   exitCode?: number;
+  cancellationStarted?: boolean;
+}
+
+interface KillProcessResult {
+  pid: number;
+  status: string;
+  message: string;
 }
 
 export interface ProcessListItem {
@@ -56,6 +64,9 @@ function parseAgentOutput(agent: AgentType, stdout: string, stderr: string): any
     return null;
   }
 
+  if (agent === 'grok') {
+    return parseGrokOutput(stdout);
+  }
   if (agent === 'claude') {
     return parseClaudeOutput(stdout);
   }
@@ -74,13 +85,17 @@ function parseAgentOutput(agent: AgentType, stdout: string, stderr: string): any
 
 export class ProcessService {
   private readonly processManager = new Map<number, TrackedProcess>();
+  // The root can close before detached descendants finish terminating.
+  private readonly cancellations = new Map<number, Promise<KillProcessResult>>();
   private readonly cliPaths: BuildCliCommandOptions['cliPaths'];
+  private shuttingDown = false;
 
   constructor(options: ProcessServiceOptions) {
     this.cliPaths = options.cliPaths;
   }
 
   startProcess(options: Omit<BuildCliCommandOptions, 'cliPaths'>): StartProcessResult {
+    if (this.shuttingDown) throw new Error('Process service is shutting down');
     const cmd = buildCliCommand({
       ...options,
       cliPaths: this.cliPaths,
@@ -92,7 +107,7 @@ export class ProcessService {
       childProcess = spawnCli(cliPath, processArgs, {
         cwd: effectiveCwd,
         stdio: ['ignore', 'pipe', 'pipe'],
-        detached: false,
+        detached: agent === 'grok' && process.platform !== 'win32',
       });
     } catch {
       throw new Error(`Failed to start ${agent} CLI process`);
@@ -126,6 +141,9 @@ export class ProcessService {
 
     this.processManager.set(pid, processEntry);
 
+    // Decode once at the pipe boundary; collection and peek share complete characters.
+    childProcess.stdout?.setEncoding?.('utf8');
+    childProcess.stderr?.setEncoding?.('utf8');
     childProcess.stdout?.on('data', (data) => {
       const entry = this.processManager.get(pid);
       if (entry) {
@@ -143,8 +161,8 @@ export class ProcessService {
     childProcess.on('close', (code) => {
       const entry = this.processManager.get(pid);
       if (entry) {
-        entry.status = code === 0 ? 'completed' : 'failed';
-        entry.exitCode = code !== null ? code : undefined;
+        entry.status = !entry.cancellationStarted && code === 0 ? 'completed' : 'failed';
+        entry.exitCode = entry.cancellationStarted ? 143 : code ?? entry.exitCode;
       }
     });
 
@@ -334,7 +352,10 @@ export class ProcessService {
     });
   }
 
-  killProcess(pid: number): { pid: number; status: string; message: string } {
+  async killProcess(pid: number): Promise<KillProcessResult> {
+    const pending = this.cancellations.get(pid);
+    if (pending) return pending;
+
     const processEntry = this.processManager.get(pid);
     if (!processEntry) {
       throw new Error(`Process with PID ${pid} not found`);
@@ -348,22 +369,68 @@ export class ProcessService {
       };
     }
 
-    processEntry.process.kill('SIGTERM');
+    if (processEntry.toolType !== 'grok') return this.terminateTrackedProcess(processEntry);
+
+    // Register before signaling, and share the entire tree operation with other
+    // kills and shutdown even after the root's public status becomes terminal.
+    const cancellation = Promise.resolve().then(() => this.terminateTrackedProcess(processEntry));
+    this.cancellations.set(pid, cancellation);
+    try {
+      return await cancellation;
+    } finally {
+      this.cancellations.delete(pid);
+    }
+  }
+
+  private async terminateTrackedProcess(processEntry: TrackedProcess): Promise<KillProcessResult> {
+    const { pid } = processEntry;
+    let warning: string | undefined;
+    if (processEntry.toolType === 'grok') {
+      const termination = await terminateProcessTree(pid, {
+        ownedProcessGroup: process.platform !== 'win32',
+        hasExited: () => processEntry.process.exitCode !== null || processEntry.process.signalCode !== null,
+        // A rejected first signal must not turn later natural success into 143.
+        // Successful signals notify synchronously, before close can be delivered.
+        onSignalSent: () => { processEntry.cancellationStarted = true; },
+      });
+      warning = termination.warning;
+      if (warning) processEntry.stderr += `\n${warning}`;
+      if (!termination.terminated) return { pid, status: 'running', message: `Signal sent but process is still running${warning ? `. ${warning}` : ''}` };
+      if (!processEntry.cancellationStarted) {
+        return { pid, status: 'terminated', message: 'Process already terminated' };
+      }
+      processEntry.exitCode = 143;
+    } else {
+      processEntry.process.kill('SIGTERM');
+    }
     processEntry.status = 'failed';
     processEntry.stderr += '\nProcess terminated by user';
 
     return {
       pid,
       status: 'terminated',
-      message: 'Process terminated successfully',
+      message: `Process terminated successfully${warning ? `. ${warning}` : ''}`,
     };
+  }
+
+  async shutdown(): Promise<void> {
+    this.shuttingDown = true;
+    const pids = new Set([
+      ...this.cancellations.keys(),
+      ...[...this.processManager.values()].filter((entry) => entry.status === 'running').map((entry) => entry.pid),
+    ]);
+    const results = await Promise.allSettled([...pids].map((pid) => this.killProcess(pid)));
+    for (const result of results) {
+      if (result.status === 'rejected') throw result.reason;
+      if (result.value.status === 'running') throw new Error(result.value.message);
+    }
   }
 
   cleanupProcesses(): { removed: number; removedPids: number[]; message: string } {
     const removedPids: number[] = [];
 
     for (const [pid, process] of this.processManager.entries()) {
-      if (process.status === 'completed' || process.status === 'failed') {
+      if (process.status !== 'running' && !this.cancellations.has(pid)) {
         removedPids.push(pid);
         this.processManager.delete(pid);
       }

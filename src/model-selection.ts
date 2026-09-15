@@ -5,7 +5,7 @@ const CODEX_MAX_REASONING_MODELS = new Set(['gpt-6-astra', 'gpt-5.6-sol', 'gpt-5
 const CODEX_ULTRA_REASONING_MODELS = new Set(['gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-terra']);
 const OPENCODE_MODEL_ERROR = 'Invalid OpenCode model. Expected exact syntax oc-<provider/model>.';
 
-export type Agent = 'codex' | 'claude' | 'gemini' | 'forge' | 'opencode';
+export type Agent = 'codex' | 'claude' | 'gemini' | 'forge' | 'opencode' | 'grok';
 
 export interface ModelSelection {
   agent: Agent;
@@ -14,6 +14,9 @@ export interface ModelSelection {
 }
 
 function getStandardAgentForModel(model: string): Exclude<Agent, 'opencode'> {
+  if (model === 'grok' || model.startsWith('grok-')) {
+    return 'grok';
+  }
   if (model === 'forge') {
     return 'forge';
   }
@@ -96,18 +99,27 @@ export function getReasoningEffort(model: string, rawValue: unknown): string {
   }
 
   const normalized = trimmed.toLowerCase();
+  const agent = getStandardAgentForModel(model);
+  if (agent === 'grok') {
+    // With a configured or unknown model, only the common Grok levels are safe.
+    const supported = model === 'grok-4.6' ? ['low', 'medium', 'high', 'xhigh'] : ['low', 'medium', 'high'];
+    if (!supported.includes(normalized)) {
+      const hint = model !== 'grok-4.6' && normalized === 'xhigh' ? ' Select grok-4.6 explicitly to use xhigh.' : '';
+      throw new Error(`Grok reasoning_effort for ${model} supports only ${supported.join(', ')}.${hint}`);
+    }
+    return normalized;
+  }
   if (!ALLOWED_REASONING_EFFORTS.has(normalized)) {
     throw new Error(
       `Invalid reasoning_effort: ${rawValue}. Allowed values: low, medium, high, xhigh, max, ultra.`
     );
   }
-  const agent = getStandardAgentForModel(model);
   if (agent === 'forge') {
     throw new Error('reasoning_effort is not supported for forge.');
   }
   if (agent === 'gemini') {
     throw new Error(
-      'reasoning_effort is only supported for Claude and Codex models.'
+      'reasoning_effort is only supported for Claude, Codex, and Grok models.'
     );
   }
   if (agent === 'claude' && !CLAUDE_REASONING_EFFORTS.has(normalized)) {

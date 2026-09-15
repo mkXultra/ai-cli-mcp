@@ -32,6 +32,7 @@ function createServiceFixture(): {
         gemini: process.execPath,
         forge: process.execPath,
         opencode: process.execPath,
+        grok: process.execPath,
       },
     }),
     stateDir,
@@ -136,6 +137,7 @@ describe('CliProcessService with the detached Node.js runner', () => {
         gemini: shimPath,
         forge: shimPath,
         opencode: shimPath,
+        grok: shimPath,
       },
     });
     const prompt = 'special & | ^ %PATH% " prompt';

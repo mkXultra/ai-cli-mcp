@@ -69,6 +69,7 @@ describe('CliProcessService Windows termination races', () => {
         gemini: process.execPath,
         forge: process.execPath,
         opencode: process.execPath,
+        grok: process.execPath,
       },
     });
     let existenceChecks = 0;

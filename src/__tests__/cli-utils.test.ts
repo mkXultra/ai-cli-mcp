@@ -23,6 +23,7 @@ describe('cli-utils doctor status', () => {
     delete process.env.GEMINI_CLI_NAME;
     delete process.env.FORGE_CLI_NAME;
     delete process.env.OPENCODE_CLI_NAME;
+    delete process.env.GROK_CLI_NAME;
     Object.defineProperty(process, 'platform', { value: 'linux' });
     process.env.PATH = `${mockBinDir}:/usr/bin`;
   });
@@ -272,5 +273,46 @@ describe('cli-utils doctor status', () => {
     expect(mockAccessSync.mock.calls.map(([filePath]) => filePath)).not.toContain(
       join(mockBinDir, 'claude.exe'),
     );
+  });
+});
+
+describe('Grok discovery', () => {
+  const originalPlatform = process.platform;
+  beforeEach(() => { Object.defineProperty(process, 'platform', { value: 'linux' }); });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+  });
+
+  it('prefers the installed Grok binary and honors an absolute override', async () => {
+    vi.stubEnv('GROK_CLI_NAME', undefined);
+    const { homedir } = await import('node:os');
+    const local = join(homedir(), '.grok', 'bin', 'grok');
+    mockAccessSync.mockImplementation((p) => {
+      if (p !== local && p !== '/test/grok-custom') throw new Error('missing');
+    });
+    const { getCliDoctorStatus, findGrokCli } = await import('../cli-utils.js');
+    expect(getCliDoctorStatus().grok).toMatchObject({ available: true, lookup: 'local', resolvedPath: local });
+    expect(findGrokCli()).toBe(local);
+    vi.stubEnv('GROK_CLI_NAME', '/test/grok-custom');
+    expect(findGrokCli()).toBe('/test/grok-custom');
+    expect(getCliDoctorStatus().grok).toMatchObject({ available: true, lookup: 'env', resolvedPath: '/test/grok-custom' });
+  });
+
+  it('falls back to PATH, handles bare overrides, and reports missing/invalid commands', async () => {
+    vi.stubEnv('GROK_CLI_NAME', undefined);
+    vi.stubEnv('PATH', '/test/bin');
+    mockAccessSync.mockImplementation((p) => {
+      if (p !== join('/test/bin', 'grok') && p !== join('/test/bin', 'grok-custom')) throw new Error('missing');
+    });
+    const { getCliDoctorStatus, findGrokCli } = await import('../cli-utils.js');
+    expect(getCliDoctorStatus().grok).toMatchObject({ available: true, lookup: 'path', resolvedPath: join('/test/bin', 'grok') });
+    vi.stubEnv('GROK_CLI_NAME', 'grok-custom');
+    expect(getCliDoctorStatus().grok).toMatchObject({ available: true, lookup: 'env', resolvedPath: join('/test/bin', 'grok-custom') });
+    vi.stubEnv('GROK_CLI_NAME', '/test/missing');
+    expect(getCliDoctorStatus().grok.available).toBe(false);
+    vi.stubEnv('GROK_CLI_NAME', './relative');
+    expect(() => findGrokCli()).toThrow(/Invalid GROK_CLI_NAME/);
+    expect(getCliDoctorStatus().checks.loginState).toBe(false);
   });
 });

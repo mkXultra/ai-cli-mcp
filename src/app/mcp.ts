@@ -76,8 +76,12 @@ export class ClaudeCodeServer {
   private geminiCliPath: string;
   private forgeCliPath: string;
   private opencodeCliPath: string;
+  private grokCliPath: string;
   private processService: ProcessService;
-  private sigintHandler?: () => Promise<void>;
+  private readonly shutdownSignals = ['SIGINT', 'SIGTERM', 'SIGHUP'] as const;
+  private signalHandler?: () => Promise<void>;
+  private stdinEndHandler?: () => void;
+  private cleanupPromise?: Promise<void>;
 
   constructor() {
     const doctorStatus = getCliDoctorStatus();
@@ -85,6 +89,8 @@ export class ClaudeCodeServer {
     this.codexCliPath = this.resolveDoctorCliPath(doctorStatus.codex);
     this.geminiCliPath = this.resolveDoctorCliPath(doctorStatus.gemini);
     this.forgeCliPath = this.resolveDoctorCliPath(doctorStatus.forge);
+    this.grokCliPath = this.resolveDoctorCliPath(doctorStatus.grok);
+    console.error(`[Setup] Using Grok CLI command/path: ${this.grokCliPath}`);
     this.opencodeCliPath = this.resolveDoctorCliPath(doctorStatus.opencode);
     console.error(`[Setup] Using Claude CLI command/path: ${this.claudeCliPath}`);
     console.error(`[Setup] Using Codex CLI command/path: ${this.codexCliPath}`);
@@ -98,6 +104,7 @@ export class ClaudeCodeServer {
         gemini: this.geminiCliPath,
         forge: this.forgeCliPath,
         opencode: this.opencodeCliPath,
+        grok: this.grokCliPath,
       },
     });
 
@@ -116,11 +123,19 @@ export class ClaudeCodeServer {
     this.setupToolHandlers();
 
     this.server.onerror = (error) => console.error('[Error]', error);
-    this.sigintHandler = async () => {
-      await this.server.close();
-      process.exit(0);
+    this.signalHandler = async () => {
+      try {
+        await this.cleanup();
+        process.exit(0);
+      } catch (error) {
+        console.error('[Shutdown]', error);
+        process.exit(1);
+      }
     };
-    process.on('SIGINT', this.sigintHandler);
+    for (const signal of this.shutdownSignals) process.on(signal, this.signalHandler);
+    this.server.onclose = () => {
+      void this.cleanup().catch((error) => console.error('[Shutdown]', error));
+    };
   }
 
   private resolveDoctorCliPath(status: CliBinaryStatus): string {
@@ -129,7 +144,7 @@ export class ClaudeCodeServer {
 
   private getCliConfigurationError(): string | null {
     const doctorStatus = getCliDoctorStatus();
-    for (const name of ['claude', 'codex', 'gemini', 'forge', 'opencode'] as const) {
+    for (const name of ['claude', 'codex', 'gemini', 'forge', 'opencode', 'grok'] as const) {
       if (doctorStatus[name].error) {
         return doctorStatus[name].error;
       }
@@ -142,7 +157,7 @@ export class ClaudeCodeServer {
       tools: [
         {
           name: 'run',
-          description: `AI Agent Runner: Starts a Claude, Codex, Gemini, Forge, or OpenCode CLI process in the background and returns a PID immediately. Use list_processes and get_result to monitor progress.
+          description: `AI Agent Runner: Starts a Claude, Codex, Gemini, Forge, OpenCode, or Grok CLI process in the background and returns a PID immediately. Use list_processes and get_result to monitor progress.
 
 • File ops: Create, read, (fuzzy) edit, move, copy, delete, list files, analyze/ocr images, file content analysis
 • Code: Generate / analyse / refactor / fix
@@ -186,11 +201,11 @@ ${getSupportedModelsDescription()}
               },
               reasoning_effort: {
                 type: 'string',
-                description: 'Reasoning control for Claude and Codex. Claude uses --effort with "low", "medium", "high", "xhigh", "max". Codex uses model_reasoning_effort with "low", "medium", "high", "xhigh"; GPT-6 Astra and GPT-5.6 Sol/Terra also support "max" and "ultra", while GPT-5.6 Luna supports "max". Gemini, Forge, and OpenCode do not support reasoning_effort in this integration.',
+                description: 'Reasoning control for Claude, Codex, and Grok. Claude uses --effort with "low", "medium", "high", "xhigh", "max". Codex uses model_reasoning_effort with "low", "medium", "high", "xhigh"; GPT-6 Astra and GPT-5.6 Sol/Terra also support "max" and "ultra", while GPT-5.6 Luna supports "max". Grok: grok-4.6=low/medium/high/xhigh; grok-4.5, grok (configured default), and other grok-* models=low/medium/high. Omitted effort uses the CLI default. Grok never accepts max/ultra. Gemini, Forge, and OpenCode do not support reasoning_effort in this integration.',
               },
               session_id: {
                 type: 'string',
-                description: 'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, and OpenCode. OpenCode resumes in-place via --session and may also be combined with explicit oc-<provider/model> selection.',
+                description: 'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, OpenCode, and Grok. Grok resumes via --resume, preserving the session ID. OpenCode resumes in-place via --session and may also be combined with explicit oc-<provider/model> selection.',
               },
             },
             required: ['workFolder'],
@@ -248,7 +263,7 @@ ${getSupportedModelsDescription()}
         },
         {
           name: 'peek',
-          description: 'One-shot short observation window for running child agents. Returns only natural-language message events, and optionally normalized tool_call events, observed during this call; not a history API, not gapless streaming, and not stdout/stderr tailing. In v1, message extraction is supported for Codex, Claude, OpenCode, Gemini, and best-effort Forge Summary/Completed successfully lines. Forge tool calls are low-precision Execute/Finished markers and never include command output. Tool calls exclude raw tool output.',
+          description: 'One-shot short observation window for running child agents. Returns only natural-language message events, and optionally normalized tool_call events, observed during this call; not a history API, not gapless streaming, and not stdout/stderr tailing. In v1, message extraction is supported for Codex, Claude, Grok (whole assistant messages), OpenCode, Gemini, and best-effort Forge Summary/Completed successfully lines. Forge tool calls are low-precision Execute/Finished markers and never include command output. Tool calls exclude raw tool output.',
           inputSchema: {
             type: 'object',
             properties: {
@@ -293,7 +308,7 @@ ${getSupportedModelsDescription()}
         },
         {
           name: 'doctor',
-          description: 'Check supported AI CLI binary availability and path resolution. Does not verify login state or terms acceptance.',
+          description: 'Check supported AI CLI binary availability and path resolution, including Grok (GROK_CLI_NAME override). Does not verify login state or terms acceptance.',
           inputSchema: {
             type: 'object',
             properties: {},
@@ -301,7 +316,7 @@ ${getSupportedModelsDescription()}
         },
         {
           name: 'models',
-          description: 'List supported model names, model aliases, and dynamic backend discovery hints.',
+          description: 'List supported model names, model aliases, Grok reasoning effort levels, and dynamic backend discovery hints.',
           inputSchema: {
             type: 'object',
             properties: {},
@@ -466,7 +481,7 @@ ${getSupportedModelsDescription()}
 
     const pid = toolArguments.pid;
     try {
-      const response = this.processService.killProcess(pid);
+      const response = await this.processService.killProcess(pid);
       return {
         content: [{
           type: 'text',
@@ -511,15 +526,30 @@ ${getSupportedModelsDescription()}
 
   async run(): Promise<void> {
     const transport = new StdioServerTransport();
+    // The SDK's stdio transport does not translate stdin EOF into onclose.
+    this.stdinEndHandler = () => { void this.cleanup().catch((error) => console.error('[Shutdown]', error)); };
+    process.stdin.once('end', this.stdinEndHandler);
+    process.stdin.once('close', this.stdinEndHandler);
     await this.server.connect(transport);
     console.error('AI CLI MCP server running on stdio');
   }
 
-  async cleanup(): Promise<void> {
-    if (this.sigintHandler) {
-      process.removeListener('SIGINT', this.sigintHandler);
-    }
-    await this.server.close();
+  cleanup(): Promise<void> {
+    this.cleanupPromise ??= (async () => {
+      try {
+        await this.processService.shutdown();
+        await this.server.close();
+      } finally {
+        if (this.stdinEndHandler) {
+          process.stdin.off('end', this.stdinEndHandler);
+          process.stdin.off('close', this.stdinEndHandler);
+        }
+        if (this.signalHandler) {
+          for (const signal of this.shutdownSignals) process.removeListener(signal, this.signalHandler);
+        }
+      }
+    })();
+    return this.cleanupPromise;
   }
 }
 

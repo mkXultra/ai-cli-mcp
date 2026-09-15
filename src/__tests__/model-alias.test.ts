@@ -19,7 +19,7 @@ function command(model: string, reasoning_effort?: string) {
     prompt: 'test',
     model,
     reasoning_effort,
-    cliPaths: { codex: 'codex', claude: 'claude', gemini: 'gemini', forge: 'forge', opencode: 'opencode' },
+    cliPaths: { codex: 'codex', claude: 'claude', gemini: 'gemini', forge: 'forge', opencode: 'opencode', grok: 'grok' },
   });
 }
 
@@ -99,7 +99,7 @@ describe('user config loading', () => {
     [{ coding: { model: 'oc-openai' } }, 'Invalid OpenCode model'],
     [{ coding: { model: 'gpt-5.6-luna', reasoning_effort: 'ultra' } }, 'supports only low, medium, high, xhigh, max'],
     [{ coding: { model: 'opus', reasoning_effort: 'ultra' } }, 'Claude reasoning_effort supports only'],
-    [{ coding: { model: 'gemini-2.5-pro', reasoning_effort: 'high' } }, 'only supported for Claude and Codex'],
+    [{ coding: { model: 'gemini-2.5-pro', reasoning_effort: 'high' } }, 'only supported for Claude, Codex, and Grok'],
     [{ coding: { model: 'forge', reasoning_effort: 'high' } }, 'not supported for forge'],
     [{ coding: { model: 'oc-openai/gpt-5.4', reasoning_effort: 'high' } }, 'not supported for opencode'],
   ])('rejects invalid aliases %#', (aliases, message) => {

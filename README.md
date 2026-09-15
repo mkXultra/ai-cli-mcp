@@ -7,7 +7,7 @@
 
 > **📦 Package Migration Notice**: This package was formerly `@mkxultra/claude-code-mcp` and has been renamed to `ai-cli-mcp` to reflect its expanded support for multiple AI CLI tools.
 
-An MCP (Model Context Protocol) server that allows running AI CLI tools (Claude, Codex, Gemini, Forge, and OpenCode) in background processes with automatic permission handling.
+An MCP (Model Context Protocol) server that allows running AI CLI tools (Claude, Codex, Gemini, Forge, OpenCode, and Grok) in background processes with automatic permission handling.
 
 Did you notice that Cursor sometimes struggles with complex, multi-step edits or operations? This server, with its powerful unified `run` tool, enables multiple AI agents to handle your coding tasks more effectively.
 
@@ -23,8 +23,9 @@ This MCP server provides tools that can be used by LLMs to interact with AI CLI 
 - Execute Codex CLI with approvals and sandbox bypassed (using `--dangerously-bypass-approvals-and-sandbox`)
 - Execute Gemini CLI with automatic approval mode (using `-y`)
 - Execute Forge CLI in non-interactive mode (using `forge -C <workFolder> -p <prompt>`)
+- Execute Grok Build CLI headlessly with `streaming-messages-json`, automatic tool approval, and automatic updates disabled
 - Execute OpenCode in non-interactive JSON mode (using `opencode run --format json --dir <workFolder> <prompt>`)
-- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, fable, haiku), Codex (gpt-6-astra, gpt-5.4, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-5.5, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2), Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview), Forge (`forge`), and OpenCode (`opencode` plus explicit `oc-<provider/model>` wrappers such as `oc-openai/gpt-5.4`)
+- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, fable, haiku), Codex (gpt-6-astra, gpt-5.4, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-5.5, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2), Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview), Forge (`forge`), Grok (`grok`, `grok-4.6`, `grok-4.5`), and OpenCode (`opencode` plus explicit `oc-<provider/model>` wrappers such as `oc-openai/gpt-5.4`)
 - Manage background processes with PID tracking
 - Parse and return structured outputs from both tools
 
@@ -56,7 +57,7 @@ You can reuse heavy context (like large codebases) using session IDs to save cos
 
 - **True Async Multitasking**: Agent execution happens in the background, returning control immediately. The calling AI can proceed with the next task or invoke another agent without waiting for completion.
 - **CLI in CLI (Agent in Agent)**: Directly invoke powerful CLI tools like Claude Code or Codex from any MCP-supported IDE or CLI. This enables broader, more complex system operations and automation beyond host environment limitations.
-- **Freedom from Model/Provider Constraints**: Freely select and combine the "strongest" or "most cost-effective" models from Claude, Codex (GPT), Gemini, and Forge without being tied to a specific ecosystem.
+- **Freedom from Model/Provider Constraints**: Freely select and combine the "strongest" or "most cost-effective" models from Claude, Codex (GPT), Gemini, Forge, OpenCode, and Grok without being tied to a specific ecosystem.
 
 ## Prerequisites
 
@@ -66,6 +67,7 @@ The only prerequisite is that the AI CLI tools you want to use are locally insta
 - **Codex CLI** (Optional): Installed and initial setup (login etc.) completed.
 - **Gemini CLI** (Optional): Installed and initial setup (login etc.) completed.
 - **Forge CLI** (Optional): Installed and initial setup completed.
+- **Grok Build CLI** (Optional): Install and authenticate Grok locally (tested with 1.0.13 and OAuth). Discovery checks `~/.grok/bin/grok`, then `PATH`; `GROK_CLI_NAME` overrides either with a command name or absolute path.
 - **OpenCode** (Optional): Installed and configured. This integration uses `opencode run --format json`, and explicit provider/model selection follows the `oc-<provider/model>` wrapper syntax exposed by `ai-cli models`.
 
 ## Installation & Usage
@@ -218,6 +220,29 @@ Codex model selection uses `gpt-5.4` as the default advertised model.
 
 `doctor` checks only binary availability and path resolution. Its JSON output includes a `checks` block that marks login state and terms acceptance as unchecked.
 
+## Grok Build CLI
+
+See the [Grok headless guide](https://docs.x.ai/build/cli/headless-scripting) for authentication and CLI setup.
+
+With no user alias named `grok`, both MCP and `ai-cli` route `grok` and native `grok-*` names to Grok. `grok` omits `--model`, using the Grok CLI configuration; explicit names select that model. `models` includes `grok: ["grok", "grok-4.6", "grok-4.5"]` and `reasoningEfforts.grok` with the accepted levels. Other native names are forwarded, with common low/medium/high effort validation; model availability is determined by Grok.
+
+```sh
+ai-cli run --cwd "$PWD" --model grok --prompt "Explain this project"
+ai-cli run --cwd "$PWD" --model grok-4.6 --reasoning-effort xhigh --prompt "Review this change"
+ai-cli alias add grok-coding grok-4.6 --effort high
+ai-cli run --cwd "$PWD" --model grok-coding --session-id <session_id> --prompt "Continue"
+```
+
+A preexisting user alias named `grok` keeps precedence, including aliases that target OpenCode. It remains visible in `models` and `alias list` and does not affect unrelated runs or MCP tool discovery. Explicit `grok-4.6` / `grok-4.5` always select the native backend. To use the CLI-configured provider default, rename that alias or explicitly remove it with `ai-cli alias rm grok`; upgrades never edit your configuration.
+
+The same alias and `model`, `reasoning_effort`, and `session_id` fields work in MCP `run`. Aliases use the existing user configuration. With no effort supplied, Grok decides the effort. The provider key `grok` accepts low/medium/high; select `grok-4.6` explicitly for xhigh. `grok-4.5` accepts low/medium/high. Neither accepts max or ultra.
+
+Commands use `grok --single=<prompt> --cwd <workFolder> --output-format streaming-messages-json --always-approve --no-auto-update`, plus optional model, effort, and `--resume=<session_id>`. Attached values preserve leading hyphens and newlines. At the ai-cli surface use `--prompt="--text"` / `--session-id="--id"` for values starting with `--`, or use a prompt file. This follows the existing unattended tool approval policy. Authenticate with Grok before use; `doctor.grok` checks binary discovery only. The Grok 1.0.13 `models` command can show an unauthenticated banner even when OAuth headless execution works, so that banner is not used as an authentication test.
+
+`peek` observes whole assistant messages during the call, plus optional normalized tool start/completion events. Thinking, token deltas, and raw tool output are excluded. `get_result` and `wait` return the final answer and session ID, or available assistant text while running. When present, Grok model/usage/cost metadata and terminal `is_error`, `subtype`, `errors`, and `stop_reason` are retained. Failures also preserve diagnostic `stderr`, including after a partial answer. Verbose results include detailed tools. `kill`/`kill_process` terminate the tracked process and its tool descendants; POSIX cancellation uses `ps` and signals, and Windows uses `taskkill /t /f`. If `ps` is unavailable, it still signals the tracked PID and its owned group, verifies exit and escalates to SIGKILL if needed; the kill response and failure stderr warn that descendants in other groups may survive. The MCP host stops tracked work on SIGINT/SIGTERM/SIGHUP and stdin/transport closure. Group signals target only groups created for tracked work, never the MCP host group.
+
+During MCP cancellation, the Grok root may report `failed`/143 while its tool descendants are still stopping. Overlapping `kill_process` calls and host shutdown await the same tree termination; `cleanup_processes` retains the entry until that operation settles. If the first signal fails before any signal is delivered, the error is returned and later natural completion keeps its actual status and exit code.
+
 ## User Model Aliases
 
 Save a model and its default reasoning effort under a name you can use across projects. CLI and MCP share the same user configuration.
@@ -293,7 +318,7 @@ The commands above edit `~/.config/ai-cli/config.json`. You can also edit it dir
 - `model` is required; `reasoning_effort` is optional. The backend is selected from the target model, regardless of the alias name.
 - Effort precedence is: explicit run argument → alias default → target CLI default. Effort must be supported by the target model; Gemini, Forge, and OpenCode aliases must omit it.
 - User entries can override built-in aliases such as `codex-ultra`. Each entry replaces the entire definition; omitting `reasoning_effort` uses the target CLI's default rather than inheriting the built-in effort.
-- Targets must be native model names such as `gpt-5.6-terra`, `opus`, or `oc-openai/gpt-5.4`; alias chaining is not supported. Alias names are case-sensitive, start with an ASCII letter, and contain only ASCII letters, digits, `_`, or `-`. Listed native model names, `codex`, and the `oc-` prefix are reserved.
+- Targets must be native model names such as `gpt-5.6-terra`, `opus`, or `oc-openai/gpt-5.4`; alias chaining is not supported. Alias names are case-sensitive, start with an ASCII letter, and contain only ASCII letters, digits, `_`, or `-`. Listed native model names, `codex`, and the `oc-` prefix are reserved, except that a user alias named `grok` retains precedence for compatibility.
 - Missing default config files preserve built-in behavior. Malformed files and invalid model/effort combinations produce errors with the config path. A missing explicitly configured file also produces an error, except that `alias add` can create it.
 
 An absolute `XDG_CONFIG_HOME` changes the default location to `$XDG_CONFIG_HOME/ai-cli/config.json`. `AI_CLI_CONFIG_PATH` overrides that location entirely; relative paths are resolved from the CLI/MCP process's working directory. For an MCP-specific path, set `AI_CLI_CONFIG_PATH` in the server's `env` settings. There is no project-level config lookup. The file uses JSON without comments and currently supports only `model_aliases`.
@@ -331,7 +356,7 @@ This server exposes the following tools:
 
 ### `run`
 
-Executes a prompt using Claude CLI, Codex CLI, Gemini CLI, Forge CLI, or OpenCode. The appropriate CLI is automatically selected based on the model name.
+Executes a prompt using Claude CLI, Codex CLI, Gemini CLI, Forge CLI, OpenCode, or Grok. The appropriate CLI is automatically selected based on the model name.
 
 **Arguments:**
 - `prompt` (string, optional): The prompt to send to the AI agent. Either `prompt` or `prompt_file` is required.
@@ -344,9 +369,10 @@ Executes a prompt using Claude CLI, Codex CLI, Gemini CLI, Forge CLI, or OpenCod
 - Codex: `gpt-6-astra`, `gpt-5.4`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
 - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
 - Forge: `forge`
+- Grok: `grok` for its configured default, `grok-4.6`, `grok-4.5`, and other native `grok-*` names
 - OpenCode: `opencode` for the configured default backend model, plus explicit wrappers like `oc-openai/gpt-5.4`
-- `reasoning_effort` (string, optional): Reasoning control for Claude and Codex. Claude uses `--effort` (allowed: "low", "medium", "high", "xhigh", "max"). Codex uses `model_reasoning_effort` (base levels: "low", "medium", "high", "xhigh"; GPT-6 Astra and GPT-5.6 Sol/Terra also support "max" and "ultra", while GPT-5.6 Luna supports "max"). Gemini, Forge, and OpenCode do not support `reasoning_effort`.
-- `session_id` (string, optional): Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, and OpenCode. OpenCode resumes in place via `--session` and may also be combined with an explicit `oc-<provider/model>` selection.
+- `reasoning_effort` (string, optional): Reasoning control for Claude, Codex, and Grok. Grok uses `--reasoning-effort`: `grok-4.6` supports low/medium/high/xhigh; `grok-4.5`, the `grok` configured default, and other native Grok names accept low/medium/high. Omit effort to use the CLI default; max/ultra are rejected for Grok. Claude uses `--effort` (allowed: "low", "medium", "high", "xhigh", "max"). Codex uses `model_reasoning_effort` (base levels: "low", "medium", "high", "xhigh"; GPT-6 Astra and GPT-5.6 Sol/Terra also support "max" and "ultra", while GPT-5.6 Luna supports "max"). Gemini, Forge, and OpenCode do not support `reasoning_effort`.
+- `session_id` (string, optional): Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, OpenCode, and Grok. Grok resumes the same session via `--resume`; the wrapper’s `session_id` never uses Grok’s new-session `--session-id` flag. OpenCode resumes in place via `--session` and may also be combined with an explicit `oc-<provider/model>` selection.
 
 ### `wait`
 
@@ -382,12 +408,12 @@ ai-cli peek 123 --time 10 --include-tool-calls
 - `peek_started_at` and `events[].ts` are ai-cli-mcp server-side UTC RFC3339 timestamps. `peek_started_at` is when the observation window starts after validation and listener registration; `events[].ts` is when ai-cli-mcp observed and accepted the event.
 - The window ends when `peek_time_sec` elapses or all target processes reach a terminal state, whichever comes first.
 - Events emitted before the window starts are not returned. Concurrent `peek` calls for the same PID are allowed; each has an independent window and may return overlapping events.
-- Message events are recognized from Codex `agent_message` text, Claude assistant text content, OpenCode `type: "text"` events where `part.type` is `"text"`, Gemini stream-json `message` events where `role` is `"assistant"`, and best-effort Forge plain-text lines beginning with `Summary:` or `Completed successfully:`.
-- When tool calls are included, `tool_call` events are normalized for Codex command/MCP calls, Claude tool use/results, Gemini tool use/results, OpenCode completed tool use events, and low-precision Forge `Execute`/`Finished` markers. Tool summaries are bounded one-line strings derived from tool names and input metadata only. Forge command output itself is not tailed or exposed. Raw stdout/stderr, raw JSONL, tool result output, command output, `result.response`, stats, token usage, and verbose metadata are excluded.
+- Message events are recognized from Codex `agent_message` text, Claude and Grok whole assistant text content, OpenCode `type: "text"` events where `part.type` is `"text"`, Gemini stream-json `message` events where `role` is `"assistant"`, and best-effort Forge plain-text lines beginning with `Summary:` or `Completed successfully:`.
+- When tool calls are included, `tool_call` events are normalized for Codex command/MCP calls, Claude/Grok tool use/results, Gemini tool use/results, OpenCode completed tool use events, and low-precision Forge `Execute`/`Finished` markers. Tool summaries are bounded one-line strings derived from tool names and input metadata only. Forge command output itself is not tailed or exposed. Raw stdout/stderr, raw JSONL, tool result output, command output, `result.response`, stats, token usage, and verbose metadata are excluded.
 - Unknown event shapes are denied by default. Managed agents without supported extraction return their real process status with `events: []`, `truncated: false`, and `error: null`.
 - Each PID keeps the first 50 events observed in the window. If later events are dropped, `truncated` is `true`.
 - `status` is one of `running`, `completed`, `failed`, or `not_found`, and reflects state when the observation window closes.
-- `agent` is `claude`, `codex`, `gemini`, `forge`, `opencode`, a future tracked string value, or `null` when the process is not found or the agent cannot be determined.
+- `agent` is `claude`, `codex`, `gemini`, `forge`, `opencode`, `grok`, a future tracked string value, or `null` when the process is not found or the agent cannot be determined.
 
 Example response:
 
@@ -493,6 +519,7 @@ Normally not required, but useful for customizing CLI paths or debugging.
 - `CODEX_CLI_NAME`: Override the Codex CLI binary name or provide an absolute path (default: `codex`)
 - `GEMINI_CLI_NAME`: Override the Gemini CLI binary name or provide an absolute path (default: `gemini`)
 - `FORGE_CLI_NAME`: Override the Forge CLI binary name or provide an absolute path (default: `forge`)
+- `GROK_CLI_NAME`: Override the Grok CLI binary name or absolute path (default discovery: `~/.grok/bin/grok`, then `grok` on PATH)
 - `OPENCODE_CLI_NAME`: Override the OpenCode CLI binary name or provide an absolute path (default: `opencode`)
 - `MCP_CLAUDE_DEBUG`: Enable debug logging (set to `true` for verbose output)
 

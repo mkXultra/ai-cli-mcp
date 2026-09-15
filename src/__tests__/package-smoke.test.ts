@@ -28,6 +28,7 @@ const expectedPackageFiles = [
   'dist/parsers.js',
   'dist/peek.js',
   'dist/process-result.js',
+  'dist/process-termination.js',
   'dist/process-service.js',
   'dist/server.js',
   'dist/spawn-cli.js',
