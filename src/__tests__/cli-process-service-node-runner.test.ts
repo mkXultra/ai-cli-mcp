@@ -62,7 +62,7 @@ afterEach(async () => {
 });
 
 describe('CliProcessService with the detached Node.js runner', () => {
-  it('runs a native executable and persists its output without a shell wrapper', async () => {
+  it.each([5, 0])('runs a native executable and persists output with wait timeout %s', async (timeout) => {
     const { service, stateDir, workFolder } = createServiceFixture();
     const started = await service.startProcess({
       cwd: workFolder,
@@ -70,7 +70,7 @@ describe('CliProcessService with the detached Node.js runner', () => {
       prompt: '40 + 2',
     });
 
-    const [result] = await service.waitForProcesses([started.pid], 5);
+    const [result] = await service.waitForProcesses([started.pid], timeout);
     const processDir = join(
       stateDir,
       'cwds',

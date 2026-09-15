@@ -126,6 +126,7 @@ ai-cli result 12345
 ai-cli result 12345 --verbose
 ai-cli peek 12345 --time 10
 ai-cli wait 12345 --timeout 300
+ai-cli wait 12345 --timeout 0
 ai-cli wait 12345 --verbose
 ai-cli kill 12345
 ai-cli cleanup
@@ -354,11 +355,13 @@ Claude CLI、Codex CLI、Gemini CLI、Forge CLI、または OpenCode を使用�
 
 複数のAIエージェントプロセスの完了を待機し、結果をまとめて返します。指定されたすべてのPIDが終了するか、タイムアウトになるまでブロックします。
 
+`timeout` に `0` を指定すると、ai-cli 側の時間制限なしで全プロセスの終了を待ちます。MCP では `{ "pids": [12345], "timeout": 0 }`、CLI では `ai-cli wait 12345 --timeout 0` と指定します。MCP クライアントや通信側のタイムアウトは別途適用されます。有限の待機時間を超えた場合はエラーを返しますが、プロセスは実行を継続します。
+
 デフォルトでは、返される各結果項目は `get_result(verbose: false)` と同じ compact 形を使います。`pid`、`agent`、`status`、`exitCode`、`model` などの運用上必要な項目に加え、利用可能であれば `agentOutput` やトップレベルの `session_id` を含みます。`verbose: true` を指定すると、`startTime`、`workFolder`、`prompt` などの完全なメタデータや、`agentOutput.tools` のような詳細な解析結果を含む full 形を返します。
 
 **引数:**
 - `pids` (array of numbers, 必須): 待機するプロセスIDのリスト（`run` ツールから返されたもの）。
-- `timeout` (number, 任意): 最大待機時間（秒）。デフォルトは180秒（3分）です。
+- `timeout` (number, 任意): 0以上の最大待機時間（秒）。既定は180秒（3分）で、`0` は無期限待機です。
 - `verbose` (boolean, 任意): `true` の場合、各結果項目を full 形で返します。デフォルトは `false` です。
 
 ### `peek`

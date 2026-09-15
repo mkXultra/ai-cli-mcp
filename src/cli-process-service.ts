@@ -185,7 +185,7 @@ export class CliProcessService {
         return Promise.all(pids.map((pid) => this.getProcessResult(pid, verbose)));
       }
 
-      if (Date.now() - start >= timeoutSeconds * 1000) {
+      if (timeoutSeconds !== 0 && Date.now() - start >= timeoutSeconds * 1000) {
         throw new Error(`Timed out after ${timeoutSeconds} seconds waiting for processes`);
       }
 

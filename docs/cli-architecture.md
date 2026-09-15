@@ -75,7 +75,8 @@ Waits until all given PIDs are no longer running.
 Properties:
 
 - Input is one or more `pid` values
-- Timeout is supported
+- Timeout defaults to 180 seconds; `--timeout 0` waits without a deadline until every requested PID finishes
+- A finite timeout returns an error without stopping the running processes
 - Response format follows MCP `wait` as closely as possible
 - Returns a result array, same direction as MCP
 

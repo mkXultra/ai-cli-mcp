@@ -235,7 +235,8 @@ ${getSupportedModelsDescription()}
               },
               timeout: {
                 type: 'number',
-                description: 'Optional: Maximum time to wait in seconds. Defaults to 180 (3 minutes).',
+                minimum: 0,
+                description: 'Optional: Maximum time to wait in seconds. Defaults to 180 (3 minutes). Set to 0 to wait without a timeout.',
               },
               verbose: {
                 type: 'boolean',
@@ -405,6 +406,11 @@ ${getSupportedModelsDescription()}
   private async handleWait(toolArguments: any): Promise<ServerResult> {
     if (!toolArguments.pids || !Array.isArray(toolArguments.pids) || toolArguments.pids.length === 0) {
       throw new McpError(ErrorCode.InvalidParams, 'Missing or invalid required parameter: pids (must be a non-empty array of numbers)');
+    }
+    if (toolArguments.timeout !== undefined && (
+      typeof toolArguments.timeout !== 'number' || !Number.isFinite(toolArguments.timeout) || toolArguments.timeout < 0
+    )) {
+      throw new McpError(ErrorCode.InvalidParams, 'Invalid timeout: expected a finite non-negative number (0 means no timeout)');
     }
     try {
       const results = await this.processService.waitForProcesses(

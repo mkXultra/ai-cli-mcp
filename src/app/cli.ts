@@ -51,7 +51,7 @@ Wait for one or more tracked processes to finish.
 By default each result uses the compact shape; set --verbose to include full metadata and detailed parsed output.
 
 Options:
-  --timeout <seconds>          Maximum wait time in seconds
+  --timeout <seconds>          Maximum wait time in seconds (default: 180; 0: no timeout)
   --verbose                    Return full metadata and detailed parsed output
   --help, -h                   Show this help message
 `;
@@ -407,8 +407,8 @@ export async function runCli(argv: string[], deps: Partial<CliDeps> = {}): Promi
     }
 
     const timeoutRaw = getFirstFlag(flags, ['timeout']);
-    const timeout = timeoutRaw ? Number(timeoutRaw) : undefined;
-    if (timeout !== undefined && (!Number.isFinite(timeout) || timeout <= 0)) {
+    const timeout = timeoutRaw === undefined ? undefined : Number(timeoutRaw);
+    if (timeout !== undefined && (timeoutRaw?.trim() === '' || !Number.isFinite(timeout) || timeout < 0)) {
       stderr('Invalid --timeout value\n');
       stdout(CLI_HELP_TEXT);
       return 1;
