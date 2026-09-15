@@ -1,4 +1,5 @@
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -68,10 +69,10 @@ function encodeCwd(cwd: string): string {
 describe('CliProcessService', () => {
   const tempDirs: string[] = [];
 
-  afterEach(() => {
+  afterEach(async () => {
     for (const dir of tempDirs.splice(0)) {
-      // On Windows the detached runner can briefly retain its cwd after writing exit status.
-      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      // Let pending process/handle cleanup proceed between Windows directory-removal retries.
+      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
     }
   });
 
