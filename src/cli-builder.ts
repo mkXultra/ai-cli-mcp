@@ -111,17 +111,21 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
     }
   } else if (agent === 'gemini') {
     cliPath = options.cliPaths.gemini;
-    args = ['-y', '--output-format', 'stream-json'];
+    args = ['--dangerously-skip-permissions', '--disable-slash-commands', '--output-format', 'stream-json'];
+    args.push(`--print-timeout=${process.env.ANTIGRAVITY_PRINT_TIMEOUT || '2h'}`);
 
     if (options.session_id && typeof options.session_id === 'string') {
-      args.push('-r', options.session_id);
+      args.push(`--conversation=${options.session_id}`);
     }
 
     if (resolvedModel) {
       args.push('--model', resolvedModel);
     }
 
-    args.push(prompt);
+    if (reasoningEffort) {
+      args.push('--effort', reasoningEffort);
+    }
+    args.push(`--print=${prompt}`);
   } else if (agent === 'forge') {
     cliPath = options.cliPaths.forge;
     args = ['-C', cwd];

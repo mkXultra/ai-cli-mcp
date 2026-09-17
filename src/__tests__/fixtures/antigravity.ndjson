@@ -1,0 +1,8 @@
+{"event":"init","conversation_id":"agy-session-test","init":{"model":"gemini-3.8-flash-medium"}}
+{"event":"step_update","step_update":{"conversation_id":"agy-session-test","step_index":0,"state":"DONE","step_type":"user_input","text_delta":"PRIVATE_USER"}}
+{"event":"step_update","step_update":{"conversation_id":"agy-session-test","step_index":1,"state":"DONE","step_type":"agent_response","text_delta":"確認します。"}}
+{"event":"step_update","step_update":{"conversation_id":"agy-session-test","step_index":2,"state":"ACTIVE","step_type":"tool","tool_name":"run_command","tool_info":{"name":"run_command","parameters":{"CommandLine":"printf ACM_TOOL_OK"}}}}
+{"event":"step_update","step_update":{"conversation_id":"agy-session-test","step_index":2,"state":"DONE","step_type":"tool","tool_name":"run_command","duration_seconds":0.2,"tool_info":{"name":"run_command","parameters":{"CommandLine":"printf ACM_TOOL_OK"},"output":"PRIVATE_OUTPUT"}}}
+{"event":"step_update","step_update":{"conversation_id":"agy-session-test","step_index":3,"state":"ACTIVE","step_type":"agent_response","text_delta":"確認"}}
+{"event":"step_update","step_update":{"conversation_id":"agy-session-test","step_index":3,"state":"DONE","step_type":"agent_response","text_delta":"完了。"}}
+{"event":"result","result":{"conversation_id":"agy-session-test","status":"SUCCESS","response":"確認完了。","duration_seconds":2,"num_turns":1,"usage":{"total_tokens":42}}}

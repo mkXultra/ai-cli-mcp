@@ -233,10 +233,12 @@ function getCliBinaryConfig(name: CliBinaryName): {
   }
 
   return {
-    envVarName: 'GEMINI_CLI_NAME',
-    customCliName: process.env.GEMINI_CLI_NAME,
-    defaultCliName: 'gemini',
-    localInstallPath: join(homedir(), '.gemini', 'local', 'gemini'),
+    envVarName: process.env.ANTIGRAVITY_CLI_NAME ? 'ANTIGRAVITY_CLI_NAME' : 'GEMINI_CLI_NAME',
+    customCliName: process.env.ANTIGRAVITY_CLI_NAME || process.env.GEMINI_CLI_NAME,
+    defaultCliName: 'agy',
+    localInstallPath: process.platform === 'win32'
+      ? join(process.env.LOCALAPPDATA || join(homedir(), 'AppData', 'Local'), 'agy', 'bin', 'agy.exe')
+      : join(homedir(), '.local', 'bin', 'agy'),
   };
 }
 
@@ -262,7 +264,8 @@ export function getCliDoctorStatus(): CliDoctorStatus {
 }
 
 export function findGeminiCli(): string {
-  debugLog('[Debug] Attempting to find Gemini CLI...');
+  // Keep the public Gemini backend key while using Antigravity's native CLI.
+  debugLog('[Debug] Attempting to find Antigravity CLI (agy)...');
   const status = getCliBinaryStatus('gemini');
   return getCliCommandOrThrow(status);
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { parseGrokOutput, parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput } from './parsers.js';
+import { parseGrokOutput, parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseAntigravityOutput, parseOpenCodeOutput } from './parsers.js';
 
 const AGENTS = ['claude', 'codex', 'gemini', 'forge', 'opencode', 'grok'] as const;
 type Agent = typeof AGENTS[number];
@@ -89,7 +89,7 @@ async function main(): Promise<void> {
       parsed = parseCodexOutput(input);
       break;
     case 'gemini':
-      parsed = parseGeminiOutput(input);
+      parsed = parseAntigravityOutput(input);
       break;
     case 'forge':
       parsed = parseForgeOutput(input);

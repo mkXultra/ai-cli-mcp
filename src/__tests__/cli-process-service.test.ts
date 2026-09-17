@@ -177,10 +177,10 @@ describe('CliProcessService', () => {
     },
     {
       agent: 'gemini',
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash-medium',
       stdout: `
-{"type":"init","timestamp":"2026-04-18T00:00:00.000Z","session_id":"ses-fake-gemini"}
-{"type":"message","timestamp":"2026-04-18T00:00:01.000Z","role":"assistant","content":"fake gemini ok","delta":true}
+{"event":"init","conversation_id":"ses-fake-gemini"}
+{"event":"result","result":{"conversation_id":"ses-fake-gemini","status":"SUCCESS","response":"fake gemini ok"}}
 `,
       expectedSessionId: 'ses-fake-gemini',
       expectedMessage: 'fake gemini ok',

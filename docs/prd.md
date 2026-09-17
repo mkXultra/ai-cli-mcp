@@ -43,7 +43,7 @@ AI支援開発において、以下の制約がユーザーの生産性を阻害
 - モデル名から適切なCLI（Claude / Codex / Gemini / Forge / OpenCode / Grok）が自動選択される
 - Ultra エイリアス（`claude-ultra`, `codex-ultra`, `gemini-ultra`）とユーザー定義エイリアスによるモデル指定をサポート
 - `session_id` による前回セッションの継続をサポート（Claude / Codex / Gemini / Forge / OpenCode / Grok）
-- `reasoning_effort` による推論深度の指定をサポート（Claude / Codex / Grok）
+- `reasoning_effort` による推論深度の指定をサポート（Claude / Codex / Antigravity / Grok）
 
 ### FR-2: プロセス一覧 (`list_processes`)
 
@@ -121,7 +121,7 @@ AI支援開発において、以下の制約がユーザーの生産性を阻害
 |---|---|
 | Claude | `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `fable`, `haiku` |
 | Codex | `gpt-6-astra`, `gpt-5.4`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2` |
-| Gemini | `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview` |
+| Gemini | `gemini-3.8-flash-high`, `gemini-3.8-flash-medium`, `gemini-3.8-flash-low`, Gemini 3.7/3.6 Flash variants, `gemini-3.1-pro-high`, `gemini-3.1-pro-low` |
 | Ultra aliases | `claude-ultra`, `codex-ultra`, `gemini-ultra` |
 
 ## User Scenarios
@@ -144,7 +144,7 @@ AI支援開発において、以下の制約がユーザーの生産性を阻害
 
 ポーリング不要: 手順2の後は `wait` で全完了をブロッキング待機すればよい。
 
-**注意**: 多段スタッキング（手順4）に完全対応しているのは Claude のみ。Codex / Gemini は1回のセッション再開は可能だが、再開後に新しい `session_id` が返らないため、それ以上の連鎖はできない。詳細は [Session Stacking](./session-stacking.md) を参照。
+**注意**: Antigravity（Gemini）は同じ `session_id` で順次継続する。Claudeのフォーク方式とは異なる。各CLIの詳細は [Session Stacking](./session-stacking.md) を参照。
 
 ## Security Model
 

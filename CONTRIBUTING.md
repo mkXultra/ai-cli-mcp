@@ -73,7 +73,7 @@ Then use `ai-cli-mcp` command globally.
 |----------|-------------|
 | `CLAUDE_CLI_NAME` | Claude CLI binary name or absolute path |
 | `CODEX_CLI_NAME` | Codex CLI binary name or absolute path |
-| `GEMINI_CLI_NAME` | Gemini CLI binary name or absolute path |
+| `ANTIGRAVITY_CLI_NAME` | Antigravity CLI binary name or absolute path |
 | `MCP_CLAUDE_DEBUG` | Enable debug logging (`true`/`false`) |
 
 ## Release Process

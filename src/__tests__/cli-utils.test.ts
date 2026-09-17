@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { accessSync } from 'node:fs';
 import { join } from 'node:path';
+import { homedir } from 'node:os';
 
 vi.mock('node:fs', () => ({
   accessSync: vi.fn(),
@@ -21,6 +22,7 @@ describe('cli-utils doctor status', () => {
     delete process.env.CLAUDE_CLI_NAME;
     delete process.env.CODEX_CLI_NAME;
     delete process.env.GEMINI_CLI_NAME;
+    delete process.env.ANTIGRAVITY_CLI_NAME;
     delete process.env.FORGE_CLI_NAME;
     delete process.env.OPENCODE_CLI_NAME;
     delete process.env.GROK_CLI_NAME;
@@ -31,6 +33,38 @@ describe('cli-utils doctor status', () => {
   afterEach(() => {
     process.env = originalEnv;
     Object.defineProperty(process, 'platform', { value: originalPlatform });
+  });
+
+  it.each(['linux', 'darwin', 'win32'])('discovers the native agy installation on %s', async (platform) => {
+    Object.defineProperty(process, 'platform', { value: platform });
+    process.env.LOCALAPPDATA = join(homedir(), 'AppData', 'Local');
+    const executable = platform === 'win32'
+      ? join(process.env.LOCALAPPDATA, 'agy', 'bin', 'agy.exe')
+      : join(homedir(), '.local', 'bin', 'agy');
+    mockAccessSync.mockImplementation(file => { if (file !== executable) throw new Error('missing'); });
+    const { getCliDoctorStatus, findGeminiCli } = await import('../cli-utils.js');
+    expect(getCliDoctorStatus().gemini).toMatchObject({ configuredCommand: 'agy', resolvedPath: executable, available: true, lookup: 'local' });
+    expect(findGeminiCli()).toBe(executable);
+  });
+
+  it('prioritizes ANTIGRAVITY_CLI_NAME, retaining GEMINI_CLI_NAME as a deprecated override', async () => {
+    process.env.ANTIGRAVITY_CLI_NAME = 'agy-custom';
+    process.env.GEMINI_CLI_NAME = 'old-override';
+    mockAccessSync.mockImplementation(file => { if (file !== join(mockBinDir, 'agy-custom')) throw new Error('missing'); });
+    const { getCliDoctorStatus } = await import('../cli-utils.js');
+    expect(getCliDoctorStatus().gemini).toMatchObject({ configuredCommand: 'agy-custom', lookup: 'env', available: true });
+    delete process.env.ANTIGRAVITY_CLI_NAME;
+    expect(getCliDoctorStatus().gemini.configuredCommand).toBe('old-override');
+    process.env.ANTIGRAVITY_CLI_NAME = './relative/agy';
+    expect(getCliDoctorStatus().gemini.error).toContain('Invalid ANTIGRAVITY_CLI_NAME');
+  });
+
+  it('searches PATH for agy without falling back to the old gemini binary', async () => {
+    mockAccessSync.mockImplementation(file => { if (file !== join(mockBinDir, 'gemini')) throw new Error('missing'); });
+    const { getCliDoctorStatus } = await import('../cli-utils.js');
+    expect(getCliDoctorStatus().gemini).toMatchObject({ configuredCommand: 'agy', available: false, lookup: 'path' });
+    mockAccessSync.mockImplementation(file => { if (file !== join(mockBinDir, 'agy')) throw new Error('missing'); });
+    expect(getCliDoctorStatus().gemini).toMatchObject({ configuredCommand: 'agy', available: true, resolvedPath: join(mockBinDir, 'agy') });
   });
 
   it('marks PATH binaries available when they are executable', async () => {

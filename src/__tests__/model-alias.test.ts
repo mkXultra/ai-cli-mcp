@@ -99,7 +99,7 @@ describe('user config loading', () => {
     [{ coding: { model: 'oc-openai' } }, 'Invalid OpenCode model'],
     [{ coding: { model: 'gpt-5.6-luna', reasoning_effort: 'ultra' } }, 'supports only low, medium, high, xhigh, max'],
     [{ coding: { model: 'opus', reasoning_effort: 'ultra' } }, 'Claude reasoning_effort supports only'],
-    [{ coding: { model: 'gemini-2.5-pro', reasoning_effort: 'high' } }, 'only supported for Claude, Codex, and Grok'],
+    [{ coding: { model: 'gemini-3.1-pro-high', reasoning_effort: 'ultra' } }, 'Antigravity reasoning_effort supports only'],
     [{ coding: { model: 'forge', reasoning_effort: 'high' } }, 'not supported for forge'],
     [{ coding: { model: 'oc-openai/gpt-5.4', reasoning_effort: 'high' } }, 'not supported for opencode'],
   ])('rejects invalid aliases %#', (aliases, message) => {
@@ -149,7 +149,7 @@ describe('configured alias resolution', () => {
   });
 
   it.each([
-    ['fast', 'gemini-2.5-flash', 'gemini', 'gemini-2.5-flash'],
+    ['fast', 'gemini-3.8-flash-medium', 'gemini', 'gemini-3.8-flash-medium'],
     ['external', 'oc-openai/gpt-5.4', 'opencode', 'openai/gpt-5.4'],
   ])('supports %s aliases for other backends', (name, model, agent, cliModel) => {
     configure({ [name]: { model } });

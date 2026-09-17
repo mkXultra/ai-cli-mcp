@@ -94,7 +94,7 @@ export class ClaudeCodeServer {
     this.opencodeCliPath = this.resolveDoctorCliPath(doctorStatus.opencode);
     console.error(`[Setup] Using Claude CLI command/path: ${this.claudeCliPath}`);
     console.error(`[Setup] Using Codex CLI command/path: ${this.codexCliPath}`);
-    console.error(`[Setup] Using Gemini CLI command/path: ${this.geminiCliPath}`);
+    console.error(`[Setup] Using Antigravity CLI command/path: ${this.geminiCliPath}`);
     console.error(`[Setup] Using Forge CLI command/path: ${this.forgeCliPath}`);
     console.error(`[Setup] Using OpenCode CLI command/path: ${this.opencodeCliPath}`);
     this.processService = new ProcessService({
@@ -157,7 +157,7 @@ export class ClaudeCodeServer {
       tools: [
         {
           name: 'run',
-          description: `AI Agent Runner: Starts a Claude, Codex, Gemini, Forge, OpenCode, or Grok CLI process in the background and returns a PID immediately. Use list_processes and get_result to monitor progress.
+          description: `AI Agent Runner: Starts a Claude, Codex, Antigravity (Gemini), Forge, OpenCode, or Grok CLI process in the background and returns a PID immediately. Use list_processes and get_result to monitor progress.
 
 • File ops: Create, read, (fuzzy) edit, move, copy, delete, list files, analyze/ocr images, file content analysis
 • Code: Generate / analyse / refactor / fix
@@ -201,11 +201,11 @@ ${getSupportedModelsDescription()}
               },
               reasoning_effort: {
                 type: 'string',
-                description: 'Reasoning control for Claude, Codex, and Grok. Claude uses --effort with "low", "medium", "high", "xhigh", "max". Codex uses model_reasoning_effort with "low", "medium", "high", "xhigh"; GPT-6 Astra and GPT-5.6 Sol/Terra also support "max" and "ultra", while GPT-5.6 Luna supports "max". Grok: grok-4.6=low/medium/high/xhigh; grok-4.5, grok (configured default), and other grok-* models=low/medium/high. Omitted effort uses the CLI default. Grok never accepts max/ultra. Gemini, Forge, and OpenCode do not support reasoning_effort in this integration.',
+                description: 'Reasoning control for Claude, Codex, Antigravity (Gemini), and Grok. Claude uses --effort with "low", "medium", "high", "xhigh", "max". Codex uses model_reasoning_effort with "low", "medium", "high", "xhigh"; GPT-6 Astra and GPT-5.6 Sol/Terra also support "max" and "ultra", while GPT-5.6 Luna supports "max". Grok: grok-4.6=low/medium/high/xhigh; grok-4.5, grok (configured default), and other grok-* models=low/medium/high. Omitted effort uses the CLI default. Grok never accepts max/ultra. Antigravity uses --effort low/medium/high; it must match any effort suffix in the model name. Forge and OpenCode do not support reasoning_effort in this integration.',
               },
               session_id: {
                 type: 'string',
-                description: 'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, OpenCode, and Grok. Grok resumes via --resume, preserving the session ID. OpenCode resumes in-place via --session and may also be combined with explicit oc-<provider/model> selection.',
+                description: 'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, OpenCode, and Grok. Antigravity resumes its conversation_id via --conversation; old Gemini CLI sessions cannot be resumed. Grok resumes via --resume, preserving the session ID. OpenCode resumes in-place via --session and may also be combined with explicit oc-<provider/model> selection.',
               },
             },
             required: ['workFolder'],

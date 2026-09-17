@@ -306,7 +306,7 @@ describe('Argument Validation Tests', () => {
       ).rejects.toThrow(/reasoning_effort/i);
     });
 
-    it('should reject reasoning_effort for unsupported model families', async () => {
+    it('should reject unsupported Antigravity reasoning effort', async () => {
       await setupServer();
       const handler = handlers.get('callTool')!;
 
@@ -317,8 +317,8 @@ describe('Argument Validation Tests', () => {
             arguments: {
               prompt: 'test',
               workFolder: '/tmp',
-              model: 'gemini-2.5-pro',
-              reasoning_effort: 'low'
+              model: 'gemini-3.1-pro-high',
+              reasoning_effort: 'ultra'
             }
           }
         })

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseCodexOutput, parseClaudeOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekEventExtractor, PeekMessageExtractor } from '../parsers.js';
+import { parseCodexOutput, parseClaudeOutput, parseForgeOutput, parseOpenCodeOutput, PeekEventExtractor, PeekMessageExtractor } from '../parsers.js';
 
 describe('parseCodexOutput', () => {
   it('should parse basic Codex output with message and session_id', () => {
@@ -95,66 +95,6 @@ describe('PeekMessageExtractor', () => {
     expect(extractor.push(output, ts)).toEqual([
       { ts, text: 'Visible Claude text' },
     ]);
-  });
-
-  it('extracts only Gemini assistant message content', () => {
-    const extractor = new PeekMessageExtractor('gemini');
-    const output = [
-      '{"type":"message","timestamp":"2026-04-11T14:44:42.294Z","role":"user","content":"hidden user text"}',
-      '{"type":"message","timestamp":"2026-04-11T14:44:53.820Z","role":"assistant","content":"Visible Gemini text","delta":true}',
-      '{"type":"tool_use","timestamp":"2026-04-11T14:44:53.821Z","tool_name":"run_shell_command","parameters":{"command":"echo secret"}}',
-      '{"type":"tool_result","timestamp":"2026-04-11T14:45:03.011Z","status":"success","output":"secret command output"}',
-      '{"type":"result","timestamp":"2026-04-11T14:45:10.380Z","status":"success","response":"Final result is not peek assistant text"}',
-    ].join('\n') + '\n';
-
-    expect(extractor.push(output, ts)).toEqual([
-      { ts, text: 'Visible Gemini text' },
-    ]);
-  });
-
-  it('joins split Gemini assistant chunks into one peek message on flush', () => {
-    const extractor = new PeekMessageExtractor('gemini');
-    const output = [
-      '{"type":"message","timestamp":"2026-04-11T14:44:53.820Z","role":"assistant","content":"Step 2 done. Starting step ","delta":true}',
-      '{"type":"message","timestamp":"2026-04-11T14:44:53.821Z","role":"assistant","content":"3.","delta":true}',
-    ].join('\n') + '\n';
-
-    expect(extractor.push(output, ts)).toEqual([]);
-    expect(extractor.flush('2026-04-11T12:34:59.000Z')).toEqual([
-      { ts: '2026-04-11T12:34:59.000Z', text: 'Step 2 done. Starting step 3.' },
-    ]);
-  });
-
-  it('emits separate Gemini peek messages when a boundary separates logical messages', () => {
-    const extractor = new PeekMessageExtractor('gemini');
-    const output = [
-      '{"type":"message","timestamp":"2026-04-11T14:44:53.820Z","role":"assistant","content":"Starting step ","delta":true}',
-      '{"type":"message","timestamp":"2026-04-11T14:44:53.821Z","role":"assistant","content":"1.","delta":true}',
-      '{"type":"tool_use","timestamp":"2026-04-11T14:44:53.822Z","tool_name":"run_shell_command","parameters":{"command":"echo secret"}}',
-      '{"type":"tool_result","timestamp":"2026-04-11T14:45:03.011Z","status":"success","output":"secret command output"}',
-      '{"type":"message","timestamp":"2026-04-11T14:45:10.315Z","role":"assistant","content":"Final ","delta":true}',
-      '{"type":"message","timestamp":"2026-04-11T14:45:10.316Z","role":"assistant","content":"answer.","delta":true}',
-      '{"type":"result","timestamp":"2026-04-11T14:45:10.380Z","status":"success","response":"Final result response is not peek text","stats":{"total_tokens":21999}}',
-    ].join('\n') + '\n';
-
-    expect(extractor.push(output, ts)).toEqual([
-      { ts, text: 'Starting step 1.' },
-      { ts, text: 'Final answer.' },
-    ]);
-    expect(extractor.flush(ts)).toEqual([]);
-  });
-
-  it('does not emit Gemini user, tool, tool result, stats, or result response text', () => {
-    const extractor = new PeekMessageExtractor('gemini');
-    const output = [
-      '{"type":"message","timestamp":"2026-04-11T14:44:42.294Z","role":"user","content":"hidden user text"}',
-      '{"type":"tool_use","timestamp":"2026-04-11T14:44:53.821Z","tool_name":"run_shell_command","parameters":{"command":"echo secret"}}',
-      '{"type":"tool_result","timestamp":"2026-04-11T14:45:03.011Z","status":"success","output":"secret command output"}',
-      '{"type":"result","timestamp":"2026-04-11T14:45:10.380Z","status":"success","response":"Final result response is not peek text","stats":{"total_tokens":21999}}',
-    ].join('\n') + '\n';
-
-    expect(extractor.push(output, ts)).toEqual([]);
-    expect(extractor.flush(ts)).toEqual([]);
   });
 
   it('denies unsupported agents and invalid shapes by default', () => {
@@ -285,40 +225,6 @@ describe('PeekEventExtractor', () => {
         status: 'success',
       },
       { kind: 'message', ts, text: 'Done.' },
-    ]);
-  });
-
-  it('emits Gemini MCP tool_call events and joined assistant message events', () => {
-    const extractor = new PeekEventExtractor('gemini', { includeToolCalls: true });
-    const output = [
-      '{"type":"tool_use","timestamp":"2026-04-12T02:56:29.992Z","tool_name":"mcp_acm_list_processes","tool_id":"mcp_1","parameters":{}}',
-      '{"type":"tool_result","timestamp":"2026-04-12T02:56:30.059Z","tool_id":"mcp_1","status":"success","output":"secret result"}',
-      '{"type":"message","timestamp":"2026-04-12T02:56:32.855Z","role":"assistant","content":"The tool ","delta":true}',
-      '{"type":"message","timestamp":"2026-04-12T02:56:32.902Z","role":"assistant","content":"succeeded.","delta":true}',
-      '{"type":"result","timestamp":"2026-04-12T02:56:32.954Z","status":"success","stats":{"tool_calls":1}}',
-    ].join('\n') + '\n';
-
-    expect(extractor.push(output, ts)).toEqual([
-      {
-        kind: 'tool_call',
-        ts,
-        phase: 'started',
-        id: 'mcp_1',
-        tool: 'mcp_acm_list_processes',
-        server: 'acm',
-        summary: 'acm.list_processes',
-      },
-      {
-        kind: 'tool_call',
-        ts,
-        phase: 'completed',
-        id: 'mcp_1',
-        tool: 'mcp_acm_list_processes',
-        server: 'acm',
-        summary: 'acm.list_processes',
-        status: 'success',
-      },
-      { kind: 'message', ts, text: 'The tool succeeded.' },
     ]);
   });
 
@@ -507,68 +413,6 @@ describe('PeekEventExtractor', () => {
 
     expect(extractor.push(output, ts)).toEqual([]);
     expect(extractor.flush(ts, { terminal: true })).toEqual([]);
-  });
-});
-
-describe('parseGeminiOutput', () => {
-  it('should parse legacy final JSON output', () => {
-    const output = JSON.stringify({
-      session_id: 'gemini-session-json',
-      response: 'Legacy Gemini final response',
-      stats: {
-        total_tokens: 123,
-      },
-    });
-
-    expect(parseGeminiOutput(output)).toEqual({
-      session_id: 'gemini-session-json',
-      response: 'Legacy Gemini final response',
-      stats: {
-        total_tokens: 123,
-      },
-    });
-  });
-
-  it('should normalize a single-line Gemini assistant stream event', () => {
-    const output = '{"type":"message","timestamp":"2026-04-11T14:44:53.820Z","role":"assistant","content":"Only answer","delta":true}';
-
-    const result = parseGeminiOutput(output);
-
-    expect(result).toMatchObject({
-      message: 'Only answer',
-      session_id: null,
-    });
-    expect(result).not.toHaveProperty('type');
-    expect(result).not.toHaveProperty('content');
-  });
-
-  it('should parse Gemini stream-json NDJSON output', () => {
-    const output = [
-      '{"type":"init","timestamp":"2026-04-11T14:44:42.293Z","session_id":"gemini-session-stream","model":"gemini-3.1-pro-preview"}',
-      '{"type":"message","timestamp":"2026-04-11T14:44:42.294Z","role":"user","content":"hidden user text"}',
-      '{"type":"message","timestamp":"2026-04-11T14:44:53.820Z","role":"assistant","content":"First logical assistant response.","delta":true}',
-      '{"type":"tool_use","timestamp":"2026-04-11T14:44:53.821Z","tool_name":"run_shell_command","tool_id":"tool-1","parameters":{"command":"echo hidden"}}',
-      '{"type":"tool_result","timestamp":"2026-04-11T14:45:03.011Z","tool_id":"tool-1","status":"success","output":"hidden command output"}',
-      '{"type":"message","timestamp":"2026-04-11T14:45:10.315Z","role":"assistant","content":"Final assistant ","delta":true}',
-      '{"type":"message","timestamp":"2026-04-11T14:45:10.316Z","role":"assistant","content":"response.","delta":true}',
-      '{"type":"result","timestamp":"2026-04-11T14:45:10.380Z","status":"success","response":"Result response is not the parsed message","stats":{"total_tokens":21999}}',
-    ].join('\n') + '\n';
-
-    expect(parseGeminiOutput(output)).toEqual({
-      message: 'Final assistant response.',
-      session_id: 'gemini-session-stream',
-      stats: {
-        total_tokens: 21999,
-      },
-      tools: [
-        {
-          tool: 'run_shell_command',
-          input: { command: 'echo hidden' },
-          output: 'hidden command output',
-          status: 'success',
-        },
-      ],
-    });
   });
 });
 

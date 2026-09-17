@@ -285,9 +285,9 @@ describe('Process Management Tests', () => {
       });
 
       setTimeout(() => {
-        mockProcess.stdout.emit('data', '{"type":"message","timestamp":"2026-04-11T14:44:42.294Z","role":"user","content":"hidden user text"}\n');
-        mockProcess.stdout.emit('data', '{"type":"message","timestamp":"2026-04-11T14:44:53.820Z","role":"assistant","content":"Visible Gemini text","delta":true}\n');
-        mockProcess.stdout.emit('data', '{"type":"tool_result","timestamp":"2026-04-11T14:45:03.011Z","status":"success","output":"secret command output"}\n');
+        mockProcess.stdout.emit('data', '{"event":"step_update","step_update":{"conversation_id":"c1","step_index":0,"step_type":"user_input","text_delta":"hidden user text"}}\n');
+        mockProcess.stdout.emit('data', '{"event":"step_update","step_update":{"conversation_id":"c1","step_index":1,"step_type":"agent_response","state":"DONE","text_delta":"Visible Gemini text"}}\n');
+        mockProcess.stdout.emit('data', '{"event":"step_update","step_update":{"conversation_id":"c1","step_index":2,"step_type":"tool","state":"DONE","tool_info":{"output":"secret command output"}}}\n');
         mockProcess.emit('close', 0);
       }, 10);
 

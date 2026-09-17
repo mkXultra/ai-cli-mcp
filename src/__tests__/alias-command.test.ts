@@ -128,7 +128,7 @@ describe('ai-cli alias commands', () => {
     ['add', 'opus', 'gpt-6-astra'],
     ['add', 'coding', 'codex-ultra'],
     ['add', 'coding', 'gpt-5.6-luna', '--effort', 'ultra'],
-    ['add', 'coding', 'gemini-2.5-flash', '--effort', 'high'],
+    ['add', 'coding', 'gemini-3.8-flash-medium', '--effort', 'ultra'],
   ])('does not create any files for invalid definitions: %s %s %s', async (...args) => {
     await expect(cli(...args)).rejects.toThrow();
     expect(existsSync(dirname(configPath))).toBe(false);
