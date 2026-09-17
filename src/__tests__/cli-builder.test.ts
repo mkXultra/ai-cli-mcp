@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 
 // Mock dependencies
@@ -24,13 +24,14 @@ import {
 const DEFAULT_CLI_PATHS = {
   claude: '/usr/bin/claude',
   codex: '/usr/bin/codex',
-  gemini: '/usr/bin/gemini',
+  gemini: '/usr/bin/agy',
   forge: '/usr/bin/forge',
   opencode: '/usr/bin/opencode',
   grok: '/usr/bin/grok',
 };
 
 describe('cli-builder', () => {
+  afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => {
     vi.clearAllMocks();
     // By default, workFolder exists
@@ -46,8 +47,8 @@ describe('cli-builder', () => {
       expect(resolveModelAlias('codex-ultra')).toBe('gpt-6-astra');
     });
 
-    it('should resolve gemini-ultra to gemini-3.1-pro-preview', () => {
-      expect(resolveModelAlias('gemini-ultra')).toBe('gemini-3.1-pro-preview');
+    it('should resolve gemini-ultra to gemini-3.8-flash-high', () => {
+      expect(resolveModelAlias('gemini-ultra')).toBe('gemini-3.8-flash-high');
     });
 
     it('should pass through non-alias model names', () => {
@@ -116,9 +117,9 @@ describe('cli-builder', () => {
       );
     });
 
-    it('should throw for unsupported model families', () => {
-      expect(() => getReasoningEffort('gemini-2.5-pro', 'high')).toThrow(
-        'reasoning_effort is only supported for Claude, Codex, and Grok models.'
+    it('should reject unsupported Antigravity effort', () => {
+      expect(() => getReasoningEffort('gemini-3.1-pro-high', 'ultra')).toThrow(
+        'Antigravity reasoning_effort supports only low, medium, high.'
       );
     });
 
@@ -505,33 +506,35 @@ describe('cli-builder', () => {
 
     describe('gemini agent', () => {
       it('should build gemini command', () => {
+        vi.stubEnv('ANTIGRAVITY_PRINT_TIMEOUT', undefined);
         const cmd = buildCliCommand({
           prompt: 'test',
           workFolder: '/tmp',
-          model: 'gemini-2.5-pro',
+          model: 'gemini-3.1-pro-high',
           cliPaths: DEFAULT_CLI_PATHS,
         });
 
         expect(cmd.agent).toBe('gemini');
-        expect(cmd.cliPath).toBe('/usr/bin/gemini');
-        expect(cmd.args).toContain('-y');
+        expect(cmd.cliPath).toBe('/usr/bin/agy');
+        expect(cmd.args).toContain('--dangerously-skip-permissions');
         expect(cmd.args).toContain('--output-format');
         expect(cmd.args).toContain('stream-json');
+        expect(cmd.args).toContain('--print-timeout=2h');
         expect(cmd.args).toContain('--model');
-        expect(cmd.args).toContain('gemini-2.5-pro');
+        expect(cmd.args).toContain('gemini-3.1-pro-high');
       });
 
       it('should build gemini command with session_id', () => {
         const cmd = buildCliCommand({
           prompt: 'test',
           workFolder: '/tmp',
-          model: 'gemini-2.5-pro',
+          model: 'gemini-3.1-pro-high',
           session_id: 'gem-789',
           cliPaths: DEFAULT_CLI_PATHS,
         });
 
-        expect(cmd.args).toContain('-r');
-        expect(cmd.args).toContain('gem-789');
+        expect(cmd.args).toContain('--conversation=gem-789');
+        expect(cmd.args).toContain('--print=test');
       });
 
       it('should resolve gemini-ultra alias', () => {
@@ -543,7 +546,7 @@ describe('cli-builder', () => {
         });
 
         expect(cmd.agent).toBe('gemini');
-        expect(cmd.resolvedModel).toBe('gemini-3.1-pro-preview');
+        expect(cmd.resolvedModel).toBe('gemini-3.8-flash-high');
       });
     });
 

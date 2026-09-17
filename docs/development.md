@@ -57,7 +57,7 @@ src/
 | `model-selection.ts` | Resolves native model backends and validates model-specific reasoning effort without reading configuration. |
 | `server.ts` | MCP server. Calls `buildCliCommand()` inside `handleRun`, wraps errors in `McpError`, then spawns the process in the background. |
 | `cli.ts` | Standalone CLI. Parses `process.argv`, calls `buildCliCommand()`, spawns the process in the **foreground**, parses output, and prints JSON to stdout. |
-| `parsers.ts` | `parseClaudeOutput`, `parseCodexOutput`, `parseGeminiOutput` — parse CLI stdout into structured objects. |
+| `parsers.ts` | `parseClaudeOutput`, `parseCodexOutput`, `parseAntigravityOutput` — parse CLI stdout into structured objects. |
 
 ## Testing
 
@@ -165,12 +165,12 @@ This will open a web interface where you can:
 3. Test different AI models including:
    - Claude models: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `fable`, `haiku`
    - Codex models: `gpt-6-astra`, `gpt-5.4`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
-   - Gemini models: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
+   - Gemini models: `gemini-3.1-pro-high`, `gemini-3.8-flash-medium`, `gemini-3.8-flash-high`, `gemini-3.1-pro-low`
 
 Example test: Select the `run` tool and provide:
 - `prompt`: "What is 2+2?"
 - `workFolder`: "/tmp"
-- `model`: "gemini-2.5-flash"
+- `model`: "gemini-3.8-flash-medium"
 
 ## Configuration via Environment Variables
 
@@ -178,7 +178,7 @@ Example test: Select the `run` tool and provide:
 |----------|-------------|
 | `CLAUDE_CLI_NAME` | Claude CLI binary name or absolute path (default: `claude`) |
 | `CODEX_CLI_NAME` | Codex CLI binary name or absolute path (default: `codex`) |
-| `GEMINI_CLI_NAME` | Gemini CLI binary name or absolute path (default: `gemini`) |
+| `ANTIGRAVITY_CLI_NAME` | Antigravity binary name or absolute path (default: `agy`); legacy `GEMINI_CLI_NAME` is lower priority |
 | `AI_CLI_CONFIG_PATH` | User alias JSON config path; overrides the default. Relative paths use the CLI/MCP process cwd. |
 | `XDG_CONFIG_HOME` | Absolute base directory for `ai-cli/config.json` (default: `~/.config`). |
 | `MCP_CLAUDE_DEBUG` | Enable debug logging — `true` / `false` (default: `false`) |

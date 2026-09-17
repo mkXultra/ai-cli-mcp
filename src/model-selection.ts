@@ -100,6 +100,12 @@ export function getReasoningEffort(model: string, rawValue: unknown): string {
 
   const normalized = trimmed.toLowerCase();
   const agent = getStandardAgentForModel(model);
+  if (agent === 'gemini') {
+    if (!['low', 'medium', 'high'].includes(normalized)) {
+      throw new Error('Antigravity reasoning_effort supports only low, medium, high.');
+    }
+    return normalized;
+  }
   if (agent === 'grok') {
     // With a configured or unknown model, only the common Grok levels are safe.
     const supported = model === 'grok-4.6' ? ['low', 'medium', 'high', 'xhigh'] : ['low', 'medium', 'high'];
@@ -116,11 +122,6 @@ export function getReasoningEffort(model: string, rawValue: unknown): string {
   }
   if (agent === 'forge') {
     throw new Error('reasoning_effort is not supported for forge.');
-  }
-  if (agent === 'gemini') {
-    throw new Error(
-      'reasoning_effort is only supported for Claude, Codex, and Grok models.'
-    );
   }
   if (agent === 'claude' && !CLAUDE_REASONING_EFFORTS.has(normalized)) {
     throw new Error(

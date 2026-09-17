@@ -21,11 +21,11 @@ This MCP server provides tools that can be used by LLMs to interact with AI CLI 
 
 - Run Claude CLI with all permissions bypassed (using `--dangerously-skip-permissions`)
 - Execute Codex CLI with approvals and sandbox bypassed (using `--dangerously-bypass-approvals-and-sandbox`)
-- Execute Gemini CLI with automatic approval mode (using `-y`)
+- Execute Gemini models through Antigravity CLI (`agy --print`, `stream-json`, and `--dangerously-skip-permissions`)
 - Execute Forge CLI in non-interactive mode (using `forge -C <workFolder> -p <prompt>`)
 - Execute Grok Build CLI headlessly with `streaming-messages-json`, automatic tool approval, and automatic updates disabled
 - Execute OpenCode in non-interactive JSON mode (using `opencode run --format json --dir <workFolder> <prompt>`)
-- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, fable, haiku), Codex (gpt-6-astra, gpt-5.4, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-5.5, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2), Gemini (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, gemini-3-pro-preview, gemini-3-flash-preview), Forge (`forge`), Grok (`grok`, `grok-4.6`, `grok-4.5`), and OpenCode (`opencode` plus explicit `oc-<provider/model>` wrappers such as `oc-openai/gpt-5.4`)
+- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, fable, haiku), Codex (gpt-6-astra, gpt-5.4, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-5.5, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2), Gemini (gemini-3.8-flash-high/medium/low, gemini-3.7-flash-high/medium/low, gemini-3.6-flash-high/medium/low, gemini-3.1-pro-high/low), Forge (`forge`), Grok (`grok`, `grok-4.6`, `grok-4.5`), and OpenCode (`opencode` plus explicit `oc-<provider/model>` wrappers such as `oc-openai/gpt-5.4`)
 - Manage background processes with PID tracking
 - Parse and return structured outputs from both tools
 
@@ -36,7 +36,7 @@ You can instruct your main agent to run multiple tasks in parallel like this:
 > Launch agents for the following 3 tasks using acm mcp run:
 > 1. Refactor `src/backend` code using `sonnet`
 > 2. Create unit tests for `src/frontend` using `gpt-5.3-codex`
-> 3. Update docs in `docs/` using `gemini-2.5-pro`
+> 3. Update docs in `docs/` using `gemini-3.1-pro-high`
 >
 > While they run, please update the TODO list. Once done, use the `wait` tool to wait for all completions and report the results together.
 
@@ -65,12 +65,31 @@ The only prerequisite is that the AI CLI tools you want to use are locally insta
 
 - **Claude Code**: `claude doctor` passes, and execution with `--dangerously-skip-permissions` is approved (you must run it manually once to login and accept terms).
 - **Codex CLI** (Optional): Installed and initial setup (login etc.) completed.
-- **Gemini CLI** (Optional): Installed and initial setup (login etc.) completed.
+- **Antigravity CLI** (Optional, for Gemini models): Install `agy` and sign in once; tested with 1.2.5. See the migration instructions below.
 - **Forge CLI** (Optional): Installed and initial setup completed.
 - **Grok Build CLI** (Optional): Install and authenticate Grok locally (tested with 1.0.13 and OAuth). Discovery checks `~/.grok/bin/grok`, then `PATH`; `GROK_CLI_NAME` overrides either with a command name or absolute path.
 - **OpenCode** (Optional): Installed and configured. This integration uses `opencode run --format json`, and explicit provider/model selection follows the `oc-<provider/model>` wrapper syntax exposed by `ai-cli models`.
 
 ## Installation & Usage
+
+### Antigravity CLI for Gemini models
+
+The Gemini backend uses Google's [Antigravity CLI](https://antigravity.google/docs/cli/install/) (`agy`, tested with 1.2.5). On macOS/Linux:
+
+```sh
+curl -fsSL https://antigravity.google/cli/install.sh | bash
+~/.local/bin/agy  # Sign in once interactively
+agy models
+ai-cli run --cwd /path/to/project --model gemini-ultra --prompt "Review this project"
+```
+
+On Windows, follow the official PowerShell instructions. Discovery checks `~/.local/bin/agy` on macOS/Linux or `%LOCALAPPDATA%/agy/bin/agy.exe` on Windows, then `PATH`. Set `ANTIGRAVITY_CLI_NAME` to override this path.
+
+The backend key remains `gemini` in `doctor`, `models`, and process results. The built-in `gemini-ultra` selects `gemini-3.8-flash-high`. Update custom aliases targeting old Gemini CLI names with `ai-cli alias add`; `agy models` lists the names available to your account. A supplied `reasoning_effort` must match the model suffix (for example, `gemini-3.8-flash-medium` with `medium`). Other Antigravity model families are not routed through this backend.
+
+`peek` reads incremental assistant text and optional tool start/completion events. `get_result`/`ai-cli result` return the final response and expose Antigravity's `conversation_id` as `session_id`; pass it to the next run to resume with `--conversation`. Old Gemini CLI output parsing and session resumption are not supported.
+
+This integration sets Antigravity's run limit to two hours (`2h`) by default. Set `ANTIGRAVITY_PRINT_TIMEOUT=1h` (or another positive duration) in the environment of ai-cli or the MCP server to override it. Antigravity's `0` means an immediate timeout. ACM `wait(timeout: 0)` only removes the waiting deadline and does not change this separate run limit.
 
 There are now two primary ways to use this package:
 
@@ -162,12 +181,12 @@ Follow the prompts to accept. Once this is done, the MCP server will be able to 
 codex login
 ```
 
-### For Gemini CLI:
+### For Antigravity CLI (Gemini):
 
-**For Gemini, ensure you're logged in and have configured your credentials:**
+**Start Antigravity once interactively to sign in:**
 
 ```bash
-gemini auth login
+agy
 ```
 
 macOS might ask for folder permissions the first time any of these tools run. If the first run fails, subsequent runs should work.
@@ -316,7 +335,7 @@ The commands above edit `~/.config/ai-cli/config.json`. You can also edit it dir
 ```
 
 - `model` is required; `reasoning_effort` is optional. The backend is selected from the target model, regardless of the alias name.
-- Effort precedence is: explicit run argument → alias default → target CLI default. Effort must be supported by the target model; Gemini, Forge, and OpenCode aliases must omit it.
+- Effort precedence is: explicit run argument → alias default → target CLI default. Effort must be supported by the target model; Antigravity effort must match the model suffix; Forge and OpenCode aliases must omit it.
 - User entries can override built-in aliases such as `codex-ultra`. Each entry replaces the entire definition; omitting `reasoning_effort` uses the target CLI's default rather than inheriting the built-in effort.
 - Targets must be native model names such as `gpt-5.6-terra`, `opus`, or `oc-openai/gpt-5.4`; alias chaining is not supported. Alias names are case-sensitive, start with an ASCII letter, and contain only ASCII letters, digits, `_`, or `-`. Listed native model names, `codex`, and the `oc-` prefix are reserved, except that a user alias named `grok` retains precedence for compatibility.
 - Missing default config files preserve built-in behavior. Malformed files and invalid model/effort combinations produce errors with the config path. A missing explicitly configured file also produces an error, except that `alias add` can create it.
@@ -356,7 +375,7 @@ This server exposes the following tools:
 
 ### `run`
 
-Executes a prompt using Claude CLI, Codex CLI, Gemini CLI, Forge CLI, OpenCode, or Grok. The appropriate CLI is automatically selected based on the model name.
+Executes a prompt using Claude CLI, Codex CLI, Antigravity CLI (Gemini), Forge CLI, OpenCode, or Grok. The appropriate CLI is automatically selected based on the model name.
 
 **Arguments:**
 - `prompt` (string, optional): The prompt to send to the AI agent. Either `prompt` or `prompt_file` is required.
@@ -367,11 +386,11 @@ Executes a prompt using Claude CLI, Codex CLI, Gemini CLI, Forge CLI, OpenCode, 
 - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `fable`, `haiku`
   - `fable` explicitly selects Claude Code's latest Fable model. Fable may require separately billed usage credits and is not selected by the built-in `claude-ultra` default.
 - Codex: `gpt-6-astra`, `gpt-5.4`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
-- Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`
+- Gemini: `gemini-3.8-flash-high`, `gemini-3.8-flash-medium`, `gemini-3.8-flash-low`, Gemini 3.7/3.6 Flash variants, `gemini-3.1-pro-high`, `gemini-3.1-pro-low`
 - Forge: `forge`
 - Grok: `grok` for its configured default, `grok-4.6`, `grok-4.5`, and other native `grok-*` names
 - OpenCode: `opencode` for the configured default backend model, plus explicit wrappers like `oc-openai/gpt-5.4`
-- `reasoning_effort` (string, optional): Reasoning control for Claude, Codex, and Grok. Grok uses `--reasoning-effort`: `grok-4.6` supports low/medium/high/xhigh; `grok-4.5`, the `grok` configured default, and other native Grok names accept low/medium/high. Omit effort to use the CLI default; max/ultra are rejected for Grok. Claude uses `--effort` (allowed: "low", "medium", "high", "xhigh", "max"). Codex uses `model_reasoning_effort` (base levels: "low", "medium", "high", "xhigh"; GPT-6 Astra and GPT-5.6 Sol/Terra also support "max" and "ultra", while GPT-5.6 Luna supports "max"). Gemini, Forge, and OpenCode do not support `reasoning_effort`.
+- `reasoning_effort` (string, optional): Reasoning control for Claude, Codex, and Grok. Grok uses `--reasoning-effort`: `grok-4.6` supports low/medium/high/xhigh; `grok-4.5`, the `grok` configured default, and other native Grok names accept low/medium/high. Omit effort to use the CLI default; max/ultra are rejected for Grok. Claude uses `--effort` (allowed: "low", "medium", "high", "xhigh", "max"). Codex uses `model_reasoning_effort` (base levels: "low", "medium", "high", "xhigh"; GPT-6 Astra and GPT-5.6 Sol/Terra also support "max" and "ultra", while GPT-5.6 Luna supports "max"). Antigravity accepts `--effort low|medium|high`, which must match the model name suffix when present. Forge and OpenCode do not support `reasoning_effort`.
 - `session_id` (string, optional): Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, OpenCode, and Grok. Grok resumes the same session via `--resume`; the wrapper’s `session_id` never uses Grok’s new-session `--session-id` flag. OpenCode resumes in place via `--session` and may also be combined with an explicit `oc-<provider/model>` selection.
 
 ### `wait`
@@ -408,8 +427,8 @@ ai-cli peek 123 --time 10 --include-tool-calls
 - `peek_started_at` and `events[].ts` are ai-cli-mcp server-side UTC RFC3339 timestamps. `peek_started_at` is when the observation window starts after validation and listener registration; `events[].ts` is when ai-cli-mcp observed and accepted the event.
 - The window ends when `peek_time_sec` elapses or all target processes reach a terminal state, whichever comes first.
 - Events emitted before the window starts are not returned. Concurrent `peek` calls for the same PID are allowed; each has an independent window and may return overlapping events.
-- Message events are recognized from Codex `agent_message` text, Claude and Grok whole assistant text content, OpenCode `type: "text"` events where `part.type` is `"text"`, Gemini stream-json `message` events where `role` is `"assistant"`, and best-effort Forge plain-text lines beginning with `Summary:` or `Completed successfully:`.
-- When tool calls are included, `tool_call` events are normalized for Codex command/MCP calls, Claude/Grok tool use/results, Gemini tool use/results, OpenCode completed tool use events, and low-precision Forge `Execute`/`Finished` markers. Tool summaries are bounded one-line strings derived from tool names and input metadata only. Forge command output itself is not tailed or exposed. Raw stdout/stderr, raw JSONL, tool result output, command output, `result.response`, stats, token usage, and verbose metadata are excluded.
+- Message events are recognized from Codex `agent_message` text, Claude and Grok whole assistant text content, OpenCode `type: "text"` events where `part.type` is `"text"`, Antigravity `step_update` events with `step_type: "agent_response"` (incremental `text_delta`), and best-effort Forge plain-text lines beginning with `Summary:` or `Completed successfully:`.
+- When tool calls are included, `tool_call` events are normalized for Codex command/MCP calls, Claude/Grok tool use/results, Antigravity tool steps (ACTIVE/DONE), OpenCode completed tool use events, and low-precision Forge `Execute`/`Finished` markers. Tool summaries are bounded one-line strings derived from tool names and input metadata only. Forge command output itself is not tailed or exposed. Raw stdout/stderr, raw JSONL, tool result output, command output, `result.response`, stats, token usage, and verbose metadata are excluded.
 - Unknown event shapes are denied by default. Managed agents without supported extraction return their real process status with `events: []`, `truncated: false`, and `error: null`.
 - Each PID keeps the first 50 events observed in the window. If later events are dropped, `truncated` is `true`.
 - `status` is one of `running`, `completed`, `failed`, or `not_found`, and reflects state when the observation window closes.
@@ -517,7 +536,8 @@ Normally not required, but useful for customizing CLI paths or debugging.
 
 - `CLAUDE_CLI_NAME`: Override the Claude CLI binary name or provide an absolute path (default: `claude`)
 - `CODEX_CLI_NAME`: Override the Codex CLI binary name or provide an absolute path (default: `codex`)
-- `GEMINI_CLI_NAME`: Override the Gemini CLI binary name or provide an absolute path (default: `gemini`)
+- `ANTIGRAVITY_CLI_NAME`: Override the Antigravity binary name or absolute path (default: `agy`). The deprecated `GEMINI_CLI_NAME` is a lower-priority override and must also point to an Antigravity binary.
+- `ANTIGRAVITY_PRINT_TIMEOUT`: Override Antigravity’s run limit with a positive duration such as `1h` (integration default: `2h`; `0` is not unlimited).
 - `FORGE_CLI_NAME`: Override the Forge CLI binary name or provide an absolute path (default: `forge`)
 - `GROK_CLI_NAME`: Override the Grok CLI binary name or absolute path (default discovery: `~/.grok/bin/grok`, then `grok` on PATH)
 - `OPENCODE_CLI_NAME`: Override the OpenCode CLI binary name or provide an absolute path (default: `opencode`)

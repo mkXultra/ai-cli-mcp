@@ -1,7 +1,7 @@
 import { terminateProcessTree } from './process-termination.js';
 import type { ChildProcess } from 'node:child_process';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
-import { parseGrokOutput, parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekEventExtractor } from './parsers.js';
+import { parseGrokOutput, parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseAntigravityOutput, parseOpenCodeOutput, PeekEventExtractor } from './parsers.js';
 import {
   appendPeekEvents,
   buildNotFoundPeekProcess,
@@ -71,7 +71,7 @@ function parseAgentOutput(agent: AgentType, stdout: string, stderr: string): any
     return parseClaudeOutput(stdout);
   }
   if (agent === 'gemini') {
-    return parseGeminiOutput(stdout);
+    return parseAntigravityOutput(stdout);
   }
   if (agent === 'forge') {
     return parseForgeOutput(stdout);
@@ -107,7 +107,7 @@ export class ProcessService {
       childProcess = spawnCli(cliPath, processArgs, {
         cwd: effectiveCwd,
         stdio: ['ignore', 'pipe', 'pipe'],
-        detached: agent === 'grok' && process.platform !== 'win32',
+        detached: (agent === 'grok' || agent === 'gemini') && process.platform !== 'win32',
       });
     } catch {
       throw new Error(`Failed to start ${agent} CLI process`);
@@ -369,7 +369,7 @@ export class ProcessService {
       };
     }
 
-    if (processEntry.toolType !== 'grok') return this.terminateTrackedProcess(processEntry);
+    if (processEntry.toolType !== 'grok' && processEntry.toolType !== 'gemini') return this.terminateTrackedProcess(processEntry);
 
     // Register before signaling, and share the entire tree operation with other
     // kills and shutdown even after the root's public status becomes terminal.
@@ -385,7 +385,7 @@ export class ProcessService {
   private async terminateTrackedProcess(processEntry: TrackedProcess): Promise<KillProcessResult> {
     const { pid } = processEntry;
     let warning: string | undefined;
-    if (processEntry.toolType === 'grok') {
+    if (processEntry.toolType === 'grok' || processEntry.toolType === 'gemini') {
       const termination = await terminateProcessTree(pid, {
         ownedProcessGroup: process.platform !== 'win32',
         hasExited: () => processEntry.process.exitCode !== null || processEntry.process.signalCode !== null,

@@ -831,10 +831,10 @@ describe('ClaudeCodeServer Unit Tests', () => {
         }
       });
 
-      // Verify spawn was called with -r flag for Gemini
+      // Antigravity resumes the existing conversation.
       expect(mockSpawn).toHaveBeenCalledWith(
         expect.any(String),
-        expect.arrayContaining(['-r', 'gemini-session-789']),
+        expect.arrayContaining(['--conversation=gemini-session-789']),
         expect.any(Object)
       );
     });

@@ -27,7 +27,7 @@ MCP Client (Cursor, Claude Code, etc.)
   │
   ├─ run(prompt, model="opus")     → PID 1234 (即座に返却)
   ├─ run(prompt, model="gpt-5.3-codex")  → PID 1235
-  ├─ run(prompt, model="gemini-2.5-pro") → PID 1236
+  ├─ run(prompt, model="gemini-3.1-pro-high") → PID 1236
   │
   ├─ list_processes()  → 実行状況一覧
   ├─ peek(pids)        → 実行中出力の短時間観測
@@ -123,7 +123,7 @@ src/
 ```
 claude-ultra  → opus (+ reasoning_effort: max)
 codex-ultra   → gpt-6-astra (+ reasoning_effort: ultra)
-gemini-ultra  → gemini-3.1-pro-preview
+gemini-ultra  → gemini-3.8-flash-high
 ```
 
 `fable` は、別料金の usage credits が必要になる場合があるため、明示的に選択する Claude モデルとして扱う。組み込みの `claude-ultra` の既定値は Opus とする。
@@ -145,7 +145,7 @@ ai-cli run --cwd "$PWD" --model codex-coding --prompt "失敗しているテス�
 
 - Claude Code は `--dangerously-skip-permissions` で実行される（すべてのファイル操作・コマンド実行が無許可で行われる）
 - Codex は `--full-auto` で実行される
-- Gemini は `-y`（自動承認）で実行される
+- Gemini は Antigravity CLI の `--dangerously-skip-permissions` で実行される
 
 つまり、このMCPサーバーに接続できるクライアントは、ローカルマシン上で **任意のコード実行が可能** である。ネットワーク越しの不特定多数への公開や、信頼できないクライアントからのアクセスは想定していない。
 
@@ -164,7 +164,7 @@ ai-cli run --cwd "$PWD" --model codex-coding --prompt "失敗しているテス�
 |---|---|
 | `node:child_process.spawn` でプロセス管理 | 軽量で直接的。外部依存なしにPIDベースの管理が可能 |
 | `--dangerously-skip-permissions` (Claude) | MCP経由の自動実行には非対話モードが必須 |
-| `--full-auto` (Codex) / `-y` (Gemini) | 同上。各CLIの自動承認モード |
+| `--full-auto` (Codex) / `--dangerously-skip-permissions` (Antigravity) | 同上。各CLIの自動承認モード |
 | `session_id` サポート | コンテキストキャッシュにより、大規模コードベースの読み込みコストを複数タスクで共有 |
 | 出力パーサーの分離 | CLI出力形式の変更に対して個別に対応可能 |
 | npx 配布 | インストール不要でMCP設定に直接記述可能 |

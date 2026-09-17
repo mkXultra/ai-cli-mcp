@@ -35,12 +35,12 @@ function parseArgs(argv: string[]): Record<string, string> {
 const USAGE = `Usage: npm run -s cli.run -- --model <model> --workFolder <path> --prompt "..." [options]
 
 Options:
-  --model              Model name or alias (e.g. sonnet, opus, fable, gpt-6-astra, gemini-2.5-pro, forge, grok, grok-4.6, grok-4.5, opencode, oc-openai/gpt-5.4)
+  --model              Model name or alias (e.g. sonnet, opus, fable, gpt-6-astra, gemini-3.1-pro-high, forge, grok, grok-4.6, grok-4.5, opencode, oc-openai/gpt-5.4)
   --workFolder         Working directory (absolute path)
   --prompt             Prompt string (mutually exclusive with --prompt_file)
   --prompt_file        Path to a file containing the prompt
   --session_id         Session ID to resume, including Grok (--resume, same session) and OpenCode in-place resumes
-  --reasoning_effort   Claude/Codex/Grok: Claude=low|medium|high|xhigh|max, Codex=low|medium|high|xhigh (GPT-6 Astra/GPT-5.6: max; Astra/Sol/Terra: ultra); unsupported for Gemini, Forge, and OpenCode
+  --reasoning_effort   Claude/Codex/Grok: Claude=low|medium|high|xhigh|max, Codex=low|medium|high|xhigh (GPT-6 Astra/GPT-5.6: max; Astra/Sol/Terra: ultra); Antigravity=low|medium|high; unsupported for Forge and OpenCode
   --help               Show this help message
 
 Grok uses its configured model with --model grok. Grok effort: grok-4.6=low|medium|high|xhigh; grok-4.5 and grok=low|medium|high. Omitted effort uses the CLI default.

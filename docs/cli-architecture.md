@@ -7,7 +7,7 @@
 - `ai-cli`: human-facing production CLI
 - `ai-cli-mcp`: MCP server entrypoint for backward compatibility
 
-The package name stays `ai-cli-mcp` for now. We do not introduce a daemon. We keep the product as a thin wrapper over Claude Code, Codex CLI, Gemini CLI, Forge, OpenCode, and Grok Build CLI.
+The package name stays `ai-cli-mcp` for now. We do not introduce a daemon. We keep the product as a thin wrapper over Claude Code, Codex CLI, Antigravity CLI (Gemini), Forge, OpenCode, and Grok Build CLI.
 
 ## Non-Goals
 

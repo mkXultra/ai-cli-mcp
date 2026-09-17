@@ -52,9 +52,9 @@ run("洗い出した問題を修正して", session_id="def-456", model="sonnet"
 |---|---|---|---|
 | Claude | OK | **OK** | 再開後に新しい `session_id` が返る。`--fork-session` でセッションをフォークするため、元のセッションも保持される |
 | Codex | OK | **NG** | 再開後に新しい `session_id` が返らない。2段（初回 + 1回再開）まで |
-| Gemini | OK | **NG** | 再開後に新しい `session_id` が返らない。2段（初回 + 1回再開）まで |
+| Antigravity (Gemini) | OK | **OK（順次継続）** | 同じ `conversation_id` を `session_id` として返し、同一会話を継続する。フォークはしない |
 
-**完全な多段 Session Stacking ができるのは現時点では Claude のみ。** Codex / Gemini は1回のセッション再開には対応しているが、再開時に新しい `session_id` が発行されないため、それ以上の連鎖はできない。これは各CLIの制約であり、本ツール側の制限ではない。
+Claudeはセッションをフォークし、Antigravity（Gemini）は同じ `session_id` で順次継続する。Antigravityで同じ会話を続ける場合は、前の実行が完了してから次の `run` に進む。旧Gemini CLIのセッションは再開できない。
 
 ## 内部実装
 
@@ -63,5 +63,5 @@ run("洗い出した問題を修正して", session_id="def-456", model="sonnet"
 | CLI | 内部で実行されるフラグ |
 |---|---|
 | Claude | `-r <session_id> --fork-session` |
-| Gemini | `-r <session_id>` |
+| Antigravity (Gemini) | `--conversation=<session_id>` |
 | Codex | `exec resume <session_id>` |

@@ -21,7 +21,7 @@ import { join, basename, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
 import { findGrokCli, findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli } from './cli-utils.js';
-import { parseGrokOutput, parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekEventExtractor } from './parsers.js';
+import { parseGrokOutput, parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseAntigravityOutput, parseOpenCodeOutput, PeekEventExtractor } from './parsers.js';
 import { buildProcessResult } from './process-result.js';
 import {
   appendPeekEvents,
@@ -108,7 +108,7 @@ function parseAgentOutput(agent: AgentType, stdout: string, stderr: string): any
     return parseClaudeOutput(stdout);
   }
   if (agent === 'gemini') {
-    return parseGeminiOutput(stdout);
+    return parseAntigravityOutput(stdout);
   }
   if (agent === 'forge') {
     return parseForgeOutput(stdout);
@@ -315,7 +315,7 @@ export class CliProcessService {
     }
 
     let warning: string | undefined;
-    if (refreshed.toolType === 'grok') {
+    if (refreshed.toolType === 'grok' || refreshed.toolType === 'gemini') {
       const termination = await terminateProcessTree(pid, { ownedProcessGroup: true });
       warning = termination.warning;
       if (warning) this.appendTextFileSafe(refreshed.stderrPath, `\n${warning}`);

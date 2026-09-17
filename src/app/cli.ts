@@ -33,9 +33,9 @@ Options:
   --cwd <path>                 Working directory
   --prompt <text>              Prompt text
   --prompt-file <path>         Path to a prompt file
-  --model <model>              Model name or alias (e.g. sonnet, fable, claude-ultra, gpt-6-astra, codex-ultra, gemini-2.5-pro, gemini-ultra, forge, grok, grok-4.6, grok-4.5, opencode, oc-openai/gpt-5.4)
+  --model <model>              Model name or alias (e.g. sonnet, fable, claude-ultra, gpt-6-astra, codex-ultra, gemini-3.1-pro-high, gemini-ultra, forge, grok, grok-4.6, grok-4.5, opencode, oc-openai/gpt-5.4)
   --session-id <id>            Resume a previous session, including Grok (--resume, same session) and OpenCode in-place resumes
-  --reasoning-effort <level>   Reasoning level for Claude/Codex/Grok; unsupported for Gemini, Forge, and OpenCode
+  --reasoning-effort <level>   Reasoning level for Claude/Codex/Grok; Antigravity=low|medium|high; unsupported for Forge and OpenCode
   --help, -h                   Show this help message
 
 Grok: grok-4.6=low/medium/high/xhigh; grok-4.5, grok (configured default), and other grok-* models=low/medium/high. Omitted effort uses the CLI default. Grok never accepts max/ultra.

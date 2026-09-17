@@ -15,11 +15,17 @@ export const CODEX_MODELS = [
   'gpt-5.2',
 ] as const;
 export const GEMINI_MODELS = [
-  'gemini-2.5-pro',
-  'gemini-2.5-flash',
-  'gemini-3.1-pro-preview',
-  'gemini-3-pro-preview',
-  'gemini-3-flash-preview',
+  'gemini-3.8-flash-high',
+  'gemini-3.8-flash-medium',
+  'gemini-3.8-flash-low',
+  'gemini-3.7-flash-high',
+  'gemini-3.7-flash-medium',
+  'gemini-3.7-flash-low',
+  'gemini-3.6-flash-high',
+  'gemini-3.6-flash-medium',
+  'gemini-3.6-flash-low',
+  'gemini-3.1-pro-high',
+  'gemini-3.1-pro-low',
 ] as const;
 export const GROK_MODELS = ['grok', 'grok-4.6', 'grok-4.5'] as const;
 export const GROK_REASONING_EFFORTS = {
@@ -41,7 +47,7 @@ export interface ModelAliasDetails {
 export const MODEL_ALIAS_DETAILS: readonly ModelAliasDetails[] = [
   { name: 'claude-ultra', resolvesTo: 'opus', agent: 'claude', defaultReasoningEffort: 'max' },
   { name: 'codex-ultra', resolvesTo: 'gpt-6-astra', agent: 'codex', defaultReasoningEffort: 'ultra' },
-  { name: 'gemini-ultra', resolvesTo: 'gemini-3.1-pro-preview', agent: 'gemini' },
+  { name: 'gemini-ultra', resolvesTo: 'gemini-3.8-flash-high', agent: 'gemini' },
 ] as const;
 
 export const MODEL_ALIASES: Record<string, string> = Object.fromEntries(
@@ -103,7 +109,7 @@ export function getModelParameterDescription(): string {
   const aliases = getModelAliases().map((alias) =>
     `"${alias.name}" (${alias.resolvesTo}${alias.defaultReasoningEffort ? `; auto ${alias.defaultReasoningEffort} reasoning` : ''})`
   ).join(', ');
-  return `The model to use. Aliases (including user config): ${aliases}. An explicit reasoning_effort overrides the alias default. Standard: ${[...CLAUDE_MODELS, ...CODEX_MODELS, ...GEMINI_MODELS, ...FORGE_MODELS, ...GROK_MODELS, ...OPENCODE_MODELS].map((model) => `"${model}"`).join(', ')}. Fable may require usage credits. Grok accepts native grok-* model names; grok uses its CLI-configured default unless a user alias named grok exists; that alias retains precedence. Native model names such as grok-4.6 select the Grok backend. Omitted effort uses the CLI default; grok and unknown Grok models accept low/medium/high, grok-4.6 also accepts xhigh. OpenCode also accepts explicit dynamic models using "oc-<provider/model>". "forge" is a provider key, not a Forge model family selector.`;
+  return `The model to use. Aliases (including user config): ${aliases}. An explicit reasoning_effort overrides the alias default. Standard: ${[...CLAUDE_MODELS, ...CODEX_MODELS, ...GEMINI_MODELS, ...FORGE_MODELS, ...GROK_MODELS, ...OPENCODE_MODELS].map((model) => `"${model}"`).join(', ')}. Gemini models run through Antigravity CLI (agy); use agy models for current availability. Model effort suffixes must match reasoning_effort when supplied. Fable may require usage credits. Grok accepts native grok-* model names; grok uses its CLI-configured default unless a user alias named grok exists; that alias retains precedence. Native model names such as grok-4.6 select the Grok backend. Omitted effort uses the CLI default; grok and unknown Grok models accept low/medium/high, grok-4.6 also accepts xhigh. OpenCode also accepts explicit dynamic models using "oc-<provider/model>". "forge" is a provider key, not a Forge model family selector.`;
 }
 
 export function getModelsPayload(): {
