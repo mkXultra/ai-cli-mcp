@@ -1,3 +1,10 @@
+# [2.27.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.26.0...v2.27.0) (2026-09-17)
+
+
+### Features
+
+* replace Gemini CLI backend with Antigravity ([a05c00e](https://github.com/mkXultra/ai-cli-mcp/commit/a05c00e45cc83817606f1a4b996979cb4ea226ca))
+
 # [2.26.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.25.0...v2.26.0) (2026-09-15)
 
 
