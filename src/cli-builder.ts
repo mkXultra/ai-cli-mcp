@@ -71,7 +71,7 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
 
   const rawModel = options.model || '';
   const alias = getModelAliases().find((entry) => entry.name === rawModel);
-  const { agent, resolvedModel, openCodeModel } = resolveModelSelection(alias?.resolvesTo ?? rawModel);
+  const { agent, resolvedModel, openCodeModel, piModel } = resolveModelSelection(alias?.resolvesTo ?? rawModel);
   const reasoningEffort = getReasoningEffort(
     resolvedModel,
     options.reasoning_effort || alias?.defaultReasoningEffort,
@@ -148,6 +148,23 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
     }
 
     args.push(prompt);
+  } else if (agent === 'pi') {
+    cliPath = options.cliPaths.pi || 'pi';
+    args = ['--mode', 'json', '--approve'];
+
+    if (options.session_id && typeof options.session_id === 'string') {
+      args.push('--session', options.session_id);
+    }
+
+    if (piModel) {
+      args.push('--model', piModel);
+    }
+
+    if (reasoningEffort) {
+      args.push('--thinking', reasoningEffort);
+    }
+
+    args.push('-p', '--', prompt);
   } else {
     cliPath = options.cliPaths.claude;
     args = ['--dangerously-skip-permissions', '--output-format', 'stream-json', '--verbose'];

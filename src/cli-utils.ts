@@ -19,7 +19,7 @@ export interface CliBinaryStatus {
   error?: string;
 }
 
-export type CliBinaryName = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode' | 'grok';
+export type CliBinaryName = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode' | 'grok' | 'pi';
 
 export interface CliPaths {
   claude: string;
@@ -28,6 +28,7 @@ export interface CliPaths {
   forge: string;
   opencode: string;
   grok: string;
+  pi?: string;
 }
 
 export interface CliDoctorStatus {
@@ -43,6 +44,7 @@ export interface CliDoctorStatus {
   forge: CliBinaryStatus;
   opencode: CliBinaryStatus;
   grok: CliBinaryStatus;
+  pi: CliBinaryStatus;
 }
 
 function getCommandCandidates(commandName: string): string[] {
@@ -232,6 +234,14 @@ function getCliBinaryConfig(name: CliBinaryName): {
     };
   }
 
+  if (name === 'pi') {
+    return {
+      envVarName: 'PI_CLI_NAME',
+      customCliName: process.env.PI_CLI_NAME,
+      defaultCliName: 'pi',
+    };
+  }
+
   return {
     envVarName: process.env.ANTIGRAVITY_CLI_NAME ? 'ANTIGRAVITY_CLI_NAME' : 'GEMINI_CLI_NAME',
     customCliName: process.env.ANTIGRAVITY_CLI_NAME || process.env.GEMINI_CLI_NAME,
@@ -260,6 +270,7 @@ export function getCliDoctorStatus(): CliDoctorStatus {
     forge: getCliBinaryStatus('forge'),
     opencode: getCliBinaryStatus('opencode'),
     grok: getCliBinaryStatus('grok'),
+    pi: getCliBinaryStatus('pi'),
   };
 }
 
@@ -290,6 +301,10 @@ export function findOpencodeCli(): string {
 
 export function findGrokCli(): string {
   return getCliCommandOrThrow(getCliBinaryStatus('grok'));
+}
+
+export function findPiCli(): string {
+  return getCliCommandOrThrow(getCliBinaryStatus('pi'));
 }
 
 export function findClaudeCli(): string {

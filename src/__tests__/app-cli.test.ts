@@ -330,11 +330,18 @@ describe('ai-cli app', () => {
     expect(payload.codex).toContain('gpt-5.2');
     expect(payload.forge).toEqual(['forge']);
     expect(payload.opencode).toEqual(['opencode']);
+    expect(payload.pi).toEqual(['pi']);
     expect(payload.dynamicModelBackends).toEqual({
       opencode: {
         explicitPrefix: 'oc-',
         explicitPattern: 'oc-<provider/model>',
         discoveryCommand: 'opencode models',
+        modelsAreDynamic: true,
+      },
+      pi: {
+        explicitPrefix: 'pi-',
+        explicitPattern: 'pi-<provider/model>',
+        discoveryCommand: 'pi --list-models',
         modelsAreDynamic: true,
       },
     });

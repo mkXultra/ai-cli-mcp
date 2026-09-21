@@ -350,6 +350,7 @@ function extractPeekEventsFromParsedEvent(agent: PeekAgent, parsed: any, observe
 
 export class PeekEventExtractor {
   private pending = '';
+  private piAssistantBuffer = '';
   private antigravityAssistantBuffer = '';
   private antigravityConversationId: string | null = null;
   private antigravityMessageStep: string | null = null;
@@ -366,7 +367,7 @@ export class PeekEventExtractor {
   }
 
   push(chunk: string, observedAt = new Date().toISOString()): PeekEvent[] {
-    if ((this.agent === 'forge' || this.agent === 'grok' || this.agent === 'gemini') && this.source === 'stderr') {
+    if ((this.agent === 'forge' || this.agent === 'grok' || this.agent === 'gemini' || this.agent === 'pi') && this.source === 'stderr') {
       return [];
     }
 
@@ -380,7 +381,7 @@ export class PeekEventExtractor {
   }
 
   flush(observedAt = new Date().toISOString(), options: PeekFlushOptions = {}): PeekEvent[] {
-    if ((this.agent === 'forge' || this.agent === 'grok' || this.agent === 'gemini') && this.source === 'stderr') {
+    if ((this.agent === 'forge' || this.agent === 'grok' || this.agent === 'gemini' || this.agent === 'pi') && this.source === 'stderr') {
       this.pending = '';
       return [];
     }
@@ -396,6 +397,7 @@ export class PeekEventExtractor {
     }
 
     events.push(...this.flushAntigravityAssistantBuffer(observedAt));
+    events.push(...this.flushPiAssistantBuffer(observedAt));
     events.push(...this.flushForgePendingTool(observedAt, options.terminal === true));
     return events;
   }
@@ -489,7 +491,66 @@ export class PeekEventExtractor {
       return isAntigravityEvent(parsed) ? this.extractAntigravityParsedEvent(parsed, observedAt) : [];
     }
 
+    if (this.agent === 'pi') {
+      return this.extractPiParsedEvent(parsed, observedAt);
+    }
+
     return extractPeekEventsFromParsedEvent(this.agent, parsed, observedAt, this.includeToolCalls, this.toolMemory);
+  }
+
+  private extractPiParsedEvent(parsed: any, observedAt: string): PeekEvent[] {
+    const events: PeekEvent[] = [];
+    if (parsed?.type === 'message_update') {
+      const update = parsed.assistantMessageEvent;
+      if (update?.type === 'text_delta' && typeof update.delta === 'string') {
+        this.piAssistantBuffer += update.delta;
+      } else if (update?.type === 'text_end') {
+        events.push(...this.flushPiAssistantBuffer(observedAt));
+      }
+      return events;
+    }
+
+    if (parsed?.type === 'message_end' || parsed?.type === 'turn_end' || parsed?.type === 'agent_end') {
+      return this.flushPiAssistantBuffer(observedAt);
+    }
+
+    if (parsed?.type === 'tool_execution_start') {
+      events.push(...this.flushPiAssistantBuffer(observedAt));
+      if (!this.includeToolCalls) return events;
+      const event = createToolCallEvent({
+        ts: observedAt,
+        phase: 'started',
+        id: parsed.toolCallId,
+        tool: parsed.toolName || 'tool_execution',
+        command: parsed.args?.command,
+      });
+      rememberToolCall(event, this.toolMemory);
+      events.push(event);
+      return events;
+    }
+
+    if (parsed?.type === 'tool_execution_end') {
+      events.push(...this.flushPiAssistantBuffer(observedAt));
+      if (!this.includeToolCalls) return events;
+      events.push(createRememberedCompletion({
+        ts: observedAt,
+        id: parsed.toolCallId,
+        memory: this.toolMemory,
+        fallbackTool: parsed.toolName || 'tool_execution',
+        status: parsed.isError === true ? 'failed' : undefined,
+        defaultStatus: parsed.isError === true ? 'failed' : 'success',
+      }));
+      return events;
+    }
+
+    return events;
+  }
+
+  private flushPiAssistantBuffer(observedAt: string): PeekEvent[] {
+    if (this.agent !== 'pi' || !this.piAssistantBuffer) return [];
+    const text = this.piAssistantBuffer;
+    this.piAssistantBuffer = '';
+    return text.trim() ? [{ kind: 'message', ts: observedAt, text }] : [];
   }
 
   private extractAntigravityParsedEvent(parsed: any, observedAt: string): PeekEvent[] {
@@ -728,6 +789,93 @@ export function parseGrokOutput(stdout: string): any {
     if (terminal?.[key] !== undefined) result[key] = terminal[key];
   }
   return Object.keys(result).length ? result : null;
+}
+
+function piMessageText(message: any): string | null {
+  if (!Array.isArray(message?.content)) return null;
+  const text = message.content
+    .filter((part: any) => part?.type === 'text' && typeof part.text === 'string')
+    .map((part: any) => part.text)
+    .join('');
+  return text.trim() ? text : null;
+}
+
+export function parsePiOutput(stdout: string): any {
+  if (!stdout) return null;
+
+  let recognized = false;
+  let sessionId: string | undefined;
+  let finalMessage: any;
+  const tools = new Map<string, any>();
+
+  for (const line of stdout.split(/\r?\n/)) {
+    let event: any;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (!event || typeof event !== 'object' || typeof event.type !== 'string') continue;
+
+    if (event.type === 'session') {
+      recognized = true;
+      if (typeof event.id === 'string') sessionId = event.id;
+      continue;
+    }
+
+    if (['agent_start', 'agent_end', 'turn_start', 'turn_end', 'message_start', 'message_update', 'message_end', 'tool_execution_start', 'tool_execution_update', 'tool_execution_end'].includes(event.type)) {
+      recognized = true;
+    }
+
+    if ((event.type === 'message_end' || event.type === 'turn_end') && event.message?.role === 'assistant') {
+      finalMessage = event.message;
+    }
+
+    if (event.type === 'agent_end' && Array.isArray(event.messages)) {
+      for (const message of event.messages) {
+        if (message?.role === 'assistant') finalMessage = message;
+      }
+    }
+
+    if (event.type === 'tool_execution_start' && typeof event.toolCallId === 'string') {
+      tools.set(event.toolCallId, {
+        tool: event.toolName || 'tool_execution',
+        input: event.args ?? null,
+        output: null,
+      });
+    }
+
+    if (event.type === 'tool_execution_end' && typeof event.toolCallId === 'string') {
+      const previous = tools.get(event.toolCallId) || {
+        tool: event.toolName || 'tool_execution',
+        input: null,
+        output: null,
+      };
+      previous.output = event.result ?? null;
+      previous.is_error = event.isError === true;
+      tools.set(event.toolCallId, previous);
+    }
+  }
+
+  if (!recognized) return null;
+
+  const result: any = {};
+  const message = piMessageText(finalMessage);
+  if (message) result.message = message;
+  if (sessionId) result.session_id = sessionId;
+  if (typeof finalMessage?.provider === 'string') result.provider = finalMessage.provider;
+  if (typeof finalMessage?.model === 'string') result.model = finalMessage.model;
+  if (finalMessage?.usage && typeof finalMessage.usage === 'object') result.usage = finalMessage.usage;
+  if (typeof finalMessage?.stopReason === 'string') {
+    result.stop_reason = finalMessage.stopReason;
+    if (finalMessage.stopReason === 'error') result.is_error = true;
+  }
+  if (typeof finalMessage?.errorMessage === 'string' && finalMessage.errorMessage) {
+    result.error = finalMessage.errorMessage;
+    result.is_error = true;
+  }
+  if (tools.size) result.tools = [...tools.values()];
+  return result;
 }
 
 export function parseClaudeOutput(stdout: string): any {

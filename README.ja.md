@@ -5,7 +5,7 @@
 
 > **📦 パッケージ移行のお知らせ**: 本パッケージは旧名 `@mkxultra/claude-code-mcp` から `ai-cli-mcp` に名称変更されました。これは、複数のAI CLIツールのサポート拡大を反映したものです。
 
-AI CLIツール（Claude, Codex, Gemini, Forge, OpenCode, Grok）をバックグラウンドプロセスとして実行し、権限処理を自動化するMCP（Model Context Protocol）サーバーです。
+AI CLIツール（Claude, Codex, Gemini, Forge, OpenCode, Grok, Pi）をバックグラウンドプロセスとして実行し、権限処理を自動化するMCP（Model Context Protocol）サーバーです。
 
 Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦戦していることに気づいたことはありませんか？このサーバーは、強力な統合 `run` ツールを提供し、複数のAIエージェントを活用してコーディングタスクをより効果的に処理できるようにします。
 
@@ -23,6 +23,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 - Forge CLI を非対話モードで実行（`forge -C <workFolder> -p <prompt>` を使用）
 - Grok Build CLI を `streaming-messages-json` で非対話実行（ツール実行を自動承認し、自動更新は無効化）
 - OpenCode を非対話 JSON モードで実行（`opencode run --format json --dir <workFolder> <prompt>` を使用）
+- Pi を非対話 JSON モードで実行し、無人実行向けにツール承認を有効化
 - 複数のAIモデルのサポート：
     - Claude (sonnet, sonnet[1m], opus, opusplan, fable, haiku)
     - Codex (gpt-6-astra, gpt-5.4, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-5.5, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2)
@@ -30,6 +31,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
     - Forge (`forge`)
     - Grok (`grok`, `grok-4.6`, `grok-4.5`)
     - OpenCode (`opencode` と `oc-<provider/model>` ラッパー。例: `oc-openai/gpt-5.4`)
+    - Pi (`pi` と `pi-<provider/model>` ラッパー。例: `pi-openai-codex/gpt-6-astra`)
 - PID追跡によるバックグラウンドプロセスの管理
 - ツールからの構造化された出力の解析と返却
 
@@ -61,7 +63,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 
 - **真の非同期マルチタスク**: エージェントの実行はバックグラウンドで行われ、即座に制御が戻ります。呼び出し元のAIは実行完了を待つことなく、並行して次のタスクの実行や別のエージェントの呼び出しを行うことができます。
 - **CLI in CLI (Agent in Agent) の実現**: MCPをサポートするあらゆるIDEやCLIから、Claude CodeやCodexといった強力なCLIツールを直接呼び出せます。ホスト環境の制限を超えた、より広範で複雑なシステム操作や自動化が可能になります。
-- **モデル・プロバイダの制約からの解放**: 特定のエコシステムに縛られることなく、Claude、Codex (GPT)、Gemini、Forge、OpenCode、Grok の中から、タスクに最適な「最強のモデル」や「コスト効率の良いモデル」を自由に選択・組み合わせて利用できます。
+- **モデル・プロバイダの制約からの解放**: 特定のエコシステムに縛られることなく、Claude、Codex (GPT)、Gemini、Forge、OpenCode、Grok、Pi の中から、タスクに最適なモデルを自由に選択・組み合わせて利用できます。
 
 ## 前提条件
 
@@ -73,6 +75,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 - **Forge CLI**（オプション）: インストール済みで、初期設定が完了していること。
 - **Grok Build CLI**（オプション）: インストール・認証済みであること（1.0.13 / OAuth で確認）。`~/.grok/bin/grok`、次に PATH を検索します。`GROK_CLI_NAME` でコマンド名または絶対パスを指定できます。
 - **OpenCode**（オプション）: インストール済みで、設定が完了していること。この統合では `opencode run --format json` を使用し、明示的なモデル指定は `ai-cli models` が公開する `oc-<provider/model>` 構文に従います。
+- **Pi**（オプション）: インストール・認証済みであること（0.86.1で確認）。利用可能なprovider/modelは `pi --list-models` で確認できます。`PI_CLI_NAME` でコマンド名または絶対パスを指定できます。
 
 ## インストールと使い方
 
@@ -143,6 +146,7 @@ ai-cli models
 ai-cli run --cwd "$PWD" --model sonnet --prompt "summarize this repository"
 ai-cli run --cwd "$PWD" --model opencode --prompt "OpenCode のデフォルト設定でこのリポジトリを要約して"
 ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --session-id ses_123 --prompt "明示モデル付きでこの OpenCode セッションを続けて"
+ai-cli run --cwd "$PWD" --model pi-openai-codex/gpt-6-astra --reasoning-effort high --prompt "Piでこのリポジトリをレビューして"
 ai-cli ps
 ai-cli result 12345
 ai-cli result 12345 --verbose
@@ -220,6 +224,8 @@ ai-cli run --cwd "$PWD" --model gpt-5.4 --prompt "デフォルトの Codex モ�
 ai-cli run --cwd "$PWD" --model codex-ultra --prompt "fix failing tests"
 ai-cli run --cwd "$PWD" --model opencode --session-id ses_existing --prompt "この OpenCode セッションを継続して"
 ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --prompt "明示的な OpenCode モデルで実行"
+ai-cli run --cwd "$PWD" --model pi --prompt "Piの設定済みデフォルトモデルで実行"
+ai-cli run --cwd "$PWD" --model pi-openai-codex/gpt-6-astra --reasoning-effort xhigh --prompt "Piの明示モデルで実行"
 ai-cli ps
 ai-cli peek 12345 --time 10
 ai-cli peek 12345 12346 --time 10
@@ -242,6 +248,29 @@ OpenCode のモデル指定は次の 2 つを受け付けます。
 Codex のモデル指定では、公開デフォルトモデルとして `gpt-5.4` を使用します。
 
 `doctor` は CLI バイナリの利用可否と path 解決だけを確認します。JSON 出力には `checks` ブロックが含まれ、ログイン状態と利用規約同意は未確認として示されます。
+
+## Pi CLI
+
+ai-cliまたはMCPサーバーを起動する前にPiをインストールし、一度ログインしてください。この統合はPi 0.86.1で検証しています。
+
+```sh
+npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+pi                    # 未認証の場合は /login を実行
+pi --list-models
+```
+
+`pi` はPi側で設定したデフォルトモデルを使います。`pi-<provider/model>` は `pi --list-models` に表示されたモデルを明示します。例は `pi-openai-codex/gpt-6-astra` です。`ai-cli models` は `pi: ["pi"]`、`dynamicModelBackends.pi`、`reasoningEfforts.pi` としてこの情報を返します。推論強度は `off`、`minimal`、`low`、`medium`、`high`、`xhigh`、`max` に対応し、省略時はPiの設定を使います。
+
+```sh
+ai-cli run --cwd "$PWD" --model pi --prompt "このプロジェクトを説明して"
+ai-cli run --cwd "$PWD" --model pi-openai-codex/gpt-6-astra --reasoning-effort xhigh --prompt "この変更をレビューして"
+ai-cli alias add pi-coding pi-openai-codex/gpt-5.6-terra --effort high
+ai-cli run --cwd "$PWD" --model pi-coding --session-id <session_id> --prompt "続きを進めて"
+```
+
+実行時は `pi --mode json --approve` に、任意の `--model`、`--thinking`、`--session` を加え、最後に `-p -- <prompt>` を渡します。`--approve` により、Piはプロジェクトリソースの読み込みと設定済みツールの実行を対話確認なしで行います。既存の `workFolder` とプロセス分離のルールはそのまま適用されます。
+
+`peek` はPiの `text_delta` を連結し、指定時には `tool_execution_start` / `tool_execution_end` を正規化して返します。thinking差分、ツール更新、ツールの生出力は返しません。`get_result` と `wait` は最終テキスト、provider、モデル、使用量、停止理由、PiのセッションIDを返します。そのIDを次の実行に渡すと `--session` で同じセッションを再開します。verbose結果にはツール履歴を含め、compact結果では省略します。失敗時は診断用stderrを保持し、キャンセルはGrok・Antigravityと同じプロセスツリー終了処理を使います。
 
 ## Grok Build CLI
 
@@ -394,8 +423,9 @@ Claude CLI、Codex CLI、Antigravity CLI（Gemini）、Forge CLI、OpenCode、�
     - Forge: `forge`
     - Grok: `grok`（設定済みのデフォルト）、`grok-4.6`、`grok-4.5`、その他のネイティブ `grok-*` 名
     - OpenCode: `opencode`（設定済みのデフォルトモデル）および `oc-openai/gpt-5.4` のような明示ラッパー
-- `reasoning_effort` (string, 任意): Claude、Codex、Grok の推論制御。Grok は `--reasoning-effort` を使用し、`grok-4.6` は low/medium/high/xhigh、`grok-4.5`・設定済みモデルを使う `grok`・その他の Grok 名は low/medium/high に対応します。省略時は CLI の既定値を使い、Grok の max/ultra は拒否します。Claude では `--effort` を使います（許容値: "low", "medium", "high", "xhigh", "max"）。Codex では `model_reasoning_effort` を使います（基本値: "low", "medium", "high", "xhigh"。GPT-6 Astra と GPT-5.6 Sol/Terra は "max" と "ultra"、GPT-5.6 Luna は "max" にも対応）。Antigravityは `--effort low|medium|high` に対応します。モデル名に推論強度の末尾がある場合は一致させてください。Forge、OpenCode では `reasoning_effort` はサポートしません。
-- `session_id` (string, 任意): 以前のセッションを再開するためのセッションID。Claude、Codex、Gemini、Forge、OpenCode、Grok でサポートされます。Grok は `--resume` で同じセッションを再開し、新規作成用の `--session-id` は使いません。OpenCode は `--session` による in-place resume で再開し、`oc-<provider/model>` の明示指定と併用できます。
+    - Pi: `pi`（設定済みのデフォルトモデル）および `pi-openai-codex/gpt-6-astra` のような明示ラッパー
+- `reasoning_effort` (string, 任意): Claude、Codex、Grok、Pi の推論制御。Piは `off|minimal|low|medium|high|xhigh|max` を `--thinking` に渡します。Grok は `--reasoning-effort` を使用し、`grok-4.6` は low/medium/high/xhigh、`grok-4.5`・設定済みモデルを使う `grok`・その他の Grok 名は low/medium/high に対応します。省略時は CLI の既定値を使い、Grok の max/ultra は拒否します。Claude では `--effort`、Codex では `model_reasoning_effort`、Antigravityでは `--effort low|medium|high` を使います。Forge、OpenCode では `reasoning_effort` はサポートしません。
+- `session_id` (string, 任意): 以前のセッションを再開するためのセッションID。Claude、Codex、Gemini、Forge、OpenCode、Grok、Pi でサポートされます。Grok は `--resume`、OpenCodeとPiは `--session` で同じセッションを再開します。
 
 ### `wait`
 
@@ -431,12 +461,12 @@ ai-cli peek 123 --time 10 --include-tool-calls
 - `peek_started_at` と `events[].ts` は、ai-cli-mcp サーバー側の UTC RFC3339 タイムスタンプです。`peek_started_at` は検証とリスナー登録後に観測ウィンドウが始まった時刻、`events[].ts` は ai-cli-mcp がイベントを観測して受理した時刻です。
 - 観測ウィンドウは `peek_time_sec` が経過するか、対象プロセスがすべて終端状態になった時点で終了します。
 - 観測開始前のイベントは返しません。同じPIDへの同時 `peek` は可能で、それぞれ独立した観測ウィンドウを持つため、イベントが重複して返ることがあります。
-- メッセージイベントは、Codex の `agent_message` text、Claude と Grok の assistant メッセージ全体の text content、OpenCode の `type: "text"` かつ `part.type` が `"text"` のイベント、Antigravity の `step_type: "agent_response"` の `step_update` イベント（増分の `text_delta`）、Forge の `Summary:` または `Completed successfully:` で始まる plain-text 行から best-effort に認識します。
+- メッセージイベントは、Codex の `agent_message`、Claude と Grok の assistant メッセージ、OpenCode のtextイベント、Antigravityの増分テキスト、Piの `text_delta`、Forgeの `Summary:` / `Completed successfully:` 行から認識します。Piのツール開始・終了も任意で正規化し、thinkingとツールの生出力は除外します。
 - tool call を含める場合、Codex の command/MCP call、Claude/Grok の tool use/result、Antigravity の tool step（ACTIVE/DONE）、OpenCode の完了済み tool use event、Forge の低精度な `Execute` / `Finished` marker を正規化した `tool_call` イベントとして返します。tool summary は tool 名と入力メタデータだけから作る短い1行文字列です。Forge のコマンド出力自体は tail せず、公開しません。raw `stdout` / `stderr`、raw JSONL、tool result output、コマンド出力、`result.response`、stats、token usage、verbose メタデータは除外します。
 - 未知のイベント形状はデフォルトで拒否します。まだ明示対応されていない管理対象エージェントは、実際のプロセス状態を返しつつ、`events: []`、`truncated: false`、`error: null` にします。
 - 各PIDごとに、観測ウィンドウ内で最初に観測された50件までを保持します。それ以降のイベントを捨てた場合は `truncated` が `true` になります。
 - `status` は `running`、`completed`、`failed`、`not_found` のいずれかで、観測ウィンドウ終了時点の状態を表します。
-- `agent` は `claude`、`codex`、`gemini`、`forge`、`opencode`、`grok`、将来追加される追跡済みエージェント文字列、または `null` です。`null` はプロセスが見つからない、またはエージェント種別を判断できない場合を表します。
+- `agent` は `claude`、`codex`、`gemini`、`forge`、`opencode`、`grok`、`pi`、将来追加される追跡済みエージェント文字列、または `null` です。
 
 レスポンス例:
 
@@ -552,6 +582,7 @@ live E2E は opt-in です。インストール済みかつ認証済みの外部
 - `FORGE_CLI_NAME`: Forge CLIのバイナリ名または絶対パスを上書き（デフォルト: `forge`）
 - `GROK_CLI_NAME`: Grok CLI のバイナリ名または絶対パスを上書き（既定の検索順: `~/.grok/bin/grok`、PATH 上の `grok`）
 - `OPENCODE_CLI_NAME`: OpenCode CLIのバイナリ名または絶対パスを上書き（デフォルト: `opencode`）
+- `PI_CLI_NAME`: Pi CLIのバイナリ名または絶対パスを上書き（デフォルト: `pi`）
 - `MCP_CLAUDE_DEBUG`: デバッグログを有効化（`true` に設定すると詳細な出力が表示されます）
 
 **CLI名の指定方法:**
@@ -571,7 +602,8 @@ live E2E は opt-in です。インストール済みかつ認証済みの外部
       "env": {
         "CLAUDE_CLI_NAME": "claude-custom",
         "CODEX_CLI_NAME": "codex-custom",
-        "OPENCODE_CLI_NAME": "opencode-custom"
+        "OPENCODE_CLI_NAME": "opencode-custom",
+        "PI_CLI_NAME": "pi-custom"
       }
     },
 ```

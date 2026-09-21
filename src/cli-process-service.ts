@@ -20,8 +20,8 @@ import { fileURLToPath } from 'node:url';
 import { join, basename, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
-import { findGrokCli, findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli } from './cli-utils.js';
-import { parseGrokOutput, parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseAntigravityOutput, parseOpenCodeOutput, PeekEventExtractor } from './parsers.js';
+import { findGrokCli, findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli, findPiCli } from './cli-utils.js';
+import { parseGrokOutput, parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseAntigravityOutput, parseOpenCodeOutput, parsePiOutput, PeekEventExtractor } from './parsers.js';
 import { buildProcessResult } from './process-result.js';
 import {
   appendPeekEvents,
@@ -104,6 +104,9 @@ function parseAgentOutput(agent: AgentType, stdout: string, stderr: string): any
   if (agent === 'grok') {
     return parseGrokOutput(stdout);
   }
+  if (agent === 'pi') {
+    return parsePiOutput(stdout);
+  }
   if (agent === 'claude') {
     return parseClaudeOutput(stdout);
   }
@@ -132,6 +135,7 @@ export class CliProcessService {
       forge: findForgeCli(),
       opencode: findOpencodeCli(),
       grok: findGrokCli(),
+      pi: findPiCli(),
     };
     mkdirSync(this.stateDir, { recursive: true });
   }
@@ -315,7 +319,7 @@ export class CliProcessService {
     }
 
     let warning: string | undefined;
-    if (refreshed.toolType === 'grok' || refreshed.toolType === 'gemini') {
+    if (refreshed.toolType === 'grok' || refreshed.toolType === 'gemini' || refreshed.toolType === 'pi') {
       const termination = await terminateProcessTree(pid, { ownedProcessGroup: true });
       warning = termination.warning;
       if (warning) this.appendTextFileSafe(refreshed.stderrPath, `\n${warning}`);

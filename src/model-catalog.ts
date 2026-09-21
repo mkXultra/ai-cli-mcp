@@ -36,6 +36,8 @@ export const GROK_REASONING_EFFORTS = {
 
 export const FORGE_MODELS = ['forge'] as const;
 export const OPENCODE_MODELS = ['opencode'] as const;
+export const PI_MODELS = ['pi'] as const;
+export const PI_REASONING_EFFORTS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const;
 
 export interface ModelAliasDetails {
   name: string;
@@ -57,7 +59,7 @@ export const MODEL_ALIASES: Record<string, string> = Object.fromEntries(
 export function getModelAliases(config = loadUserModelAliases()): ModelAliasDetails[] {
   const aliases = new Map(MODEL_ALIAS_DETAILS.map((alias) => [alias.name, alias]));
   const nativeModels = new Set<string>([
-    'codex', ...CLAUDE_MODELS, ...CODEX_MODELS, ...GEMINI_MODELS, ...FORGE_MODELS, ...GROK_MODELS, ...OPENCODE_MODELS,
+    'codex', ...CLAUDE_MODELS, ...CODEX_MODELS, ...GEMINI_MODELS, ...FORGE_MODELS, ...GROK_MODELS, ...OPENCODE_MODELS, ...PI_MODELS,
   ]);
 
   for (const [name, value] of config.aliases) {
@@ -101,7 +103,9 @@ export function getSupportedModelsDescription(): string {
     ...GROK_MODELS.map((model) => `"${model}"`),
     ...FORGE_MODELS.map((model) => `"${model}"`),
     ...OPENCODE_MODELS.map((model) => `"${model}"`),
+    ...PI_MODELS.map((model) => `"${model}"`),
     '"oc-<provider/model>"',
+    '"pi-<provider/model>"',
   ].join(', ');
 }
 
@@ -109,7 +113,7 @@ export function getModelParameterDescription(): string {
   const aliases = getModelAliases().map((alias) =>
     `"${alias.name}" (${alias.resolvesTo}${alias.defaultReasoningEffort ? `; auto ${alias.defaultReasoningEffort} reasoning` : ''})`
   ).join(', ');
-  return `The model to use. Aliases (including user config): ${aliases}. An explicit reasoning_effort overrides the alias default. Standard: ${[...CLAUDE_MODELS, ...CODEX_MODELS, ...GEMINI_MODELS, ...FORGE_MODELS, ...GROK_MODELS, ...OPENCODE_MODELS].map((model) => `"${model}"`).join(', ')}. Gemini models run through Antigravity CLI (agy); use agy models for current availability. Model effort suffixes must match reasoning_effort when supplied. Fable may require usage credits. Grok accepts native grok-* model names; grok uses its CLI-configured default unless a user alias named grok exists; that alias retains precedence. Native model names such as grok-4.6 select the Grok backend. Omitted effort uses the CLI default; grok and unknown Grok models accept low/medium/high, grok-4.6 also accepts xhigh. OpenCode also accepts explicit dynamic models using "oc-<provider/model>". "forge" is a provider key, not a Forge model family selector.`;
+  return `The model to use. Aliases (including user config): ${aliases}. An explicit reasoning_effort overrides the alias default. Standard: ${[...CLAUDE_MODELS, ...CODEX_MODELS, ...GEMINI_MODELS, ...FORGE_MODELS, ...GROK_MODELS, ...OPENCODE_MODELS, ...PI_MODELS].map((model) => `"${model}"`).join(', ')}. Gemini models run through Antigravity CLI (agy); use agy models for current availability. Model effort suffixes must match reasoning_effort when supplied. Fable may require usage credits. Grok accepts native grok-* model names; grok uses its CLI-configured default unless a user alias named grok exists; that alias retains precedence. Native model names such as grok-4.6 select the Grok backend. Omitted effort uses the CLI default; grok and unknown Grok models accept low/medium/high, grok-4.6 also accepts xhigh. OpenCode accepts explicit dynamic models using "oc-<provider/model>". Pi accepts its configured default with "pi" or an explicit dynamic model using "pi-<provider/model>"; discover current choices with "pi --list-models". "forge" is a provider key, not a Forge model family selector.`;
 }
 
 export function getModelsPayload(): {
@@ -119,10 +123,12 @@ export function getModelsPayload(): {
   gemini: ReadonlyArray<string>;
   forge: ReadonlyArray<string>;
   grok: ReadonlyArray<string>;
-  reasoningEfforts: { grok: typeof GROK_REASONING_EFFORTS };
+  pi: ReadonlyArray<string>;
+  reasoningEfforts: { grok: typeof GROK_REASONING_EFFORTS; pi: typeof PI_REASONING_EFFORTS };
   opencode: ReadonlyArray<string>;
   dynamicModelBackends: {
     opencode: DynamicModelBackendDescription;
+    pi: DynamicModelBackendDescription;
   };
 } {
   return {
@@ -132,13 +138,20 @@ export function getModelsPayload(): {
     gemini: GEMINI_MODELS,
     forge: FORGE_MODELS,
     grok: GROK_MODELS,
-    reasoningEfforts: { grok: GROK_REASONING_EFFORTS },
+    pi: PI_MODELS,
+    reasoningEfforts: { grok: GROK_REASONING_EFFORTS, pi: PI_REASONING_EFFORTS },
     opencode: OPENCODE_MODELS,
     dynamicModelBackends: {
       opencode: {
         explicitPrefix: 'oc-',
         explicitPattern: 'oc-<provider/model>',
         discoveryCommand: 'opencode models',
+        modelsAreDynamic: true,
+      },
+      pi: {
+        explicitPrefix: 'pi-',
+        explicitPattern: 'pi-<provider/model>',
+        discoveryCommand: 'pi --list-models',
         modelsAreDynamic: true,
       },
     },

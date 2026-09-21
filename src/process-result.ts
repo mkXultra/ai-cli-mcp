@@ -85,7 +85,7 @@ export function buildProcessResult(context: ProcessResultContext, agentOutput: a
   }
 
   // A partial answer must not hide diagnostics from a terminal failure.
-  if ((context.agent === 'grok' || context.agent === 'gemini') && (context.status === 'failed' || agentOutput?.is_error === true)) {
+  if ((context.agent === 'grok' || context.agent === 'gemini' || context.agent === 'pi') && (context.status === 'failed' || agentOutput?.is_error === true)) {
     response.stderr = context.stderr;
   }
 
