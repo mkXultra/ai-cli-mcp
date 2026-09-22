@@ -1,3 +1,10 @@
+# [2.28.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.27.0...v2.28.0) (2026-09-22)
+
+
+### Features
+
+* add Pi CLI support ([c3b46ea](https://github.com/mkXultra/ai-cli-mcp/commit/c3b46eae4da0eb7e144f85279b8a26d105fe961e))
+
 # [2.27.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.26.0...v2.27.0) (2026-09-17)
 
 
