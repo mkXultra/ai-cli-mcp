@@ -12,12 +12,12 @@ import { promisify } from 'node:util';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { MCPTestClient } from './utils/mcp-client.js';
 
-type LiveAgent = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode' | 'grok';
+type LiveAgent = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode' | 'grok' | 'pi';
 type LiveSurface = 'cli' | 'mcp' | 'all';
 
 const execFileAsync = promisify(execFile);
 const liveEnabled = process.env.ACM_LIVE_E2E === '1';
-const allAgents: LiveAgent[] = ['claude', 'codex', 'gemini', 'forge', 'opencode', 'grok'];
+const allAgents: LiveAgent[] = ['claude', 'codex', 'gemini', 'forge', 'opencode', 'grok', 'pi'];
 const defaultAgents: LiveAgent[] = ['claude', 'codex'];
 const liveToken = process.env.ACM_LIVE_E2E_TOKEN || 'ACM_LIVE_E2E_OK';
 const assertToken = process.env.ACM_LIVE_E2E_ASSERT_TOKEN !== '0';
@@ -37,6 +37,7 @@ const defaultModels: Record<LiveAgent, string> = {
   forge: 'forge',
   opencode: 'opencode',
   grok: 'grok-4.6',
+  pi: 'pi',
 };
 
 function parsePositiveNumber(raw: string | undefined, fallback: number): number {
@@ -228,6 +229,7 @@ if (liveEnabled) {
         expect(models.gemini).toContain('gemini-3.8-flash-medium');
         expect(models.forge).toEqual(['forge']);
         expect(models.opencode).toEqual(['opencode']);
+        expect(models.pi).toEqual(['pi']);
       });
 
       it.each(selectedAgents)('runs the real %s CLI through ai-cli', async (agent) => {
@@ -347,6 +349,7 @@ if (liveEnabled) {
           expect(models.gemini).toContain('gemini-3.8-flash-medium');
           expect(models.forge).toEqual(['forge']);
           expect(models.opencode).toEqual(['opencode']);
+          expect(models.pi).toEqual(['pi']);
         });
 
         it.each(selectedAgents)('runs the real %s CLI through MCP', async (agent) => {

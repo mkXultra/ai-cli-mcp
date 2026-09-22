@@ -7,7 +7,7 @@
 
 > **📦 Package Migration Notice**: This package was formerly `@mkxultra/claude-code-mcp` and has been renamed to `ai-cli-mcp` to reflect its expanded support for multiple AI CLI tools.
 
-An MCP (Model Context Protocol) server that allows running AI CLI tools (Claude, Codex, Gemini, Forge, OpenCode, and Grok) in background processes with automatic permission handling.
+An MCP (Model Context Protocol) server that allows running AI CLI tools (Claude, Codex, Gemini, Forge, OpenCode, Grok, and Pi) in background processes with automatic permission handling.
 
 Did you notice that Cursor sometimes struggles with complex, multi-step edits or operations? This server, with its powerful unified `run` tool, enables multiple AI agents to handle your coding tasks more effectively.
 
@@ -25,7 +25,8 @@ This MCP server provides tools that can be used by LLMs to interact with AI CLI 
 - Execute Forge CLI in non-interactive mode (using `forge -C <workFolder> -p <prompt>`)
 - Execute Grok Build CLI headlessly with `streaming-messages-json`, automatic tool approval, and automatic updates disabled
 - Execute OpenCode in non-interactive JSON mode (using `opencode run --format json --dir <workFolder> <prompt>`)
-- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, fable, haiku), Codex (gpt-6-astra, gpt-5.4, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-5.5, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2), Gemini (gemini-3.8-flash-high/medium/low, gemini-3.7-flash-high/medium/low, gemini-3.6-flash-high/medium/low, gemini-3.1-pro-high/low), Forge (`forge`), Grok (`grok`, `grok-4.6`, `grok-4.5`), and OpenCode (`opencode` plus explicit `oc-<provider/model>` wrappers such as `oc-openai/gpt-5.4`)
+- Execute Pi in non-interactive JSON mode with tool approval enabled for unattended runs
+- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, fable, haiku), Codex (gpt-6-astra, gpt-5.4, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-5.5, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2), Gemini (gemini-3.8-flash-high/medium/low, gemini-3.7-flash-high/medium/low, gemini-3.6-flash-high/medium/low, gemini-3.1-pro-high/low), Forge (`forge`), Grok (`grok`, `grok-4.6`, `grok-4.5`), OpenCode (`opencode` plus `oc-<provider/model>`), and Pi (`pi` plus `pi-<provider/model>`)
 - Manage background processes with PID tracking
 - Parse and return structured outputs from both tools
 
@@ -57,7 +58,7 @@ You can reuse heavy context (like large codebases) using session IDs to save cos
 
 - **True Async Multitasking**: Agent execution happens in the background, returning control immediately. The calling AI can proceed with the next task or invoke another agent without waiting for completion.
 - **CLI in CLI (Agent in Agent)**: Directly invoke powerful CLI tools like Claude Code or Codex from any MCP-supported IDE or CLI. This enables broader, more complex system operations and automation beyond host environment limitations.
-- **Freedom from Model/Provider Constraints**: Freely select and combine the "strongest" or "most cost-effective" models from Claude, Codex (GPT), Gemini, Forge, OpenCode, and Grok without being tied to a specific ecosystem.
+- **Freedom from Model/Provider Constraints**: Freely select and combine the "strongest" or "most cost-effective" models from Claude, Codex (GPT), Gemini, Forge, OpenCode, Grok, and Pi without being tied to a specific ecosystem.
 
 ## Prerequisites
 
@@ -69,6 +70,7 @@ The only prerequisite is that the AI CLI tools you want to use are locally insta
 - **Forge CLI** (Optional): Installed and initial setup completed.
 - **Grok Build CLI** (Optional): Install and authenticate Grok locally (tested with 1.0.13 and OAuth). Discovery checks `~/.grok/bin/grok`, then `PATH`; `GROK_CLI_NAME` overrides either with a command name or absolute path.
 - **OpenCode** (Optional): Installed and configured. This integration uses `opencode run --format json`, and explicit provider/model selection follows the `oc-<provider/model>` wrapper syntax exposed by `ai-cli models`.
+- **Pi** (Optional): Install and authenticate Pi locally (tested with 0.86.1). Run `pi --list-models` to see the provider/model pairs available to your account. `PI_CLI_NAME` overrides the binary name or path.
 
 ## Installation & Usage
 
@@ -139,6 +141,7 @@ ai-cli models
 ai-cli run --cwd "$PWD" --model sonnet --prompt "summarize this repository"
 ai-cli run --cwd "$PWD" --model opencode --prompt "summarize this repository with OpenCode defaults"
 ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --session-id ses_123 --prompt "continue this session with an explicit OpenCode model"
+ai-cli run --cwd "$PWD" --model pi-openai-codex/gpt-6-astra --reasoning-effort high --prompt "review this repository with Pi"
 ai-cli ps
 ai-cli result 12345
 ai-cli result 12345 --verbose
@@ -216,6 +219,8 @@ ai-cli run --cwd "$PWD" --model gpt-5.4 --prompt "use the default Codex model"
 ai-cli run --cwd "$PWD" --model codex-ultra --prompt "fix failing tests"
 ai-cli run --cwd "$PWD" --model opencode --session-id ses_existing --prompt "continue this OpenCode session"
 ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --prompt "run with an explicit OpenCode backend model"
+ai-cli run --cwd "$PWD" --model pi --prompt "run with Pi's configured default model"
+ai-cli run --cwd "$PWD" --model pi-openai-codex/gpt-6-astra --reasoning-effort xhigh --prompt "run Pi with an explicit model"
 ai-cli ps
 ai-cli peek 12345 --time 10
 ai-cli peek 12345 12346 --time 10
@@ -238,6 +243,29 @@ OpenCode model selection accepts either:
 Codex model selection uses `gpt-5.4` as the default advertised model.
 
 `doctor` checks only binary availability and path resolution. Its JSON output includes a `checks` block that marks login state and terms acceptance as unchecked.
+
+## Pi CLI
+
+Install Pi and sign in once before starting ai-cli or the MCP server. This integration was verified with Pi 0.86.1.
+
+```sh
+npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+pi                    # use /login if authentication is not configured
+pi --list-models
+```
+
+Use `pi` to let Pi select its configured default model. Use `pi-<provider/model>` to select an explicit model from `pi --list-models`, for example `pi-openai-codex/gpt-6-astra`. `ai-cli models` exposes these rules as `pi: ["pi"]`, `dynamicModelBackends.pi`, and `reasoningEfforts.pi`. Pi accepts `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, and `max`; omitting `reasoning_effort` leaves the choice to Pi.
+
+```sh
+ai-cli run --cwd "$PWD" --model pi --prompt "Explain this project"
+ai-cli run --cwd "$PWD" --model pi-openai-codex/gpt-6-astra --reasoning-effort xhigh --prompt "Review this change"
+ai-cli alias add pi-coding pi-openai-codex/gpt-5.6-terra --effort high
+ai-cli run --cwd "$PWD" --model pi-coding --session-id <session_id> --prompt "Continue"
+```
+
+Runs use `pi --mode json --approve`, optional `--model`, `--thinking`, and `--session`, followed by `-p -- <prompt>`. The `--approve` flag lets Pi load project resources and execute its configured tools without an interactive confirmation. The existing `workFolder` and process isolation rules still apply.
+
+`peek` accumulates Pi `text_delta` events and optionally reports normalized `tool_execution_start` / `tool_execution_end` events. Thinking deltas, tool updates, and raw tool output are excluded. `get_result` and `wait` return the final text, provider, model, usage, stop reason, and Pi session ID. Passing that ID to the next run resumes the same session with `--session`. Verbose results include detailed tool history; compact results omit it. Failed runs preserve diagnostic stderr, and cancellation uses the same process-tree termination used for Grok and Antigravity.
 
 ## Grok Build CLI
 
@@ -375,7 +403,7 @@ This server exposes the following tools:
 
 ### `run`
 
-Executes a prompt using Claude CLI, Codex CLI, Antigravity CLI (Gemini), Forge CLI, OpenCode, or Grok. The appropriate CLI is automatically selected based on the model name.
+Executes a prompt using Claude CLI, Codex CLI, Antigravity CLI (Gemini), Forge CLI, OpenCode, Grok, or Pi. The appropriate CLI is automatically selected based on the model name.
 
 **Arguments:**
 - `prompt` (string, optional): The prompt to send to the AI agent. Either `prompt` or `prompt_file` is required.
@@ -390,8 +418,9 @@ Executes a prompt using Claude CLI, Codex CLI, Antigravity CLI (Gemini), Forge C
 - Forge: `forge`
 - Grok: `grok` for its configured default, `grok-4.6`, `grok-4.5`, and other native `grok-*` names
 - OpenCode: `opencode` for the configured default backend model, plus explicit wrappers like `oc-openai/gpt-5.4`
-- `reasoning_effort` (string, optional): Reasoning control for Claude, Codex, and Grok. Grok uses `--reasoning-effort`: `grok-4.6` supports low/medium/high/xhigh; `grok-4.5`, the `grok` configured default, and other native Grok names accept low/medium/high. Omit effort to use the CLI default; max/ultra are rejected for Grok. Claude uses `--effort` (allowed: "low", "medium", "high", "xhigh", "max"). Codex uses `model_reasoning_effort` (base levels: "low", "medium", "high", "xhigh"; GPT-6 Astra and GPT-5.6 Sol/Terra also support "max" and "ultra", while GPT-5.6 Luna supports "max"). Antigravity accepts `--effort low|medium|high`, which must match the model name suffix when present. Forge and OpenCode do not support `reasoning_effort`.
-- `session_id` (string, optional): Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, OpenCode, and Grok. Grok resumes the same session via `--resume`; the wrapper’s `session_id` never uses Grok’s new-session `--session-id` flag. OpenCode resumes in place via `--session` and may also be combined with an explicit `oc-<provider/model>` selection.
+- Pi: `pi` for its configured default model, plus explicit wrappers like `pi-openai-codex/gpt-6-astra`
+- `reasoning_effort` (string, optional): Reasoning control for Claude, Codex, Grok, and Pi. Pi maps `off|minimal|low|medium|high|xhigh|max` to `--thinking`. Grok uses `--reasoning-effort`: `grok-4.6` supports low/medium/high/xhigh; `grok-4.5`, the `grok` configured default, and other native Grok names accept low/medium/high. Omit effort to use the CLI default; max/ultra are rejected for Grok. Claude uses `--effort` (allowed: "low", "medium", "high", "xhigh", "max"). Codex uses `model_reasoning_effort` (base levels: "low", "medium", "high", "xhigh"; GPT-6 Astra and GPT-5.6 Sol/Terra also support "max" and "ultra", while GPT-5.6 Luna supports "max"). Antigravity accepts `--effort low|medium|high`, which must match the model name suffix when present. Forge and OpenCode do not support `reasoning_effort`.
+- `session_id` (string, optional): Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, OpenCode, Grok, and Pi. Grok resumes via `--resume`; OpenCode and Pi resume in place via `--session` and may also be combined with explicit model selection.
 
 ### `wait`
 
@@ -427,12 +456,12 @@ ai-cli peek 123 --time 10 --include-tool-calls
 - `peek_started_at` and `events[].ts` are ai-cli-mcp server-side UTC RFC3339 timestamps. `peek_started_at` is when the observation window starts after validation and listener registration; `events[].ts` is when ai-cli-mcp observed and accepted the event.
 - The window ends when `peek_time_sec` elapses or all target processes reach a terminal state, whichever comes first.
 - Events emitted before the window starts are not returned. Concurrent `peek` calls for the same PID are allowed; each has an independent window and may return overlapping events.
-- Message events are recognized from Codex `agent_message` text, Claude and Grok whole assistant text content, OpenCode `type: "text"` events where `part.type` is `"text"`, Antigravity `step_update` events with `step_type: "agent_response"` (incremental `text_delta`), and best-effort Forge plain-text lines beginning with `Summary:` or `Completed successfully:`.
-- When tool calls are included, `tool_call` events are normalized for Codex command/MCP calls, Claude/Grok tool use/results, Antigravity tool steps (ACTIVE/DONE), OpenCode completed tool use events, and low-precision Forge `Execute`/`Finished` markers. Tool summaries are bounded one-line strings derived from tool names and input metadata only. Forge command output itself is not tailed or exposed. Raw stdout/stderr, raw JSONL, tool result output, command output, `result.response`, stats, token usage, and verbose metadata are excluded.
+- Message events are recognized from Codex `agent_message` text, Claude and Grok whole assistant text content, OpenCode `type: "text"` events where `part.type` is `"text"`, Antigravity `step_update` events, Pi `text_delta` events, and best-effort Forge plain-text lines beginning with `Summary:` or `Completed successfully:`.
+- When tool calls are included, `tool_call` events are normalized for Codex command/MCP calls, Claude/Grok tool use/results, Antigravity tool steps, OpenCode tool use, Pi tool execution start/end events, and low-precision Forge `Execute`/`Finished` markers. Tool summaries are bounded one-line strings derived from tool names and input metadata only. Raw tool and command output is excluded.
 - Unknown event shapes are denied by default. Managed agents without supported extraction return their real process status with `events: []`, `truncated: false`, and `error: null`.
 - Each PID keeps the first 50 events observed in the window. If later events are dropped, `truncated` is `true`.
 - `status` is one of `running`, `completed`, `failed`, or `not_found`, and reflects state when the observation window closes.
-- `agent` is `claude`, `codex`, `gemini`, `forge`, `opencode`, `grok`, a future tracked string value, or `null` when the process is not found or the agent cannot be determined.
+- `agent` is `claude`, `codex`, `gemini`, `forge`, `opencode`, `grok`, `pi`, a future tracked string value, or `null` when the process is not found or the agent cannot be determined.
 
 Example response:
 
@@ -541,6 +570,7 @@ Normally not required, but useful for customizing CLI paths or debugging.
 - `FORGE_CLI_NAME`: Override the Forge CLI binary name or provide an absolute path (default: `forge`)
 - `GROK_CLI_NAME`: Override the Grok CLI binary name or absolute path (default discovery: `~/.grok/bin/grok`, then `grok` on PATH)
 - `OPENCODE_CLI_NAME`: Override the OpenCode CLI binary name or provide an absolute path (default: `opencode`)
+- `PI_CLI_NAME`: Override the Pi CLI binary name or provide an absolute path (default: `pi`)
 - `MCP_CLAUDE_DEBUG`: Enable debug logging (set to `true` for verbose output)
 
 **CLI Name Specification:**
@@ -560,7 +590,8 @@ Normally not required, but useful for customizing CLI paths or debugging.
       "env": {
         "CLAUDE_CLI_NAME": "claude-custom",
         "CODEX_CLI_NAME": "codex-custom",
-        "OPENCODE_CLI_NAME": "opencode-custom"
+        "OPENCODE_CLI_NAME": "opencode-custom",
+        "PI_CLI_NAME": "pi-custom"
       }
     },
 ```

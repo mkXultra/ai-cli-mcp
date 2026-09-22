@@ -1,0 +1,15 @@
+Pi startup diagnostic
+{"type":"session","version":3,"id":"pi-session-test","timestamp":"2026-09-21T00:00:00.000Z","cwd":"/tmp"}
+{"type":"agent_start"}
+{"type":"turn_start"}
+{"type":"message_update","assistantMessageEvent":{"type":"thinking_delta","contentIndex":0,"delta":"PRIVATE_THOUGHT"}}
+{"type":"tool_execution_start","toolCallId":"tool-1","toolName":"bash","args":{"command":"printf PI_TOOL_OK"}}
+{"type":"tool_execution_update","toolCallId":"tool-1","toolName":"bash","partialResult":{"content":[{"type":"text","text":"PRIVATE_PARTIAL_OUTPUT"}]}}
+{"type":"tool_execution_end","toolCallId":"tool-1","toolName":"bash","result":{"content":[{"type":"text","text":"PRIVATE_TOOL_OUTPUT"}]},"isError":false}
+{"type":"message_update","assistantMessageEvent":{"type":"text_start","contentIndex":1}}
+{"type":"message_update","assistantMessageEvent":{"type":"text_delta","contentIndex":1,"delta":"Pi "}}
+{"type":"message_update","assistantMessageEvent":{"type":"text_delta","contentIndex":1,"delta":"done."}}
+{"type":"message_update","assistantMessageEvent":{"type":"text_end","contentIndex":1,"content":"Pi done."}}
+{"type":"message_end","message":{"role":"assistant","content":[{"type":"thinking","thinking":"PRIVATE_THOUGHT"},{"type":"text","text":"Pi done."}],"provider":"openai-codex","model":"gpt-6-astra","usage":{"input":12,"output":5,"reasoning":2,"totalTokens":19,"cost":{"total":0.01}},"stopReason":"stop","rawStopReason":"completed"}}
+{"type":"turn_end","message":{"role":"assistant","content":[{"type":"text","text":"Pi done."}],"provider":"openai-codex","model":"gpt-6-astra","usage":{"input":12,"output":5,"reasoning":2,"totalTokens":19,"cost":{"total":0.01}},"stopReason":"stop","rawStopReason":"completed"},"toolResults":[]}
+{"type":"agent_end","messages":[],"willRetry":false}

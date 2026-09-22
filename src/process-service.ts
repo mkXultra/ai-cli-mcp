@@ -1,7 +1,7 @@
 import { terminateProcessTree } from './process-termination.js';
 import type { ChildProcess } from 'node:child_process';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
-import { parseGrokOutput, parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseAntigravityOutput, parseOpenCodeOutput, PeekEventExtractor } from './parsers.js';
+import { parseGrokOutput, parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseAntigravityOutput, parseOpenCodeOutput, parsePiOutput, PeekEventExtractor } from './parsers.js';
 import {
   appendPeekEvents,
   buildNotFoundPeekProcess,
@@ -14,7 +14,7 @@ import {
 import { buildProcessResult } from './process-result.js';
 import { spawnCli } from './spawn-cli.js';
 
-export type AgentType = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode' | 'grok';
+export type AgentType = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode' | 'grok' | 'pi';
 export type ProcessStatus = 'running' | 'completed' | 'failed';
 
 interface TrackedProcess {
@@ -67,6 +67,9 @@ function parseAgentOutput(agent: AgentType, stdout: string, stderr: string): any
   if (agent === 'grok') {
     return parseGrokOutput(stdout);
   }
+  if (agent === 'pi') {
+    return parsePiOutput(stdout);
+  }
   if (agent === 'claude') {
     return parseClaudeOutput(stdout);
   }
@@ -107,7 +110,7 @@ export class ProcessService {
       childProcess = spawnCli(cliPath, processArgs, {
         cwd: effectiveCwd,
         stdio: ['ignore', 'pipe', 'pipe'],
-        detached: (agent === 'grok' || agent === 'gemini') && process.platform !== 'win32',
+        detached: (agent === 'grok' || agent === 'gemini' || agent === 'pi') && process.platform !== 'win32',
       });
     } catch {
       throw new Error(`Failed to start ${agent} CLI process`);
@@ -369,7 +372,7 @@ export class ProcessService {
       };
     }
 
-    if (processEntry.toolType !== 'grok' && processEntry.toolType !== 'gemini') return this.terminateTrackedProcess(processEntry);
+    if (processEntry.toolType !== 'grok' && processEntry.toolType !== 'gemini' && processEntry.toolType !== 'pi') return this.terminateTrackedProcess(processEntry);
 
     // Register before signaling, and share the entire tree operation with other
     // kills and shutdown even after the root's public status becomes terminal.
@@ -385,7 +388,7 @@ export class ProcessService {
   private async terminateTrackedProcess(processEntry: TrackedProcess): Promise<KillProcessResult> {
     const { pid } = processEntry;
     let warning: string | undefined;
-    if (processEntry.toolType === 'grok' || processEntry.toolType === 'gemini') {
+    if (processEntry.toolType === 'grok' || processEntry.toolType === 'gemini' || processEntry.toolType === 'pi') {
       const termination = await terminateProcessTree(pid, {
         ownedProcessGroup: process.platform !== 'win32',
         hasExited: () => processEntry.process.exitCode !== null || processEntry.process.signalCode !== null,

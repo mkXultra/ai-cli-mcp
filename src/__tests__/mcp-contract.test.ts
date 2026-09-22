@@ -124,7 +124,7 @@ describe('MCP Contract Tests', () => {
     expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('"ultra"');
     expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('OpenCode do not support reasoning_effort');
     expect(runTool.inputSchema.properties.session_id.description).toBe(
-      'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, OpenCode, and Grok. Antigravity resumes its conversation_id via --conversation; old Gemini CLI sessions cannot be resumed. Grok resumes via --resume, preserving the session ID. OpenCode resumes in-place via --session and may also be combined with explicit oc-<provider/model> selection.'
+      'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, OpenCode, Grok, and Pi. Antigravity resumes its conversation_id via --conversation; old Gemini CLI sessions cannot be resumed. Grok resumes via --resume, preserving the session ID. OpenCode and Pi resume in place via --session and may also be combined with explicit model selection.'
     );
 
     const getResultTool = tools.find((tool: any) => tool.name === 'get_result');
@@ -196,7 +196,9 @@ describe('MCP Contract Tests', () => {
       'gpt-5.2',
     ]);
     expect(modelsData.opencode).toEqual(['opencode']);
+    expect(modelsData.pi).toEqual(['pi']);
     expect(modelsData.dynamicModelBackends.opencode.explicitPattern).toBe('oc-<provider/model>');
+    expect(modelsData.dynamicModelBackends.pi.explicitPattern).toBe('pi-<provider/model>');
 
     const doctorResponse = await client.callTool('doctor', {});
     const doctorData = parseToolJson(doctorResponse);

@@ -4,16 +4,21 @@ const CODEX_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
 const CODEX_MAX_REASONING_MODELS = new Set(['gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna']);
 const CODEX_ULTRA_REASONING_MODELS = new Set(['gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-terra']);
 const OPENCODE_MODEL_ERROR = 'Invalid OpenCode model. Expected exact syntax oc-<provider/model>.';
+const PI_MODEL_ERROR = 'Invalid Pi model. Expected exact syntax pi-<provider/model>.';
 
-export type Agent = 'codex' | 'claude' | 'gemini' | 'forge' | 'opencode' | 'grok';
+export type Agent = 'codex' | 'claude' | 'gemini' | 'forge' | 'opencode' | 'grok' | 'pi';
 
 export interface ModelSelection {
   agent: Agent;
   resolvedModel: string;
   openCodeModel: string | null;
+  piModel: string | null;
 }
 
 function getStandardAgentForModel(model: string): Exclude<Agent, 'opencode'> {
+  if (model === 'pi' || model.startsWith('pi-')) {
+    return 'pi';
+  }
   if (model === 'grok' || model.startsWith('grok-')) {
     return 'grok';
   }
@@ -60,12 +65,31 @@ function extractOpenCodeModel(rawModel: string): string {
   return remainder;
 }
 
+function isPotentialPiExplicitModel(rawModel: string): boolean {
+  return rawModel.startsWith('pi-') || rawModel.trim().startsWith('pi-');
+}
+
+function extractPiModel(rawModel: string): string {
+  if (rawModel !== rawModel.trim() || !rawModel.startsWith('pi-')) {
+    throw new Error(PI_MODEL_ERROR);
+  }
+
+  const remainder = rawModel.slice(3);
+  const slashIndex = remainder.indexOf('/');
+  if (slashIndex <= 0 || slashIndex === remainder.length - 1) {
+    throw new Error(PI_MODEL_ERROR);
+  }
+
+  return remainder;
+}
+
 export function resolveModelSelection(rawModel: string): ModelSelection {
   if (rawModel === 'opencode') {
     return {
       agent: 'opencode',
       resolvedModel: rawModel,
       openCodeModel: null,
+      piModel: null,
     };
   }
 
@@ -74,6 +98,25 @@ export function resolveModelSelection(rawModel: string): ModelSelection {
       agent: 'opencode',
       resolvedModel: rawModel,
       openCodeModel: extractOpenCodeModel(rawModel),
+      piModel: null,
+    };
+  }
+
+  if (rawModel === 'pi') {
+    return {
+      agent: 'pi',
+      resolvedModel: rawModel,
+      openCodeModel: null,
+      piModel: null,
+    };
+  }
+
+  if (isPotentialPiExplicitModel(rawModel)) {
+    return {
+      agent: 'pi',
+      resolvedModel: rawModel,
+      openCodeModel: null,
+      piModel: extractPiModel(rawModel),
     };
   }
 
@@ -82,6 +125,7 @@ export function resolveModelSelection(rawModel: string): ModelSelection {
     agent: getStandardAgentForModel(resolvedModel),
     resolvedModel,
     openCodeModel: null,
+    piModel: null,
   };
 }
 
@@ -100,6 +144,13 @@ export function getReasoningEffort(model: string, rawValue: unknown): string {
 
   const normalized = trimmed.toLowerCase();
   const agent = getStandardAgentForModel(model);
+  if (agent === 'pi') {
+    const supported = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
+    if (!supported.includes(normalized)) {
+      throw new Error(`Pi reasoning_effort supports only ${supported.join(', ')}.`);
+    }
+    return normalized;
+  }
   if (agent === 'gemini') {
     if (!['low', 'medium', 'high'].includes(normalized)) {
       throw new Error('Antigravity reasoning_effort supports only low, medium, high.');
