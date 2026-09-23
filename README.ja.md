@@ -243,7 +243,7 @@ OpenCode のモデル指定は次の 2 つを受け付けます。
 - `opencode`: OpenCode 側で設定されたデフォルトモデルを使用
 - `oc-<provider/model>`: 明示的な OpenCode の provider/model を指定。例: `oc-openai/gpt-5.4`
 
-`ai-cli models` は OpenCode を機械可読に `opencode: ["opencode"]` と `dynamicModelBackends.opencode` で公開します。実際に利用可能なバックエンドネイティブなモデル一覧は `opencode models` で確認してください。
+`ai-cli models` は `opencode models` を実行し、`opencode` 配列に既定の `opencode` と、`oc-openai/gpt-6-astra` などの取得したモデル名を返します。そのまま `run` に渡せます。取得状況とエラーは `dynamicModelBackends.opencode.discovery` で確認できます。
 
 Codex のモデル指定では、公開デフォルトモデルとして `gpt-5.4` を使用します。
 
@@ -259,7 +259,7 @@ pi                    # 未認証の場合は /login を実行
 pi --list-models
 ```
 
-`pi` はPi側で設定したデフォルトモデルを使います。`pi-<provider/model>` は `pi --list-models` に表示されたモデルを明示します。例は `pi-openai-codex/gpt-6-astra` です。`ai-cli models` は `pi: ["pi"]`、`dynamicModelBackends.pi`、`reasoningEfforts.pi` としてこの情報を返します。推論強度は `off`、`minimal`、`low`、`medium`、`high`、`xhigh`、`max` に対応し、省略時はPiの設定を使います。
+`pi` はPi側で設定したデフォルトモデルを使います。`pi-<provider/model>` はモデルを明示します。例は `pi-openai-codex/gpt-6-astra` です。`ai-cli models` は `pi --list-models` を実行し、`pi` 配列に既定の `pi` と取得したモデル名を返します。取得状況は `dynamicModelBackends.pi.discovery` に含みます。推論強度は `reasoningEfforts.pi` に示す `off`、`minimal`、`low`、`medium`、`high`、`xhigh`、`max` に対応し、省略時はPiの設定を使います。
 
 ```sh
 ai-cli run --cwd "$PWD" --model pi --prompt "このプロジェクトを説明して"
@@ -508,7 +508,13 @@ MCP クライアントから、対応する AI CLI バイナリの利用可否�
 
 ### `models`
 
-MCP クライアントから、対応モデル名、エイリアス、動的バックエンドの discovery hint を確認します。`ai-cli models` と同じ構造化 payload を返します。
+対応モデル名とエイリアスに加え、`pi --list-models` と `opencode models` を実行して取得したモデル一覧を返します。`ai-cli models` と同じJSON形式です。`pi` と `opencode` の配列は既定のキーを保持し、取得したモデルをそのまま `run` に渡せる名前で追加します。
+
+取得は並行して行い、各CLIに5秒のタイムアウトと1 MiBの出力上限を設けます。`PI_CLI_NAME` と `OPENCODE_CLI_NAME` の上書きも反映します。呼び出し元プロセスの作業ディレクトリとCLI設定で取得するため、別のプロジェクトでの利用可否や認証の成功を保証する一覧ではありません。
+
+`dynamicModelBackends.<backend>.discovery` に `status`（`success` / `error`）、`checkedAt`、`cached`、失敗時の `error` を返します。CLI未インストール・タイムアウト・解析失敗でも、そのバックエンドの既定キーと他のモデル・エイリアスは返します。取得が成功してモデルが0件なら、`status: "success"` のまま既定キーだけを返します。
+
+MCPサーバー内では失敗を含む取得結果を60秒キャッシュし、同時リクエストも同じ取得処理を共有します。単発の `ai-cli models` は毎回取得します。実行ファイル・作業ディレクトリ・環境変数の変更時は再取得し、CLI設定ファイルの変更はキャッシュ期限後に反映します。ユーザーエイリアスは毎回読み直します。MCPツール一覧の表示や `run` の実行時にはモデル一覧を取得しません。
 
 `aliases` 配列は、組み込みの既定値に[ユーザー定義](#ユーザー共通のモデルエイリアス)を反映した一覧です。各項目には `name`、`resolvesTo`、`agent`、省略可能な `defaultReasoningEffort` が含まれます。
 

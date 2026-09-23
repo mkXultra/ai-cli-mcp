@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { getModelsPayload } from '../model-catalog.js';
 import {
   CLI_HELP_TEXT,
   DOCTOR_HELP_TEXT,
@@ -294,7 +295,9 @@ describe('ai-cli app', () => {
     const stdout = vi.fn();
     const stderr = vi.fn();
 
-    const exitCode = await runCli(['models'], { stdout, stderr });
+    const getModels = vi.fn().mockResolvedValue(getModelsPayload());
+    const exitCode = await runCli(['models'], { stdout, stderr, getModels });
+    expect(getModels).toHaveBeenCalledOnce();
     const payload = JSON.parse(stdout.mock.calls[0][0]);
 
     expect(exitCode).toBe(0);

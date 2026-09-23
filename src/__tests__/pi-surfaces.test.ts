@@ -17,6 +17,11 @@ describe.skipIf(process.platform === 'win32')('Pi public surfaces', () => {
     writeFileSync(executable, `#!${process.execPath}
 const fs = require('node:fs');
 const args = process.argv.slice(2);
+if (args[0] === '--list-models') {
+  console.log('provider model context max-out thinking images');
+  console.log('openai-codex gpt-6-astra 272K 128K yes yes');
+  process.exit(0);
+}
 fs.writeFileSync('args.json', JSON.stringify(args));
 const separator = args.indexOf('--');
 const prompt = separator >= 0 ? args[separator + 1] : '';
@@ -65,7 +70,7 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
       const doctor = mcp ? await tool('doctor', {}) : await cli(['doctor']);
       expect(doctor.pi).toMatchObject({ available: true, resolvedPath: executable, lookup: 'env' });
       const models = mcp ? await tool('models', {}) : await cli(['models']);
-      expect(models.pi).toEqual(['pi']);
+      expect(models.pi).toEqual(['pi', 'pi-openai-codex/gpt-6-astra']);
       expect(models.dynamicModelBackends.pi.discoveryCommand).toBe('pi --list-models');
 
       const started = await run('--literal Pi prompt');
