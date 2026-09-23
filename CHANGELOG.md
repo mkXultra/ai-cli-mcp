@@ -1,3 +1,11 @@
+# [2.29.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.28.0...v2.29.0) (2026-09-23)
+
+
+### Features
+
+* discover Pi and OpenCode models dynamically ([67c70a3](https://github.com/mkXultra/ai-cli-mcp/commit/67c70a3989d42325ae77b69ae11b7ae562d39021))
+* support GPT-6 Sol and Luna models ([aeb9e48](https://github.com/mkXultra/ai-cli-mcp/commit/aeb9e4875f50db70df929dc64b58aaed10ff6c21))
+
 # [2.28.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.27.0...v2.28.0) (2026-09-22)
 
 
