@@ -1,7 +1,7 @@
 import { terminateProcessTree } from './process-termination.js';
 import type { ChildProcess } from 'node:child_process';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
-import { parseGrokOutput, parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseAntigravityOutput, parseOpenCodeOutput, parsePiOutput, PeekEventExtractor } from './parsers.js';
+import { parseGrokOutput, parseClaudeOutput, parseCodexOutput, parseAntigravityOutput, parseOpenCodeOutput, parsePiOutput, PeekEventExtractor } from './parsers.js';
 import {
   appendPeekEvents,
   buildNotFoundPeekProcess,
@@ -14,7 +14,7 @@ import {
 import { buildProcessResult } from './process-result.js';
 import { spawnCli } from './spawn-cli.js';
 
-export type AgentType = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode' | 'grok' | 'pi';
+export type AgentType = 'claude' | 'codex' | 'gemini' | 'opencode' | 'grok' | 'pi';
 export type ProcessStatus = 'running' | 'completed' | 'failed';
 
 interface TrackedProcess {
@@ -75,9 +75,6 @@ function parseAgentOutput(agent: AgentType, stdout: string, stderr: string): any
   }
   if (agent === 'gemini') {
     return parseAntigravityOutput(stdout);
-  }
-  if (agent === 'forge') {
-    return parseForgeOutput(stdout);
   }
   if (agent === 'opencode') {
     return parseOpenCodeOutput(stdout);

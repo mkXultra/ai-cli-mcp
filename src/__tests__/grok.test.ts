@@ -10,7 +10,7 @@ import { buildProcessResult } from '../process-result.js';
 
 const success = readFileSync(new URL('./fixtures/grok-messages.ndjson', import.meta.url), 'utf8');
 const failure = readFileSync(new URL('./fixtures/grok-error.ndjson', import.meta.url), 'utf8');
-const cliPaths = { claude: 'claude', codex: 'codex', gemini: 'gemini', forge: 'forge', opencode: 'opencode', grok: 'grok-custom' };
+const cliPaths = { claude: 'claude', codex: 'codex', gemini: 'gemini', opencode: 'opencode', grok: 'grok-custom' };
 let root: string;
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'grok-unit-'));

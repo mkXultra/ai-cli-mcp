@@ -17,7 +17,7 @@ describe('Grok cancellation finalization', () => {
       if (order === 'before') child.emit('close', null, 'SIGTERM');
       return { terminated: true };
     });
-    const paths = { grok: 'grok', claude: 'claude', codex: 'codex', gemini: 'gemini', forge: 'forge', opencode: 'opencode' };
+    const paths = { grok: 'grok', claude: 'claude', codex: 'codex', gemini: 'gemini', opencode: 'opencode' };
     const service = new ProcessService({ cliPaths: paths });
     const { pid } = service.startProcess({ model: 'grok-4.6', workFolder: process.cwd(), prompt: 'test' });
     const pending = service.waitForProcesses([pid], 0);
@@ -39,7 +39,7 @@ describe('Grok cancellation finalization', () => {
       await treePending;
       return { terminated: true };
     });
-    const paths = { grok: 'grok', claude: 'claude', codex: 'codex', gemini: 'gemini', forge: 'forge', opencode: 'opencode' };
+    const paths = { grok: 'grok', claude: 'claude', codex: 'codex', gemini: 'gemini', opencode: 'opencode' };
     const service = new ProcessService({ cliPaths: paths });
     const { pid } = service.startProcess({ model: 'grok-4.6', workFolder: process.cwd(), prompt: 'test' });
     const waiting = service.waitForProcesses([pid], 0);
@@ -72,7 +72,7 @@ describe('Grok cancellation finalization', () => {
       child.emit('close', 0);
       return { terminated: true };
     });
-    const paths = { grok: 'grok', claude: 'claude', codex: 'codex', gemini: 'gemini', forge: 'forge', opencode: 'opencode' };
+    const paths = { grok: 'grok', claude: 'claude', codex: 'codex', gemini: 'gemini', opencode: 'opencode' };
     const service = new ProcessService({ cliPaths: paths });
     const { pid } = service.startProcess({ model: 'grok', workFolder: process.cwd(), prompt: 'test' });
     const waiting = service.waitForProcesses([pid], 0);

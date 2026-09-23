@@ -7,7 +7,7 @@
 - `ai-cli`: human-facing production CLI
 - `ai-cli-mcp`: MCP server entrypoint for backward compatibility
 
-The package name stays `ai-cli-mcp` for now. We do not introduce a daemon. We keep the product as a thin wrapper over Claude Code, Codex CLI, Antigravity CLI (Gemini), Forge, OpenCode, and Grok Build CLI.
+The package name stays `ai-cli-mcp` for now. We do not introduce a daemon. We keep the product as a thin wrapper over Claude Code, Codex CLI, Antigravity CLI (Gemini), OpenCode, and Grok Build CLI.
 
 ## Non-Goals
 
@@ -63,7 +63,7 @@ Properties:
 
 - Returns MCP-like JSON including `pid`, `status`, `agent`, and `message`
 - Uses `pid` as the public identifier
-- Spawns a thin detached wrapper that runs the actual Claude/Codex/Gemini/Forge/OpenCode/Grok process
+- Spawns a thin detached wrapper that runs the actual Claude/Codex/Gemini/OpenCode/Grok process
 - Redirects `stdout` and `stderr` to files
 - Persists natural process exit status to `exit-status.json`
 - Treats a stopped tracked process without exit metadata as `failed`
@@ -208,7 +208,7 @@ Suggested internal boundaries:
 - `cli-builder`
   - resolves model aliases
   - validates input
-  - builds the real Claude/Codex/Gemini/Forge/OpenCode/Grok command
+  - builds the real Claude/Codex/Gemini/OpenCode/Grok command
 - `runner`
   - spawns the actual AI CLI process
   - redirects `stdout` and `stderr` to files

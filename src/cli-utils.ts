@@ -19,13 +19,12 @@ export interface CliBinaryStatus {
   error?: string;
 }
 
-export type CliBinaryName = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode' | 'grok' | 'pi';
+export type CliBinaryName = 'claude' | 'codex' | 'gemini' | 'opencode' | 'grok' | 'pi';
 
 export interface CliPaths {
   claude: string;
   codex: string;
   gemini: string;
-  forge: string;
   opencode: string;
   grok: string;
   pi?: string;
@@ -41,7 +40,6 @@ export interface CliDoctorStatus {
   claude: CliBinaryStatus;
   codex: CliBinaryStatus;
   gemini: CliBinaryStatus;
-  forge: CliBinaryStatus;
   opencode: CliBinaryStatus;
   grok: CliBinaryStatus;
   pi: CliBinaryStatus;
@@ -208,15 +206,6 @@ function getCliBinaryConfig(name: CliBinaryName): {
     };
   }
 
-  if (name === 'forge') {
-    return {
-      envVarName: 'FORGE_CLI_NAME',
-      customCliName: process.env.FORGE_CLI_NAME,
-      defaultCliName: 'forge',
-      localInstallPath: join(homedir(), '.forge', 'local', 'forge'),
-    };
-  }
-
   if (name === 'grok') {
     return {
       envVarName: 'GROK_CLI_NAME',
@@ -267,7 +256,6 @@ export function getCliDoctorStatus(): CliDoctorStatus {
     claude: getCliBinaryStatus('claude'),
     codex: getCliBinaryStatus('codex'),
     gemini: getCliBinaryStatus('gemini'),
-    forge: getCliBinaryStatus('forge'),
     opencode: getCliBinaryStatus('opencode'),
     grok: getCliBinaryStatus('grok'),
     pi: getCliBinaryStatus('pi'),
@@ -284,12 +272,6 @@ export function findGeminiCli(): string {
 export function findCodexCli(): string {
   debugLog('[Debug] Attempting to find Codex CLI...');
   const status = getCliBinaryStatus('codex');
-  return getCliCommandOrThrow(status);
-}
-
-export function findForgeCli(): string {
-  debugLog('[Debug] Attempting to find Forge CLI...');
-  const status = getCliBinaryStatus('forge');
   return getCliCommandOrThrow(status);
 }
 

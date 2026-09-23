@@ -12,12 +12,12 @@ import { promisify } from 'node:util';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { MCPTestClient } from './utils/mcp-client.js';
 
-type LiveAgent = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode' | 'grok' | 'pi';
+type LiveAgent = 'claude' | 'codex' | 'gemini' | 'opencode' | 'grok' | 'pi';
 type LiveSurface = 'cli' | 'mcp' | 'all';
 
 const execFileAsync = promisify(execFile);
 const liveEnabled = process.env.ACM_LIVE_E2E === '1';
-const allAgents: LiveAgent[] = ['claude', 'codex', 'gemini', 'forge', 'opencode', 'grok', 'pi'];
+const allAgents: LiveAgent[] = ['claude', 'codex', 'gemini', 'opencode', 'grok', 'pi'];
 const defaultAgents: LiveAgent[] = ['claude', 'codex'];
 const liveToken = process.env.ACM_LIVE_E2E_TOKEN || 'ACM_LIVE_E2E_OK';
 const assertToken = process.env.ACM_LIVE_E2E_ASSERT_TOKEN !== '0';
@@ -34,7 +34,6 @@ const defaultModels: Record<LiveAgent, string> = {
   claude: 'haiku',
   codex: 'gpt-5.4',
   gemini: 'gemini-3.8-flash-medium',
-  forge: 'forge',
   opencode: 'opencode',
   grok: 'grok-4.6',
   pi: 'pi',
@@ -227,7 +226,7 @@ if (liveEnabled) {
         expect(models.claude).toContain('haiku');
         expect(models.codex).toContain('gpt-5.4');
         expect(models.gemini).toContain('gemini-3.8-flash-medium');
-        expect(models.forge).toEqual(['forge']);
+        expect(models).not.toHaveProperty('forge');
         expect(models.opencode).toContain('opencode');
         expect(models.pi).toContain('pi');
       });
@@ -347,7 +346,7 @@ if (liveEnabled) {
           expect(models.claude).toContain('haiku');
           expect(models.codex).toContain('gpt-5.4');
           expect(models.gemini).toContain('gemini-3.8-flash-medium');
-          expect(models.forge).toEqual(['forge']);
+          expect(models).not.toHaveProperty('forge');
           expect(models.opencode).toContain('opencode');
           expect(models.pi).toContain('pi');
         });

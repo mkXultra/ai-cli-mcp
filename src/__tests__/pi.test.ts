@@ -9,7 +9,7 @@ import { parsePiOutput, PeekEventExtractor } from '../parsers.js';
 import { buildProcessResult } from '../process-result.js';
 
 const stream = readFileSync(new URL('./fixtures/pi.ndjson', import.meta.url), 'utf8');
-const cliPaths = { claude: 'claude', codex: 'codex', gemini: 'agy', forge: 'forge', opencode: 'opencode', grok: 'grok', pi: 'pi-custom' };
+const cliPaths = { claude: 'claude', codex: 'codex', gemini: 'agy', opencode: 'opencode', grok: 'grok', pi: 'pi-custom' };
 let root: string;
 
 beforeEach(() => {

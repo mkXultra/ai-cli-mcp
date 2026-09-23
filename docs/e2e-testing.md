@@ -72,7 +72,7 @@ ACM_LIVE_E2E=1 ACM_LIVE_E2E_SURFACE=all ACM_LIVE_E2E_AGENTS=claude,codex npm run
 
 Useful environment variables:
 
-- `ACM_LIVE_E2E_AGENTS`: comma-separated `claude,codex,gemini,forge,opencode,grok`, or `all`. `all` includes an authenticated, paid Grok job (default model `grok-4.6`). Defaults to `claude,codex`.
+- `ACM_LIVE_E2E_AGENTS`: comma-separated `claude,codex,gemini,opencode,grok`, or `all`. `all` includes an authenticated, paid Grok job (default model `grok-4.6`). Defaults to `claude,codex`.
 - `ACM_LIVE_E2E_GROK_MODEL`: override the Grok model (default `grok-4.6`). Requires an installed, authenticated Grok CLI.
 - `ACM_LIVE_E2E_SURFACE`: `cli`, `mcp`, or `all`. Defaults to `cli`.
 - `ACM_LIVE_E2E_TIMEOUT_SECONDS`: timeout passed to `ai-cli wait`. Defaults to `240`.

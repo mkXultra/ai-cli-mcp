@@ -25,12 +25,18 @@ const DEFAULT_CLI_PATHS = {
   claude: '/usr/bin/claude',
   codex: '/usr/bin/codex',
   gemini: '/usr/bin/agy',
-  forge: '/usr/bin/forge',
   opencode: '/usr/bin/opencode',
   grok: '/usr/bin/grok',
 };
 
 describe('cli-builder', () => {
+  it.each([undefined, 'high'])('rejects the removed Forge backend with effort %s', (reasoning_effort) => {
+    expect(() => buildCliCommand({
+      prompt: 'test', workFolder: '/tmp', model: 'forge', reasoning_effort,
+      cliPaths: DEFAULT_CLI_PATHS,
+    })).toThrow('Forge support has been removed');
+  });
+
   afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => {
     vi.clearAllMocks();
@@ -123,12 +129,6 @@ describe('cli-builder', () => {
     it('should reject unsupported Antigravity effort', () => {
       expect(() => getReasoningEffort('gemini-3.1-pro-high', 'ultra')).toThrow(
         'Antigravity reasoning_effort supports only low, medium, high.'
-      );
-    });
-
-    it('should reject reasoning_effort for forge explicitly', () => {
-      expect(() => getReasoningEffort('forge', 'high')).toThrow(
-        'reasoning_effort is not supported for forge.'
       );
     });
 

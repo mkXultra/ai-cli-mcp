@@ -75,7 +75,6 @@ export class ClaudeCodeServer {
   private claudeCliPath: string;
   private codexCliPath: string;
   private geminiCliPath: string;
-  private forgeCliPath: string;
   private opencodeCliPath: string;
   private grokCliPath: string;
   private piCliPath: string;
@@ -90,7 +89,6 @@ export class ClaudeCodeServer {
     this.claudeCliPath = this.resolveDoctorCliPath(doctorStatus.claude);
     this.codexCliPath = this.resolveDoctorCliPath(doctorStatus.codex);
     this.geminiCliPath = this.resolveDoctorCliPath(doctorStatus.gemini);
-    this.forgeCliPath = this.resolveDoctorCliPath(doctorStatus.forge);
     this.grokCliPath = this.resolveDoctorCliPath(doctorStatus.grok);
     console.error(`[Setup] Using Grok CLI command/path: ${this.grokCliPath}`);
     this.piCliPath = this.resolveDoctorCliPath(doctorStatus.pi);
@@ -99,14 +97,12 @@ export class ClaudeCodeServer {
     console.error(`[Setup] Using Claude CLI command/path: ${this.claudeCliPath}`);
     console.error(`[Setup] Using Codex CLI command/path: ${this.codexCliPath}`);
     console.error(`[Setup] Using Antigravity CLI command/path: ${this.geminiCliPath}`);
-    console.error(`[Setup] Using Forge CLI command/path: ${this.forgeCliPath}`);
     console.error(`[Setup] Using OpenCode CLI command/path: ${this.opencodeCliPath}`);
     this.processService = new ProcessService({
       cliPaths: {
         claude: this.claudeCliPath,
         codex: this.codexCliPath,
         gemini: this.geminiCliPath,
-        forge: this.forgeCliPath,
         opencode: this.opencodeCliPath,
         grok: this.grokCliPath,
         pi: this.piCliPath,
@@ -149,7 +145,7 @@ export class ClaudeCodeServer {
 
   private getCliConfigurationError(): string | null {
     const doctorStatus = getCliDoctorStatus();
-    for (const name of ['claude', 'codex', 'gemini', 'forge', 'opencode', 'grok', 'pi'] as const) {
+    for (const name of ['claude', 'codex', 'gemini', 'opencode', 'grok', 'pi'] as const) {
       if (doctorStatus[name].error) {
         return doctorStatus[name].error;
       }
@@ -162,7 +158,7 @@ export class ClaudeCodeServer {
       tools: [
         {
           name: 'run',
-          description: `AI Agent Runner: Starts a Claude, Codex, Antigravity (Gemini), Forge, OpenCode, Grok, or Pi CLI process in the background and returns a PID immediately. Use list_processes and get_result to monitor progress.
+          description: `AI Agent Runner: Starts a Claude, Codex, Antigravity (Gemini), OpenCode, Grok, or Pi CLI process in the background and returns a PID immediately. Use list_processes and get_result to monitor progress.
 
 • File ops: Create, read, (fuzzy) edit, move, copy, delete, list files, analyze/ocr images, file content analysis
 • Code: Generate / analyse / refactor / fix
@@ -206,11 +202,11 @@ ${getSupportedModelsDescription()}
               },
               reasoning_effort: {
                 type: 'string',
-                description: 'Reasoning control for Claude, Codex, Antigravity (Gemini), Grok, and Pi. Claude uses --effort with "low", "medium", "high", "xhigh", "max". Codex uses model_reasoning_effort with "low", "medium", "high", "xhigh"; GPT-6 Astra/Sol and GPT-5.6 Sol/Terra also support "max" and "ultra", while GPT-6 Luna and GPT-5.6 Luna support "max". Grok: grok-4.6=low/medium/high/xhigh; grok-4.5, grok (configured default), and other grok-* models=low/medium/high. Pi uses --thinking with off/minimal/low/medium/high/xhigh/max. Omitted effort uses the CLI default. Antigravity uses --effort low/medium/high; it must match any effort suffix in the model name. Forge and OpenCode do not support reasoning_effort in this integration.',
+                description: 'Reasoning control for Claude, Codex, Antigravity (Gemini), Grok, and Pi. Claude uses --effort with "low", "medium", "high", "xhigh", "max". Codex uses model_reasoning_effort with "low", "medium", "high", "xhigh"; GPT-6 Astra/Sol and GPT-5.6 Sol/Terra also support "max" and "ultra", while GPT-6 Luna and GPT-5.6 Luna support "max". Grok: grok-4.6=low/medium/high/xhigh; grok-4.5, grok (configured default), and other grok-* models=low/medium/high. Pi uses --thinking with off/minimal/low/medium/high/xhigh/max. Omitted effort uses the CLI default. Antigravity uses --effort low/medium/high; it must match any effort suffix in the model name. OpenCode does not support reasoning_effort in this integration.',
               },
               session_id: {
                 type: 'string',
-                description: 'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, OpenCode, Grok, and Pi. Antigravity resumes its conversation_id via --conversation; old Gemini CLI sessions cannot be resumed. Grok resumes via --resume, preserving the session ID. OpenCode and Pi resume in place via --session and may also be combined with explicit model selection.',
+                description: 'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, OpenCode, Grok, and Pi. Antigravity resumes its conversation_id via --conversation; old Gemini CLI sessions cannot be resumed. Grok resumes via --resume, preserving the session ID. OpenCode and Pi resume in place via --session and may also be combined with explicit model selection.',
               },
             },
             required: ['workFolder'],
@@ -268,7 +264,7 @@ ${getSupportedModelsDescription()}
         },
         {
           name: 'peek',
-          description: 'One-shot short observation window for running child agents. Returns only natural-language message events, and optionally normalized tool_call events, observed during this call; not a history API, not gapless streaming, and not stdout/stderr tailing. Message extraction is supported for Codex, Claude, Grok (whole assistant messages), OpenCode, Gemini, Pi text deltas, and best-effort Forge Summary/Completed successfully lines. Forge tool calls are low-precision Execute/Finished markers and never include command output. Tool calls exclude raw tool output.',
+          description: 'One-shot short observation window for running child agents. Returns only natural-language message events, and optionally normalized tool_call events, observed during this call; not a history API, not gapless streaming, and not stdout/stderr tailing. Message extraction is supported for Codex, Claude, Grok (whole assistant messages), OpenCode, Gemini, and Pi text deltas. Tool calls exclude raw tool output.',
           inputSchema: {
             type: 'object',
             properties: {

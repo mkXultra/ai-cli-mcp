@@ -93,7 +93,6 @@ describe('CliProcessService', () => {
         claude: scriptPath,
         codex: scriptPath,
         gemini: scriptPath,
-        forge: scriptPath,
         opencode: scriptPath,
         grok: scriptPath,
       },
@@ -186,17 +185,6 @@ describe('CliProcessService', () => {
       expectedMessage: 'fake gemini ok',
     },
     {
-      agent: 'forge',
-      model: 'forge',
-      stdout: `
-● [21:09:01] Initialize ses-fake-forge
-fake forge ok
-● [21:09:08] Finished ses-fake-forge
-`,
-      expectedSessionId: 'ses-fake-forge',
-      expectedMessage: 'fake forge ok',
-    },
-    {
       agent: 'opencode',
       model: 'opencode',
       stdout: `
@@ -225,7 +213,6 @@ fake forge ok
       claude: '/bin/sh',
       codex: '/bin/sh',
       gemini: '/bin/sh',
-      forge: '/bin/sh',
       opencode: '/bin/sh',
       grok: '/bin/sh',
     };
@@ -282,7 +269,6 @@ fake forge ok
         claude: scriptPath,
         codex: scriptPath,
         gemini: scriptPath,
-        forge: scriptPath,
         opencode: scriptPath,
         grok: scriptPath,
       },
@@ -334,7 +320,6 @@ printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_
         claude: scriptPath,
         codex: scriptPath,
         gemini: scriptPath,
-        forge: scriptPath,
         opencode: scriptPath,
         grok: scriptPath,
       },
@@ -404,7 +389,6 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
         claude: scriptPath,
         codex: scriptPath,
         gemini: scriptPath,
-        forge: scriptPath,
         opencode: scriptPath,
         grok: scriptPath,
       },
@@ -516,7 +500,6 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
         claude: scriptPath,
         codex: scriptPath,
         gemini: scriptPath,
-        forge: scriptPath,
         opencode: scriptPath,
         grok: scriptPath,
       },
@@ -564,7 +547,6 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
         claude: '/bin/sh',
         codex: '/bin/sh',
         gemini: '/bin/sh',
-        forge: '/bin/sh',
         opencode: '/bin/sh',
         grok: '/bin/sh',
       },
@@ -640,7 +622,6 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
         claude: '/bin/sh',
         codex: '/bin/sh',
         gemini: '/bin/sh',
-        forge: '/bin/sh',
         opencode: '/bin/sh',
         grok: '/bin/sh',
       },
@@ -701,7 +682,6 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
         claude: '/bin/sh',
         codex: '/bin/sh',
         gemini: '/bin/sh',
-        forge: '/bin/sh',
         opencode: '/bin/sh',
         grok: '/bin/sh',
       },
@@ -779,7 +759,6 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
         claude: '/bin/sh',
         codex: '/bin/sh',
         gemini: '/bin/sh',
-        forge: '/bin/sh',
         opencode: '/bin/sh',
         grok: '/bin/sh',
       },
@@ -804,60 +783,6 @@ printf '%s\n' '{"type":"system","session_id":"session-cli-1"}'
     killSpy.mockRestore();
   });
 
-  it('parses forge output from detached process logs', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
-    tempDirs.push(root);
-    const stateDir = join(root, 'state');
-    const workFolder = join(root, 'forge-project');
-    mkdirSync(workFolder, { recursive: true });
-    const pid = 54321;
-    const processDir = join(stateDir, 'cwds', encodeCwd(realpathSync(workFolder)), String(pid));
-    mkdirSync(processDir, { recursive: true });
-
-    writeFileSync(
-      join(processDir, 'stdout.log'),
-      `● [21:09:01] Initialize forge-conv-1
-Forge assistant reply
-● [21:09:08] Finished forge-conv-1
-`
-    );
-    writeFileSync(join(processDir, 'stderr.log'), '');
-    writeFileSync(
-      join(processDir, 'meta.json'),
-      JSON.stringify({
-        pid,
-        prompt: 'hello forge',
-        workFolder,
-        model: 'forge',
-        toolType: 'forge',
-        startTime: new Date().toISOString(),
-        stdoutPath: join(processDir, 'stdout.log'),
-        stderrPath: join(processDir, 'stderr.log'),
-        status: 'completed',
-      })
-    );
-
-    const service = new CliProcessService({
-      stateDir,
-      cliPaths: {
-        claude: '/bin/sh',
-        codex: '/bin/sh',
-        gemini: '/bin/sh',
-        forge: '/bin/sh',
-        opencode: '/bin/sh',
-        grok: '/bin/sh',
-      },
-    });
-
-    const result = await service.getProcessResult(pid, false);
-    expect(result.agent).toBe('forge');
-    expect(result.session_id).toBe('forge-conv-1');
-    expect(result.agentOutput).toEqual({
-      message: 'Forge assistant reply',
-      session_id: 'forge-conv-1',
-    });
-  });
-
   it('parses successful OpenCode detached runs from stdout only', async () => {
     const root = mkdtempSync(join(tmpdir(), 'ai-cli-cli-service-'));
     tempDirs.push(root);
@@ -873,7 +798,6 @@ Forge assistant reply
         claude: '/bin/sh',
         codex: '/bin/sh',
         gemini: '/bin/sh',
-        forge: '/bin/sh',
         opencode: scriptPath,
         grok: scriptPath,
       },
@@ -920,7 +844,6 @@ Forge assistant reply
         claude: '/bin/sh',
         codex: '/bin/sh',
         gemini: '/bin/sh',
-        forge: '/bin/sh',
         opencode: scriptPath,
         grok: scriptPath,
       },

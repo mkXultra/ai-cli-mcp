@@ -126,15 +126,6 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
       args.push('--effort', reasoningEffort);
     }
     args.push(`--print=${prompt}`);
-  } else if (agent === 'forge') {
-    cliPath = options.cliPaths.forge;
-    args = ['-C', cwd];
-
-    if (options.session_id && typeof options.session_id === 'string') {
-      args.push('--conversation-id', options.session_id);
-    }
-
-    args.push('-p', prompt);
   } else if (agent === 'opencode') {
     cliPath = options.cliPaths.opencode;
     args = ['run', '--format', 'json', '--dir', cwd];

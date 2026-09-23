@@ -6,7 +6,7 @@ const CODEX_ULTRA_REASONING_MODELS = new Set(['gpt-6-astra', 'gpt-6-sol', 'gpt-5
 const OPENCODE_MODEL_ERROR = 'Invalid OpenCode model. Expected exact syntax oc-<provider/model>.';
 const PI_MODEL_ERROR = 'Invalid Pi model. Expected exact syntax pi-<provider/model>.';
 
-export type Agent = 'codex' | 'claude' | 'gemini' | 'forge' | 'opencode' | 'grok' | 'pi';
+export type Agent = 'codex' | 'claude' | 'gemini' | 'opencode' | 'grok' | 'pi';
 
 export interface ModelSelection {
   agent: Agent;
@@ -23,7 +23,7 @@ function getStandardAgentForModel(model: string): Exclude<Agent, 'opencode'> {
     return 'grok';
   }
   if (model === 'forge') {
-    return 'forge';
+    throw new Error('Forge support has been removed. Choose a supported model.');
   }
   if (model === 'codex') {
     return 'codex';
@@ -170,9 +170,6 @@ export function getReasoningEffort(model: string, rawValue: unknown): string {
     throw new Error(
       `Invalid reasoning_effort: ${rawValue}. Allowed values: low, medium, high, xhigh, max, ultra.`
     );
-  }
-  if (agent === 'forge') {
-    throw new Error('reasoning_effort is not supported for forge.');
   }
   if (agent === 'claude' && !CLAUDE_REASONING_EFFORTS.has(normalized)) {
     throw new Error(

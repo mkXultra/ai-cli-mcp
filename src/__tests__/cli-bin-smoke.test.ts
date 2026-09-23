@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
@@ -30,6 +30,19 @@ afterEach(() => {
 });
 
 describe('cli helper entrypoint smoke', () => {
+  it('rejects Forge without starting a background process', () => {
+    const stateDir = makeTempDir('ai-cli-retired-backend-');
+    const result = spawnSync(process.execPath, [
+      'dist/bin/ai-cli.js', 'run', '--cwd', process.cwd(), '--model', 'forge', '--prompt', 'test',
+    ], {
+      encoding: 'utf8',
+      env: { ...process.env, AI_CLI_STATE_DIR: stateDir, FORGE_CLI_NAME: './retired/forge' },
+    });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Forge support has been removed');
+    expect(result.stdout).not.toContain('"pid"');
+  });
+
   it('prints help for cli.run with OpenCode examples', () => {
     const output = execFileSync(
       'node',
@@ -59,8 +72,8 @@ describe('cli helper entrypoint smoke', () => {
       }
     );
 
-    expect(output).toContain('Usage: npm run -s cli.run.parse -- --agent <claude|codex|gemini|forge|opencode|grok|pi>');
-    expect(output).toContain('Agent type: claude, codex, gemini, forge, opencode, grok, or pi');
+    expect(output).toContain('Usage: npm run -s cli.run.parse -- --agent <claude|codex|gemini|opencode|grok|pi>');
+    expect(output).toContain('Agent type: claude, codex, gemini, opencode, grok, or pi');
     expect(output).toContain('npm run -s cli.run.parse -- --agent opencode < raw.txt');
   });
 
@@ -91,7 +104,6 @@ describe('ai-cli entrypoint smoke', () => {
     writeExecutable(fakeBinDir, 'claude');
     writeExecutable(fakeBinDir, 'codex');
     writeExecutable(fakeBinDir, 'gemini');
-    writeExecutable(fakeBinDir, 'forge');
     writeExecutable(fakeBinDir, 'opencode');
 
     const output = execFileSync(
@@ -106,7 +118,6 @@ describe('ai-cli entrypoint smoke', () => {
           CLAUDE_CLI_NAME: 'claude',
           CODEX_CLI_NAME: 'codex',
           GEMINI_CLI_NAME: 'gemini',
-          FORGE_CLI_NAME: 'forge',
           OPENCODE_CLI_NAME: 'opencode',
         },
       }
@@ -117,7 +128,7 @@ describe('ai-cli entrypoint smoke', () => {
     expect(output).toContain('"loginState": false');
     expect(output).toContain('"codex"');
     expect(output).toContain('"gemini"');
-    expect(output).toContain('"forge"');
+    expect(output).not.toContain('"forge"');
     expect(output).toContain('"opencode"');
     expect(output).toContain('"available": true');
   });
@@ -136,7 +147,7 @@ describe('ai-cli entrypoint smoke', () => {
     expect(output).toContain('Usage: ai-cli run --cwd <path> [options]');
     expect(output).toContain('--model <model>');
     expect(output).toContain('claude-ultra');
-    expect(output).toContain('forge');
+    expect(output).not.toContain('forge');
     expect(output).toContain('opencode');
     expect(output).toContain('oc-openai/gpt-5.4');
   });

@@ -333,7 +333,7 @@ describe('ai-cli app', () => {
     expect(payload.codex).toContain('gpt-5.3-codex');
     expect(payload.codex).toContain('gpt-5.3-codex-spark');
     expect(payload.codex).toContain('gpt-5.2');
-    expect(payload.forge).toEqual(['forge']);
+    expect(payload).not.toHaveProperty('forge');
     expect(payload.opencode).toEqual(['opencode']);
     expect(payload.pi).toEqual(['pi']);
     expect(payload.dynamicModelBackends).toEqual({
@@ -381,12 +381,6 @@ describe('ai-cli app', () => {
         available: true,
         lookup: 'path',
       },
-      forge: {
-        configuredCommand: 'forge',
-        resolvedPath: '/tmp/bin/forge',
-        available: true,
-        lookup: 'path',
-      },
       opencode: {
         configuredCommand: 'opencode',
         resolvedPath: '/tmp/bin/opencode',
@@ -427,7 +421,7 @@ describe('ai-cli app', () => {
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('claude-ultra'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('gpt-6-astra'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('gemini-3.1-pro-high'));
-    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('forge'));
+    expect(stdout).not.toHaveBeenCalledWith(expect.stringContaining('forge'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('opencode'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('oc-openai/gpt-5.4'));
     expect(stderr).not.toHaveBeenCalled();
