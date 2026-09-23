@@ -206,7 +206,7 @@ ${getSupportedModelsDescription()}
               },
               reasoning_effort: {
                 type: 'string',
-                description: 'Reasoning control for Claude, Codex, Antigravity (Gemini), Grok, and Pi. Claude uses --effort with "low", "medium", "high", "xhigh", "max". Codex uses model_reasoning_effort with "low", "medium", "high", "xhigh"; GPT-6 Astra and GPT-5.6 Sol/Terra also support "max" and "ultra", while GPT-5.6 Luna supports "max". Grok: grok-4.6=low/medium/high/xhigh; grok-4.5, grok (configured default), and other grok-* models=low/medium/high. Pi uses --thinking with off/minimal/low/medium/high/xhigh/max. Omitted effort uses the CLI default. Antigravity uses --effort low/medium/high; it must match any effort suffix in the model name. Forge and OpenCode do not support reasoning_effort in this integration.',
+                description: 'Reasoning control for Claude, Codex, Antigravity (Gemini), Grok, and Pi. Claude uses --effort with "low", "medium", "high", "xhigh", "max". Codex uses model_reasoning_effort with "low", "medium", "high", "xhigh"; GPT-6 Astra/Sol and GPT-5.6 Sol/Terra also support "max" and "ultra", while GPT-6 Luna and GPT-5.6 Luna support "max". Grok: grok-4.6=low/medium/high/xhigh; grok-4.5, grok (configured default), and other grok-* models=low/medium/high. Pi uses --thinking with off/minimal/low/medium/high/xhigh/max. Omitted effort uses the CLI default. Antigravity uses --effort low/medium/high; it must match any effort suffix in the model name. Forge and OpenCode do not support reasoning_effort in this integration.',
               },
               session_id: {
                 type: 'string',

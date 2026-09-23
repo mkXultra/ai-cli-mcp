@@ -109,6 +109,9 @@ describe('cli-builder', () => {
       expect(() => getReasoningEffort('gpt-5.6-luna', 'ultra')).toThrow(
         'Codex reasoning_effort for gpt-5.6-luna supports only low, medium, high, xhigh, max.'
       );
+      expect(() => getReasoningEffort('gpt-6-luna', 'ultra')).toThrow(
+        'Codex reasoning_effort for gpt-6-luna supports only low, medium, high, xhigh, max.'
+      );
     });
 
     it('should reject ultra for claude models', () => {
@@ -419,7 +422,7 @@ describe('cli-builder', () => {
         expect(cmd.args).toContain('gpt-5.3-codex');
       });
 
-      it.each(['gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'])(
+      it.each(['gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'])(
         'should build codex command for %s',
         (model) => {
           const cmd = buildCliCommand({
@@ -435,6 +438,22 @@ describe('cli-builder', () => {
           expect(cmd.args).toContain(model);
         }
       );
+
+      it.each([
+        ...['low', 'medium', 'high', 'xhigh', 'max', 'ultra'].map(effort => ['gpt-6-sol', effort]),
+        ...['low', 'medium', 'high', 'xhigh', 'max'].map(effort => ['gpt-6-luna', effort]),
+      ])('passes %s with %s effort to Codex for new and resumed sessions', (model, effort) => {
+        for (const session_id of [undefined, 'codex-session']) {
+          const cmd = buildCliCommand({
+            prompt: 'test', workFolder: '/tmp', model,
+            reasoning_effort: effort, session_id, cliPaths: DEFAULT_CLI_PATHS,
+          });
+          expect(cmd.agent).toBe('codex');
+          expect(cmd.args[cmd.args.indexOf('--model') + 1]).toBe(model);
+          expect(cmd.args).toContain(`model_reasoning_effort=${effort}`);
+          expect(cmd.args.slice(0, session_id ? 3 : 1)).toEqual(session_id ? ['exec', 'resume', session_id] : ['exec']);
+        }
+      });
 
       it('should build codex command with session_id using exec resume', () => {
         const cmd = buildCliCommand({

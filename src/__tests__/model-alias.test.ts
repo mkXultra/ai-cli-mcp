@@ -93,11 +93,14 @@ describe('user config loading', () => {
     [{ coding: { model: 'opus', reasoning_effort: ' ' } }, 'nonempty string'],
     [{ coding: { model: 'opus', reasoningEffort: 'high' } }, 'supports only'],
     [{ opus: { model: 'gpt-6-astra' } }, 'cannot replace native model names'],
+    [{ 'gpt-6-sol': { model: 'opus' } }, 'cannot replace native model names'],
+    [{ 'gpt-6-luna': { model: 'opus' } }, 'cannot replace native model names'],
     [{ coding: { model: 'codex-ultra' } }, 'alias chaining is not supported'],
     [{ coding: { model: 'coding' } }, 'alias chaining is not supported'],
     [{ coding: { model: 'review' }, review: { model: 'coding' } }, 'alias chaining is not supported'],
     [{ coding: { model: 'oc-openai' } }, 'Invalid OpenCode model'],
     [{ coding: { model: 'gpt-5.6-luna', reasoning_effort: 'ultra' } }, 'supports only low, medium, high, xhigh, max'],
+    [{ coding: { model: 'gpt-6-luna', reasoning_effort: 'ultra' } }, 'supports only low, medium, high, xhigh, max'],
     [{ coding: { model: 'opus', reasoning_effort: 'ultra' } }, 'Claude reasoning_effort supports only'],
     [{ coding: { model: 'gemini-3.1-pro-high', reasoning_effort: 'ultra' } }, 'Antigravity reasoning_effort supports only'],
     [{ coding: { model: 'forge', reasoning_effort: 'high' } }, 'not supported for forge'],
@@ -110,6 +113,17 @@ describe('user config loading', () => {
 });
 
 describe('configured alias resolution', () => {
+  it.each([['gpt-6-sol', 'ultra'], ['gpt-6-luna', 'max']])('resolves an alias targeting %s with %s effort', (model, effort) => {
+    configure({ coding: { model, reasoning_effort: effort } });
+    const cmd = command('coding');
+    expect(cmd).toMatchObject({ agent: 'codex', resolvedModel: model });
+    expect(cmd.args[cmd.args.indexOf('--model') + 1]).toBe(model);
+    expect(cmd.args).toContain(`model_reasoning_effort=${effort}`);
+    expect(getModelsPayload().aliases).toContainEqual({
+      name: 'coding', resolvesTo: model, agent: 'codex', defaultReasoningEffort: effort,
+    });
+  });
+
   it('keeps built-in aliases and literal models working when no aliases are configured', () => {
     expect(getModelAliases()).toEqual(MODEL_ALIAS_DETAILS);
     expect(resolveModelAlias('codex-ultra')).toBe('gpt-6-astra');
