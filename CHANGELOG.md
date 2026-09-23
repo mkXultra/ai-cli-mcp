@@ -1,3 +1,18 @@
+# [3.0.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.29.0...v3.0.0) (2026-09-23)
+
+
+* feat!: remove Forge CLI support ([68a7a72](https://github.com/mkXultra/ai-cli-mcp/commit/68a7a7219acf069cbe9938065c8d0a64786957be))
+
+
+### Features
+
+* add Sol and Luna default model aliases ([962063c](https://github.com/mkXultra/ai-cli-mcp/commit/962063c775a7d8a1f7b389a7305793e4e5fe0dab))
+
+
+### BREAKING CHANGES
+
+* Forge is no longer a supported backend. Remove or update user aliases targeting forge; models and doctor no longer return a forge entry, and FORGE_CLI_NAME is ignored.
+
 # [2.29.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.28.0...v2.29.0) (2026-09-23)
 
 
