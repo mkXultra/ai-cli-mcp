@@ -40,7 +40,7 @@ describe('ai-cli alias commands', () => {
     const payload = JSON.parse(result.stdout.mock.calls[0][0]);
     expect(Object.keys(payload).sort()).toEqual(['aliases', 'configPath']);
     expect(payload.configPath).toBe(join(root, 'xdg', 'ai-cli', 'config.json'));
-    expect(payload.aliases.map((alias: any) => alias.name)).toEqual(['claude-ultra', 'codex-ultra', 'gemini-ultra']);
+    expect(payload.aliases.map((alias: any) => alias.name)).toEqual(['claude-ultra', 'codex-ultra', 'gemini-ultra', 'sol', 'luna']);
     expect(payload.aliases).toContainEqual({
       name: 'codex-ultra', resolvesTo: 'gpt-6-astra', agent: 'codex', defaultReasoningEffort: 'ultra',
     });
@@ -55,7 +55,7 @@ describe('ai-cli alias commands', () => {
     expect(result.code).toBe(0);
     const payload = JSON.parse(result.stdout.mock.calls[0][0]);
     expect(payload.configPath).toBe(configPath);
-    expect(payload.aliases).toHaveLength(4);
+    expect(payload.aliases).toHaveLength(6);
     expect(payload.aliases).toContainEqual({
       name: 'coding', resolvesTo: 'gpt-5.6-terra', agent: 'codex', defaultReasoningEffort: 'xhigh',
     });
@@ -107,6 +107,19 @@ describe('ai-cli alias commands', () => {
     const result = await cli('rm', 'coding');
     expect(JSON.parse(result.stdout.mock.calls[0][0])).toEqual({ status: 'removed', name: 'coding', configPath });
     expect(config()).toEqual({ model_aliases: { review: { model: 'opus' } } });
+  });
+
+  it.each([['sol', 'gpt-6-sol'], ['luna', 'gpt-6-luna']])('overrides %s and restores its GPT-6 default on removal', async (name, model) => {
+    await cli('add', name, 'gpt-5.6-terra', '--effort', 'xhigh');
+    const listed = await cli('list');
+    expect(JSON.parse(listed.stdout.mock.calls[0][0]).aliases).toContainEqual({
+      name, resolvesTo: 'gpt-5.6-terra', agent: 'codex', defaultReasoningEffort: 'xhigh',
+    });
+    const removed = await cli('rm', name);
+    expect(JSON.parse(removed.stdout.mock.calls[0][0]).restoredDefault).toEqual({
+      name, resolvesTo: model, agent: 'codex',
+    });
+    expect(config()).toEqual({ model_aliases: {} });
   });
 
   it('restores a built-in default when its user override is removed', async () => {

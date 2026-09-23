@@ -296,6 +296,8 @@ Save a model and its default reasoning effort under a name you can use across pr
 
 ### Manage and use aliases from the CLI
 
+The built-in aliases `sol` and `luna` select `gpt-6-sol` and `gpt-6-luna`. They do not set a reasoning effort: omit `--reasoning-effort` to use the Codex CLI default, or specify it for a run. For example, `ai-cli run --cwd "$PWD" --model sol --prompt "Review this project"`. User aliases with the same names override these defaults; removing the user override with `ai-cli alias rm sol` restores the built-in target.
+
 ```bash
 ai-cli alias add codex-coding gpt-5.6-terra --effort xhigh
 ai-cli alias add claude-review opus --effort max
