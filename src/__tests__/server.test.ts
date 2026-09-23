@@ -209,6 +209,7 @@ describe('ClaudeCodeServer Unit Tests', () => {
 
   describe('findOpencodeCli function', () => {
     it('should fallback to PATH for OpenCode when no override is configured', async () => {
+      delete process.env.OPENCODE_CLI_NAME;
       mockHomedir.mockReturnValue('/home/user');
       mockExistsSync.mockImplementation((path) => path === '/usr/bin/opencode');
       mockAccessSync.mockImplementation((filePath) => {

@@ -238,7 +238,7 @@ OpenCode model selection accepts either:
 - `opencode` for the CLI's configured default model
 - `oc-<provider/model>` for an explicit OpenCode provider/model, for example `oc-openai/gpt-5.4`
 
-`ai-cli models` exposes OpenCode machine-readably via `opencode: ["opencode"]` plus `dynamicModelBackends.opencode`, which points users to `opencode models` for backend-native discovery.
+`ai-cli models` runs `opencode models` and returns `opencode` plus discovered names such as `oc-openai/gpt-6-astra` in the `opencode` array. Each name can be passed directly to `run`. Discovery status and errors are available in `dynamicModelBackends.opencode.discovery`.
 
 Codex model selection uses `gpt-5.4` as the default advertised model.
 
@@ -254,7 +254,7 @@ pi                    # use /login if authentication is not configured
 pi --list-models
 ```
 
-Use `pi` to let Pi select its configured default model. Use `pi-<provider/model>` to select an explicit model from `pi --list-models`, for example `pi-openai-codex/gpt-6-astra`. `ai-cli models` exposes these rules as `pi: ["pi"]`, `dynamicModelBackends.pi`, and `reasoningEfforts.pi`. Pi accepts `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, and `max`; omitting `reasoning_effort` leaves the choice to Pi.
+Use `pi` to let Pi select its configured default model. Use `pi-<provider/model>` for an explicit model, for example `pi-openai-codex/gpt-6-astra`. `ai-cli models` runs `pi --list-models` and includes these names after `pi` in its `pi` array. `dynamicModelBackends.pi.discovery` reports discovery status; `reasoningEfforts.pi` lists `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, and `max`. Omitting `reasoning_effort` leaves the choice to Pi.
 
 ```sh
 ai-cli run --cwd "$PWD" --model pi --prompt "Explain this project"
@@ -503,7 +503,13 @@ Checks supported AI CLI binary availability and path resolution from MCP clients
 
 ### `models`
 
-Lists supported model names, aliases, and dynamic backend discovery hints from MCP clients. This returns the same structured payload as `ai-cli models`.
+Lists supported model names and aliases, including models discovered by running `pi --list-models` and `opencode models`. This returns the same structured payload as `ai-cli models`. The `pi` and `opencode` arrays retain their default keys and append names ready for `run`.
+
+The two discovery commands run concurrently with a 5-second timeout and a 1 MiB output limit per CLI. `PI_CLI_NAME` and `OPENCODE_CLI_NAME` overrides apply. Discovery uses the calling process's working directory and CLI configuration; listed models are not a guarantee of authentication or model access.
+
+Each `dynamicModelBackends.<backend>.discovery` contains `status` (`success` or `error`), `checkedAt`, `cached`, and an `error` on failure. A missing CLI, timeout, or parsing error leaves that backend's default key and all other model lists and aliases available. An empty successful list has `status: "success"` and no additional names.
+
+The MCP server caches discovery results, including failures, for 60 seconds and shares concurrent lookups. Each standalone `ai-cli models` invocation fetches fresh results. Changes to executable selection, working directory, or environment bypass the cache; changes to CLI config files appear after cache expiry. User aliases are read on every request. Listing MCP tools and starting runs do not trigger discovery.
 
 The `aliases` array includes built-in defaults merged with [user model aliases](#user-model-aliases). Each entry contains `name`, `resolvesTo`, `agent`, and optional `defaultReasoningEffort`.
 

@@ -92,6 +92,12 @@ export interface DynamicModelBackendDescription {
   explicitPattern: string;
   discoveryCommand: string;
   modelsAreDynamic: boolean;
+  discovery?: {
+    status: 'success' | 'error';
+    checkedAt: string;
+    cached: boolean;
+    error?: string;
+  };
 }
 
 export function getSupportedModelsDescription(): string {

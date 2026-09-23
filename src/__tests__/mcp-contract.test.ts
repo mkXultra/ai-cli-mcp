@@ -157,7 +157,7 @@ describe('MCP Contract Tests', () => {
 
     const modelsTool = tools.find((tool: any) => tool.name === 'models');
     expect(modelsTool.inputSchema.properties).toEqual({});
-    expect(modelsTool.description).toContain('model aliases');
+    expect(modelsTool.description).toContain('aliases');
   });
 
   it('preserves the stdio MCP smoke flow and response shapes', async () => {

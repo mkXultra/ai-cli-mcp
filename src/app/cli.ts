@@ -2,7 +2,7 @@ import { runMcpServer } from './mcp.js';
 import { addUserAlias, listAliases, removeUserAlias } from './aliases.js';
 import { CliProcessService } from '../cli-process-service.js';
 import { getCliDoctorStatus } from '../cli-utils.js';
-import { getModelsPayload } from '../model-catalog.js';
+import { getDiscoveredModelsPayload } from '../model-discovery.js';
 import { validatePeekPids, validatePeekTimeSec } from '../peek.js';
 
 export const CLI_HELP_TEXT = `Usage: ai-cli <command> [options]
@@ -105,7 +105,8 @@ Options:
 
 export const MODELS_HELP_TEXT = `Usage: ai-cli models
 
-List supported models and aliases, including Grok/Pi effort levels and dynamic model discovery hints.
+List supported models and aliases, including live Pi and OpenCode model lists.
+Discovery runs in parallel with a 5-second timeout per CLI. Backend failures are included in the JSON result.
 
 Includes user aliases from ~/.config/ai-cli/config.json (or AI_CLI_CONFIG_PATH).
 
@@ -165,6 +166,7 @@ interface CliDeps {
   killProcess: (pid: number) => Promise<any>;
   cleanupProcesses: () => Promise<any>;
   getDoctorStatus: () => any;
+  getModels: typeof getDiscoveredModelsPayload;
 }
 
 let cliProcessService: CliProcessService | null = null;
@@ -188,6 +190,7 @@ const defaultDeps: CliDeps = {
   killProcess: (pid) => getCliProcessService().killProcess(pid),
   cleanupProcesses: () => getCliProcessService().cleanupProcesses(),
   getDoctorStatus: () => getCliDoctorStatus(),
+  getModels: getDiscoveredModelsPayload,
 };
 
 function parseArgs(argv: string[]): { positionals: string[]; flags: Record<string, string> } {
@@ -266,6 +269,7 @@ export async function runCli(argv: string[], deps: Partial<CliDeps> = {}): Promi
     killProcess,
     cleanupProcesses,
     getDoctorStatus,
+    getModels,
   } = { ...defaultDeps, ...deps };
   const [command] = argv;
 
@@ -480,7 +484,7 @@ export async function runCli(argv: string[], deps: Partial<CliDeps> = {}): Promi
       stdout(MODELS_HELP_TEXT);
       return 0;
     }
-    writeJson(stdout, getModelsPayload());
+    writeJson(stdout, await getModels());
     return 0;
   }
 

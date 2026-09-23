@@ -10,7 +10,8 @@ import {
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { debugLog, getCliDoctorStatus, type CliBinaryStatus } from '../cli-utils.js';
-import { getModelParameterDescription, getModelsPayload, getSupportedModelsDescription } from '../model-catalog.js';
+import { getModelParameterDescription, getSupportedModelsDescription } from '../model-catalog.js';
+import { getDiscoveredModelsPayload } from '../model-discovery.js';
 import { validatePeekPids, validatePeekTimeSec } from '../peek.js';
 import { ProcessService } from '../process-service.js';
 
@@ -320,7 +321,7 @@ ${getSupportedModelsDescription()}
         },
         {
           name: 'models',
-          description: 'List supported model names, model aliases, reasoning effort levels, and dynamic backend discovery hints for OpenCode and Pi.',
+          description: 'List supported model names, aliases, and reasoning effort levels. Queries Pi and OpenCode for current models and returns names ready for run. Discovery uses a 5-second timeout per CLI and a 60-second process-local cache; failures are reported per backend without hiding other models. Lists reflect the server working directory and CLI configuration, not a guarantee of model access.',
           inputSchema: {
             type: 'object',
             properties: {},
@@ -523,7 +524,7 @@ ${getSupportedModelsDescription()}
     return {
       content: [{
         type: 'text',
-        text: JSON.stringify(getModelsPayload(), null, 2)
+        text: JSON.stringify(await getDiscoveredModelsPayload(), null, 2)
       }]
     };
   }

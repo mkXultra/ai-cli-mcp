@@ -228,8 +228,8 @@ if (liveEnabled) {
         expect(models.codex).toContain('gpt-5.4');
         expect(models.gemini).toContain('gemini-3.8-flash-medium');
         expect(models.forge).toEqual(['forge']);
-        expect(models.opencode).toEqual(['opencode']);
-        expect(models.pi).toEqual(['pi']);
+        expect(models.opencode).toContain('opencode');
+        expect(models.pi).toContain('pi');
       });
 
       it.each(selectedAgents)('runs the real %s CLI through ai-cli', async (agent) => {
@@ -348,8 +348,8 @@ if (liveEnabled) {
           expect(models.codex).toContain('gpt-5.4');
           expect(models.gemini).toContain('gemini-3.8-flash-medium');
           expect(models.forge).toEqual(['forge']);
-          expect(models.opencode).toEqual(['opencode']);
-          expect(models.pi).toEqual(['pi']);
+          expect(models.opencode).toContain('opencode');
+          expect(models.pi).toContain('pi');
         });
 
         it.each(selectedAgents)('runs the real %s CLI through MCP', async (agent) => {

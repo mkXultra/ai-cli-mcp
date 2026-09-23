@@ -24,6 +24,7 @@ const expectedPackageFiles = [
   'dist/detached-runner.cjs',
   'dist/model-catalog.js',
   'dist/model-config.js',
+  'dist/model-discovery.js',
   'dist/model-selection.js',
   'dist/parsers.js',
   'dist/peek.js',
