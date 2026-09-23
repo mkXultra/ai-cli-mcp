@@ -23,7 +23,7 @@ describe('Pi cancellation', () => {
       child.emit('close', null, 'SIGTERM');
       return { terminated: true };
     });
-    const paths = { pi: 'pi', grok: 'grok', claude: 'claude', codex: 'codex', gemini: 'agy', forge: 'forge', opencode: 'opencode' };
+    const paths = { pi: 'pi', grok: 'grok', claude: 'claude', codex: 'codex', gemini: 'agy', opencode: 'opencode' };
     const service = new ProcessService({ cliPaths: paths });
     const { pid } = service.startProcess({ model: 'pi', workFolder: process.cwd(), prompt: 'test' });
 

@@ -33,7 +33,7 @@ describe.skipIf(process.platform === 'win32')('Grok host lifecycle and degraded 
   it.each(['mcp', 'cli'])('%s still stops an owned group when ps is missing', async (surface) => {
     const root = mkdtempSync(join(tmpdir(), 'grok-no-ps-'));
     const file = fixture(root, false);
-    const paths = { grok: file, claude: file, codex: file, gemini: file, forge: file, opencode: file };
+    const paths = { grok: file, claude: file, codex: file, gemini: file, opencode: file };
     const service = surface === 'mcp' ? new ProcessService({ cliPaths: paths }) : new CliProcessService({ cliPaths: paths, stateDir: join(root, 'state') });
     let pid: number | undefined;
     let toolPid: number | undefined;

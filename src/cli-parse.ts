@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-import { parseGrokOutput, parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseAntigravityOutput, parseOpenCodeOutput, parsePiOutput } from './parsers.js';
+import { parseGrokOutput, parseClaudeOutput, parseCodexOutput, parseAntigravityOutput, parseOpenCodeOutput, parsePiOutput } from './parsers.js';
 
-const AGENTS = ['claude', 'codex', 'gemini', 'forge', 'opencode', 'grok', 'pi'] as const;
+const AGENTS = ['claude', 'codex', 'gemini', 'opencode', 'grok', 'pi'] as const;
 type Agent = typeof AGENTS[number];
 
-const USAGE = `Usage: npm run -s cli.run.parse -- --agent <claude|codex|gemini|forge|opencode|grok|pi>
+const USAGE = `Usage: npm run -s cli.run.parse -- --agent <claude|codex|gemini|opencode|grok|pi>
 
 Reads raw CLI output from stdin and outputs parsed JSON to stdout.
 
 Options:
-  --agent   Agent type: claude, codex, gemini, forge, opencode, grok, or pi (required)
+  --agent   Agent type: claude, codex, gemini, opencode, grok, or pi (required)
   --help    Show this help message
 
 Examples:
@@ -65,7 +65,7 @@ async function main(): Promise<void> {
 
   const agent = args.agent as Agent;
   if (!agent || !AGENTS.includes(agent)) {
-    process.stderr.write(`Error: --agent is required (claude, codex, gemini, forge, opencode, grok, or pi)\n\n`);
+    process.stderr.write(`Error: --agent is required (claude, codex, gemini, opencode, grok, or pi)\n\n`);
     process.stderr.write(USAGE);
     process.exit(1);
   }
@@ -90,9 +90,6 @@ async function main(): Promise<void> {
       break;
     case 'gemini':
       parsed = parseAntigravityOutput(input);
-      break;
-    case 'forge':
-      parsed = parseForgeOutput(input);
       break;
     case 'opencode':
       parsed = parseOpenCodeOutput(input);

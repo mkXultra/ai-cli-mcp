@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
 import { buildCliCommand } from './cli-builder.js';
-import { findGrokCli, findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli, findPiCli } from './cli-utils.js';
+import { findGrokCli, findClaudeCli, findCodexCli, findGeminiCli, findOpencodeCli, findPiCli } from './cli-utils.js';
 
 /**
  * Minimal argv parser. No external dependencies.
@@ -35,12 +35,12 @@ function parseArgs(argv: string[]): Record<string, string> {
 const USAGE = `Usage: npm run -s cli.run -- --model <model> --workFolder <path> --prompt "..." [options]
 
 Options:
-  --model              Model name or alias (e.g. sonnet, opus, gpt-6-astra, gemini-ultra, forge, grok-4.6, opencode, oc-openai/gpt-5.4, pi, pi-openai-codex/gpt-6-astra)
+  --model              Model name or alias (e.g. sonnet, opus, gpt-6-astra, gemini-ultra, grok-4.6, opencode, oc-openai/gpt-5.4, pi, pi-openai-codex/gpt-6-astra)
   --workFolder         Working directory (absolute path)
   --prompt             Prompt string (mutually exclusive with --prompt_file)
   --prompt_file        Path to a file containing the prompt
   --session_id         Session ID to resume, including Grok, OpenCode, and Pi in-place resumes
-  --reasoning_effort   Claude/Codex/Grok/Pi: Pi=off|minimal|low|medium|high|xhigh|max; Antigravity=low|medium|high; unsupported for Forge and OpenCode
+  --reasoning_effort   Claude/Codex/Grok/Pi: Pi=off|minimal|low|medium|high|xhigh|max; Antigravity=low|medium|high; unsupported for OpenCode
   --help               Show this help message
 
 Grok uses its configured model with --model grok. Grok effort: grok-4.6=low|medium|high|xhigh; grok-4.5 and grok=low|medium|high. Omitted effort uses the CLI default.
@@ -76,7 +76,6 @@ async function main(): Promise<void> {
     claude: findClaudeCli(),
     codex: findCodexCli(),
     gemini: findGeminiCli(),
-    forge: findForgeCli(),
     opencode: findOpencodeCli(),
     grok: findGrokCli(),
     pi: findPiCli(),

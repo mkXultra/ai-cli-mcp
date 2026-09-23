@@ -33,9 +33,9 @@ Options:
   --cwd <path>                 Working directory
   --prompt <text>              Prompt text
   --prompt-file <path>         Path to a prompt file
-  --model <model>              Model name or alias (e.g. sonnet, fable, claude-ultra, gpt-6-astra, codex-ultra, gemini-3.1-pro-high, gemini-ultra, forge, grok-4.6, opencode, oc-openai/gpt-5.4, pi, pi-openai-codex/gpt-6-astra)
+  --model <model>              Model name or alias (e.g. sonnet, fable, claude-ultra, gpt-6-astra, codex-ultra, gemini-3.1-pro-high, gemini-ultra, grok-4.6, opencode, oc-openai/gpt-5.4, pi, pi-openai-codex/gpt-6-astra)
   --session-id <id>            Resume a previous session, including Grok, OpenCode, and Pi in-place resumes
-  --reasoning-effort <level>   Reasoning level for Claude/Codex/Grok/Pi; Pi=off|minimal|low|medium|high|xhigh|max; unsupported for Forge and OpenCode
+  --reasoning-effort <level>   Reasoning level for Claude/Codex/Grok/Pi; Pi=off|minimal|low|medium|high|xhigh|max; unsupported for OpenCode
   --help, -h                   Show this help message
 
 Grok: grok-4.6=low/medium/high/xhigh; grok-4.5, grok (configured default), and other grok-* models=low/medium/high. Omitted effort uses the CLI default. Grok never accepts max/ultra.
@@ -70,7 +70,7 @@ Options:
 export const PEEK_HELP_TEXT = `Usage: ai-cli peek <pid...> [options]
 
 Observe new natural-language agent messages, and optionally tool calls, for a short one-shot window.
-Message extraction is supported for Codex, Claude, Grok (whole assistant messages), OpenCode, Gemini, Pi text deltas, and best-effort Forge Summary/Completed successfully lines. Forge tool calls are low-precision Execute/Finished markers and never include command output.
+Message extraction is supported for Codex, Claude, Grok (whole assistant messages), OpenCode, Gemini, and Pi text deltas.
 This is not a history API, gapless streaming, or stdout/stderr tailing. No --follow mode is available in v1.
 
 Options:

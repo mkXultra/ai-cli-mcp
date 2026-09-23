@@ -21,7 +21,7 @@ setInterval(() => {
   }
 }, 20);
 `, { mode: 0o755 });
-    const paths = { grok: file, claude: file, codex: file, gemini: file, forge: file, opencode: file };
+    const paths = { grok: file, claude: file, codex: file, gemini: file, opencode: file };
     const service = new ProcessService({ cliPaths: paths });
     const { pid } = service.startProcess({ model: 'grok-4.6', workFolder: root, prompt: 'test' });
     const realKill = process.kill.bind(process);

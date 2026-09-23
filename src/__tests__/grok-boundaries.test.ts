@@ -28,7 +28,7 @@ async function splitWrite(stream, text) {
   }
 })();
 `, { mode: 0o755 });
-    const cliPaths = { grok: executable, claude: executable, codex: executable, gemini: executable, forge: executable, opencode: executable };
+    const cliPaths = { grok: executable, claude: executable, codex: executable, gemini: executable, opencode: executable };
     const service = surface === 'mcp' ? new ProcessService({ cliPaths }) : new CliProcessService({ cliPaths, stateDir: join(root, 'state') });
     try {
       for (const prompt of ['success', 'partial']) {

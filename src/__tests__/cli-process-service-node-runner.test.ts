@@ -1,8 +1,9 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CliProcessService } from '../cli-process-service.js';
+import * as cliBuilder from '../cli-builder.js';
 
 const tempDirs: string[] = [];
 
@@ -23,6 +24,16 @@ function createServiceFixture(): {
   const stateDir = join(root, 'state');
   const workFolder = join(root, 'work');
   mkdirSync(workFolder, { recursive: true });
+  // Exercise the detached runner with a native executable independently of
+  // provider-specific CLI flags, which Node.js does not accept.
+  vi.spyOn(cliBuilder, 'buildCliCommand').mockImplementation(options => ({
+    cliPath: process.execPath,
+    args: ['-p', options.prompt!],
+    cwd: workFolder,
+    agent: 'claude',
+    prompt: options.prompt!,
+    resolvedModel: 'sonnet',
+  }));
   return {
     service: new CliProcessService({
       stateDir,
@@ -30,7 +41,6 @@ function createServiceFixture(): {
         claude: process.execPath,
         codex: process.execPath,
         gemini: process.execPath,
-        forge: process.execPath,
         opencode: process.execPath,
         grok: process.execPath,
       },
@@ -41,6 +51,7 @@ function createServiceFixture(): {
 }
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   for (const dir of tempDirs.splice(0)) {
     let lastError: unknown;
     for (let attempt = 0; attempt < 50; attempt++) {
@@ -67,7 +78,7 @@ describe('CliProcessService with the detached Node.js runner', () => {
     const { service, stateDir, workFolder } = createServiceFixture();
     const started = await service.startProcess({
       cwd: workFolder,
-      model: 'forge',
+      model: 'sonnet',
       prompt: '40 + 2',
     });
 
@@ -81,7 +92,7 @@ describe('CliProcessService with the detached Node.js runner', () => {
 
     expect(result).toMatchObject({
       pid: started.pid,
-      agent: 'forge',
+      agent: 'claude',
       status: 'completed',
       exitCode: 0,
     });
@@ -97,7 +108,7 @@ describe('CliProcessService with the detached Node.js runner', () => {
     const { service, workFolder } = createServiceFixture();
     const started = await service.startProcess({
       cwd: workFolder,
-      model: 'forge',
+      model: 'sonnet',
       prompt: 'setInterval(() => {}, 1000)',
     });
 
@@ -126,7 +137,7 @@ describe('CliProcessService with the detached Node.js runner', () => {
     mkdirSync(fixtureDir, { recursive: true });
     mkdirSync(workFolder, { recursive: true });
     const scriptPath = join(fixtureDir, 'print-args.cjs');
-    const shimPath = join(fixtureDir, 'mock-forge.cmd');
+    const shimPath = join(fixtureDir, 'mock-claude.cmd');
     writeFileSync(scriptPath, "process.stdout.write(JSON.stringify(process.argv.slice(2)));\n");
     writeFileSync(shimPath, `@ECHO off\r\n"${process.execPath}" "${scriptPath}" %*\r\n`);
     const service = new CliProcessService({
@@ -135,14 +146,13 @@ describe('CliProcessService with the detached Node.js runner', () => {
         claude: shimPath,
         codex: shimPath,
         gemini: shimPath,
-        forge: shimPath,
         opencode: shimPath,
         grok: shimPath,
       },
     });
     const prompt = 'special & | ^ %PATH% " prompt';
 
-    const started = await service.startProcess({ cwd: workFolder, model: 'forge', prompt });
+    const started = await service.startProcess({ cwd: workFolder, model: 'sonnet', prompt });
     const [result] = await service.waitForProcesses([started.pid], 5);
     const processDir = join(
       stateDir,
@@ -153,10 +163,14 @@ describe('CliProcessService with the detached Node.js runner', () => {
 
     expect(result).toMatchObject({ status: 'completed', exitCode: 0 });
     expect(JSON.parse(readFileSync(join(processDir, 'stdout.log'), 'utf8'))).toEqual([
-      '-C',
-      workFolder,
+      '--dangerously-skip-permissions',
+      '--output-format',
+      'stream-json',
+      '--verbose',
       '-p',
       prompt,
+      '--model',
+      'sonnet',
     ]);
   });
 });

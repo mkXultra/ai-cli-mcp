@@ -20,8 +20,8 @@ import { fileURLToPath } from 'node:url';
 import { join, basename, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
-import { findGrokCli, findClaudeCli, findCodexCli, findForgeCli, findGeminiCli, findOpencodeCli, findPiCli } from './cli-utils.js';
-import { parseGrokOutput, parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseAntigravityOutput, parseOpenCodeOutput, parsePiOutput, PeekEventExtractor } from './parsers.js';
+import { findGrokCli, findClaudeCli, findCodexCli, findGeminiCli, findOpencodeCli, findPiCli } from './cli-utils.js';
+import { parseGrokOutput, parseClaudeOutput, parseCodexOutput, parseAntigravityOutput, parseOpenCodeOutput, parsePiOutput, PeekEventExtractor } from './parsers.js';
 import { buildProcessResult } from './process-result.js';
 import {
   appendPeekEvents,
@@ -113,9 +113,6 @@ function parseAgentOutput(agent: AgentType, stdout: string, stderr: string): any
   if (agent === 'gemini') {
     return parseAntigravityOutput(stdout);
   }
-  if (agent === 'forge') {
-    return parseForgeOutput(stdout);
-  }
   if (agent === 'opencode') {
     return parseOpenCodeOutput(stdout);
   }
@@ -132,7 +129,6 @@ export class CliProcessService {
       claude: findClaudeCli(),
       codex: findCodexCli(),
       gemini: findGeminiCli(),
-      forge: findForgeCli(),
       opencode: findOpencodeCli(),
       grok: findGrokCli(),
       pi: findPiCli(),

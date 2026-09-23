@@ -23,7 +23,6 @@ describe('cli-utils doctor status', () => {
     delete process.env.CODEX_CLI_NAME;
     delete process.env.GEMINI_CLI_NAME;
     delete process.env.ANTIGRAVITY_CLI_NAME;
-    delete process.env.FORGE_CLI_NAME;
     delete process.env.OPENCODE_CLI_NAME;
     delete process.env.GROK_CLI_NAME;
     Object.defineProperty(process, 'platform', { value: 'linux' });
@@ -45,6 +44,13 @@ describe('cli-utils doctor status', () => {
     const { getCliDoctorStatus, findGeminiCli } = await import('../cli-utils.js');
     expect(getCliDoctorStatus().gemini).toMatchObject({ configuredCommand: 'agy', resolvedPath: executable, available: true, lookup: 'local' });
     expect(findGeminiCli()).toBe(executable);
+  });
+
+  it('ignores the retired Forge executable override', async () => {
+    process.env.FORGE_CLI_NAME = './unsupported/forge';
+    const { getCliDoctorStatus } = await import('../cli-utils.js');
+    expect(getCliDoctorStatus()).not.toHaveProperty('forge');
+    expect(mockAccessSync.mock.calls.flat().some(value => String(value).includes('forge'))).toBe(false);
   });
 
   it('prioritizes ANTIGRAVITY_CLI_NAME, retaining GEMINI_CLI_NAME as a deprecated override', async () => {
@@ -90,12 +96,7 @@ describe('cli-utils doctor status', () => {
       available: true,
       lookup: 'path',
     });
-    expect(status.forge).toEqual({
-      configuredCommand: 'forge',
-      resolvedPath: null,
-      available: false,
-      lookup: 'path',
-    });
+    expect(status).not.toHaveProperty('forge');
     expect(status.opencode).toEqual({
       configuredCommand: 'opencode',
       resolvedPath: null,
@@ -118,12 +119,7 @@ describe('cli-utils doctor status', () => {
       available: false,
       lookup: 'path',
     });
-    expect(status.forge).toEqual({
-      configuredCommand: 'forge',
-      resolvedPath: null,
-      available: false,
-      lookup: 'path',
-    });
+    expect(status).not.toHaveProperty('forge');
     expect(status.opencode).toEqual({
       configuredCommand: 'opencode',
       resolvedPath: null,
@@ -221,27 +217,6 @@ describe('cli-utils doctor status', () => {
       lookup: 'env',
     });
     expect(findClaudeCli()).toBe(join(mockBinDir, 'claude-custom.cmd'));
-  });
-
-  it('supports forge lookup via FORGE_CLI_NAME', async () => {
-    process.env.FORGE_CLI_NAME = 'forge-custom';
-    mockAccessSync.mockImplementation((filePath) => {
-      if (filePath === join(mockBinDir, 'forge-custom')) {
-        return undefined;
-      }
-      throw new Error('not executable');
-    });
-
-    const { getCliDoctorStatus, findForgeCli } = await import('../cli-utils.js');
-    const status = getCliDoctorStatus();
-
-    expect(status.forge).toEqual({
-      configuredCommand: 'forge-custom',
-      resolvedPath: join(mockBinDir, 'forge-custom'),
-      available: true,
-      lookup: 'env',
-    });
-    expect(findForgeCli()).toBe('forge-custom');
   });
 
   it('supports OpenCode lookup via OPENCODE_CLI_NAME', async () => {

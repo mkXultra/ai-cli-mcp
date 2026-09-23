@@ -49,16 +49,7 @@ interface ToolCallMemory {
   summary_truncated?: boolean;
 }
 
-interface PendingForgeTool {
-  id: string;
-  tool: string;
-  summary: string;
-  summary_truncated?: boolean;
-}
-
 const PEEK_TOOL_SUMMARY_MAX_LENGTH = 200;
-const FORGE_EXECUTE_PATTERN = /^● \[[^\]]+\] Execute \[([^\]]*)\]\s+(.+)$/;
-const FORGE_FINISHED_PATTERN = /^● \[[^\]]+\] Finished(?:\s+\S+)?\s*$/;
 
 function isAntigravityEvent(parsed: any): boolean {
   return parsed && typeof parsed === 'object' && (
@@ -358,8 +349,6 @@ export class PeekEventExtractor {
   private readonly includeToolCalls: boolean;
   private readonly source: 'stdout' | 'stderr';
   private readonly toolMemory = new Map<string, ToolCallMemory>();
-  private forgePendingTool: PendingForgeTool | null = null;
-  private forgeToolSequence = 0;
 
   constructor(private readonly agent: PeekAgent, options: PeekEventExtractorOptions = {}) {
     this.includeToolCalls = options.includeToolCalls === true;
@@ -367,7 +356,7 @@ export class PeekEventExtractor {
   }
 
   push(chunk: string, observedAt = new Date().toISOString()): PeekEvent[] {
-    if ((this.agent === 'forge' || this.agent === 'grok' || this.agent === 'gemini' || this.agent === 'pi') && this.source === 'stderr') {
+    if ((this.agent === 'grok' || this.agent === 'gemini' || this.agent === 'pi') && this.source === 'stderr') {
       return [];
     }
 
@@ -381,7 +370,7 @@ export class PeekEventExtractor {
   }
 
   flush(observedAt = new Date().toISOString(), options: PeekFlushOptions = {}): PeekEvent[] {
-    if ((this.agent === 'forge' || this.agent === 'grok' || this.agent === 'gemini' || this.agent === 'pi') && this.source === 'stderr') {
+    if ((this.agent === 'grok' || this.agent === 'gemini' || this.agent === 'pi') && this.source === 'stderr') {
       this.pending = '';
       return [];
     }
@@ -389,24 +378,17 @@ export class PeekEventExtractor {
     const events: PeekEvent[] = [];
 
     if (this.pending) {
-      if (this.agent !== 'forge' || options.terminal === true) {
-        const line = this.pending;
-        this.pending = '';
-        events.push(...this.extractLines([line], observedAt));
-      }
+      const line = this.pending;
+      this.pending = '';
+      events.push(...this.extractLines([line], observedAt));
     }
 
     events.push(...this.flushAntigravityAssistantBuffer(observedAt));
     events.push(...this.flushPiAssistantBuffer(observedAt));
-    events.push(...this.flushForgePendingTool(observedAt, options.terminal === true));
     return events;
   }
 
   private extractLines(lines: string[], observedAt: string): PeekEvent[] {
-    if (this.agent === 'forge') {
-      return this.extractForgeLines(lines, observedAt);
-    }
-
     const events: PeekEvent[] = [];
 
     for (const line of lines) {
@@ -423,67 +405,6 @@ export class PeekEventExtractor {
     }
 
     return events;
-  }
-
-  private extractForgeLines(lines: string[], observedAt: string): PeekEvent[] {
-    const events: PeekEvent[] = [];
-
-    for (const line of lines) {
-      if (!line.trim()) {
-        continue;
-      }
-
-      const summary = this.extractForgeMessage(line, 'Summary:');
-      if (summary !== null) {
-        events.push({ kind: 'message', ts: observedAt, text: summary });
-        continue;
-      }
-
-      const completed = this.extractForgeMessage(line, 'Completed successfully:');
-      if (completed !== null) {
-        events.push({ kind: 'message', ts: observedAt, text: completed });
-        continue;
-      }
-
-      if (this.includeToolCalls) {
-        const executeMatch = line.match(FORGE_EXECUTE_PATTERN);
-        if (executeMatch) {
-          events.push(...this.completeForgePendingTool(observedAt));
-          const [, rawTool, rawSummary] = executeMatch;
-          const tool = rawTool.trim() && !/\s/.test(rawTool.trim()) ? rawTool.trim() : 'shell';
-          const event = createToolCallEvent({
-            ts: observedAt,
-            phase: 'started',
-            id: `forge_${this.forgeToolSequence++}`,
-            tool,
-            command: rawSummary,
-          });
-          this.forgePendingTool = {
-            id: event.id!,
-            tool: event.tool,
-            summary: event.summary,
-            summary_truncated: event.summary_truncated,
-          };
-          events.push(event);
-          continue;
-        }
-
-        if (FORGE_FINISHED_PATTERN.test(line)) {
-          events.push(...this.completeForgePendingTool(observedAt));
-        }
-      }
-    }
-
-    return events;
-  }
-
-  private extractForgeMessage(line: string, prefix: string): string | null {
-    if (!line.startsWith(prefix)) {
-      return null;
-    }
-
-    const text = line.slice(prefix.length).trim();
-    return text || null;
   }
 
   private extractParsedEvent(parsed: any, observedAt: string): PeekEvent[] {
@@ -621,36 +542,6 @@ export class PeekEventExtractor {
     }
 
     return [{ kind: 'message', ts: observedAt, text }];
-  }
-
-  private completeForgePendingTool(observedAt: string): PeekEvent[] {
-    if (!this.forgePendingTool) {
-      return [];
-    }
-
-    const pending = this.forgePendingTool;
-    this.forgePendingTool = null;
-    const event = createToolCallEvent({
-      ts: observedAt,
-      phase: 'completed',
-      id: pending.id,
-      tool: pending.tool,
-      status: 'unknown',
-      defaultStatus: 'unknown',
-    });
-    event.summary = pending.summary;
-    if (pending.summary_truncated) {
-      event.summary_truncated = true;
-    }
-    return [event];
-  }
-
-  private flushForgePendingTool(observedAt: string, terminal: boolean): PeekEvent[] {
-    if (this.agent !== 'forge' || !terminal) {
-      return [];
-    }
-
-    return this.completeForgePendingTool(observedAt);
   }
 }
 
@@ -1018,64 +909,6 @@ export function parseAntigravityOutput(stdout: string): any {
     error: result?.error,
     stats: result ? { duration_seconds: result.duration_seconds, num_turns: result.num_turns, usage: result.usage } : undefined,
     tools: tools.size ? [...tools.values()] : undefined,
-  };
-}
-
-export function parseForgeOutput(stdout: string): any {
-  if (!stdout) return null;
-
-  const lines = stdout.split('\n');
-  const markerPattern = /^● \[[^\]]+\] (Initialize|Continue|Finished) (\S+)\s*$/;
-  let collecting = false;
-  let currentConversationId: string | null = null;
-  let currentBody: string[] = [];
-  let lastConversationId: string | null = null;
-  let lastMessage: string | null = null;
-
-  for (const line of lines) {
-    const match = line.match(markerPattern);
-    if (match) {
-      const [, action, conversationId] = match;
-      lastConversationId = conversationId;
-
-      if (action === 'Initialize' || action === 'Continue') {
-        collecting = true;
-        currentConversationId = conversationId;
-        currentBody = [];
-      } else if (collecting && currentConversationId === conversationId) {
-        const message = currentBody.join('\n').trim();
-        if (message) {
-          lastMessage = message;
-        }
-        collecting = false;
-        currentConversationId = null;
-        currentBody = [];
-      }
-      continue;
-    }
-
-    if (collecting) {
-      currentBody.push(line);
-    }
-  }
-
-  if (collecting) {
-    const message = currentBody.join('\n').trim();
-    if (message) {
-      lastMessage = message;
-    }
-    if (currentConversationId) {
-      lastConversationId = currentConversationId;
-    }
-  }
-
-  if (!lastMessage && !lastConversationId) {
-    return null;
-  }
-
-  return {
-    message: lastMessage,
-    session_id: lastConversationId,
   };
 }
 
