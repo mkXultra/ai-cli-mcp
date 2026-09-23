@@ -302,6 +302,10 @@ describe('ai-cli app', () => {
 
     expect(exitCode).toBe(0);
     expect(payload.aliases).toEqual(expect.any(Array));
+    expect(payload.aliases).toEqual(expect.arrayContaining([
+      { name: 'sol', resolvesTo: 'gpt-6-sol', agent: 'codex' },
+      { name: 'luna', resolvesTo: 'gpt-6-luna', agent: 'codex' },
+    ]));
     expect(payload.aliases).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

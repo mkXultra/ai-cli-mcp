@@ -52,6 +52,8 @@ export const MODEL_ALIAS_DETAILS: readonly ModelAliasDetails[] = [
   { name: 'claude-ultra', resolvesTo: 'opus', agent: 'claude', defaultReasoningEffort: 'max' },
   { name: 'codex-ultra', resolvesTo: 'gpt-6-astra', agent: 'codex', defaultReasoningEffort: 'ultra' },
   { name: 'gemini-ultra', resolvesTo: 'gemini-3.8-flash-high', agent: 'gemini' },
+  { name: 'sol', resolvesTo: 'gpt-6-sol', agent: 'codex' },
+  { name: 'luna', resolvesTo: 'gpt-6-luna', agent: 'codex' },
 ] as const;
 
 export const MODEL_ALIASES: Record<string, string> = Object.fromEntries(

@@ -167,6 +167,10 @@ describe('MCP Contract Tests', () => {
     const modelsData = parseToolJson(modelsResponse);
 
     expect(modelsData.aliases).toEqual(expect.any(Array));
+    expect(modelsData.aliases).toEqual(expect.arrayContaining([
+      { name: 'sol', resolvesTo: 'gpt-6-sol', agent: 'codex' },
+      { name: 'luna', resolvesTo: 'gpt-6-luna', agent: 'codex' },
+    ]));
     expect(modelsData.aliases).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
