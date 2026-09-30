@@ -1,3 +1,10 @@
+# [3.1.0](https://github.com/mkXultra/ai-cli-mcp/compare/v3.0.0...v3.1.0) (2026-09-30)
+
+
+### Features
+
+* support GPT-6.1 Sol and update sol alias ([e8eb452](https://github.com/mkXultra/ai-cli-mcp/commit/e8eb452cd827672884cfa3079413d46dd2c543ff))
+
 # [3.0.0](https://github.com/mkXultra/ai-cli-mcp/compare/v2.29.0...v3.0.0) (2026-09-23)
 
 
