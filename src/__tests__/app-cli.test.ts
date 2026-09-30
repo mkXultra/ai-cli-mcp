@@ -303,7 +303,7 @@ describe('ai-cli app', () => {
     expect(exitCode).toBe(0);
     expect(payload.aliases).toEqual(expect.any(Array));
     expect(payload.aliases).toEqual(expect.arrayContaining([
-      { name: 'sol', resolvesTo: 'gpt-6-sol', agent: 'codex' },
+      { name: 'sol', resolvesTo: 'gpt-6.1-sol', agent: 'codex' },
       { name: 'luna', resolvesTo: 'gpt-6-luna', agent: 'codex' },
     ]));
     expect(payload.aliases).toEqual(
@@ -326,6 +326,7 @@ describe('ai-cli app', () => {
     expect(payload.claude).toContain('fable');
     expect(payload.codex).not.toContain('codex');
     expect(payload.codex).toContain('gpt-6-astra');
+    expect(payload.codex).toContain('gpt-6.1-sol');
     expect(payload.codex).toContain('gpt-6-sol');
     expect(payload.codex).toContain('gpt-6-luna');
     expect(payload.codex).toContain('gpt-5.4');

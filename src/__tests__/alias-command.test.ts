@@ -109,7 +109,7 @@ describe('ai-cli alias commands', () => {
     expect(config()).toEqual({ model_aliases: { review: { model: 'opus' } } });
   });
 
-  it.each([['sol', 'gpt-6-sol'], ['luna', 'gpt-6-luna']])('overrides %s and restores its GPT-6 default on removal', async (name, model) => {
+  it.each([['sol', 'gpt-6.1-sol'], ['luna', 'gpt-6-luna']])('overrides %s and restores its built-in default on removal', async (name, model) => {
     await cli('add', name, 'gpt-5.6-terra', '--effort', 'xhigh');
     const listed = await cli('list');
     expect(JSON.parse(listed.stdout.mock.calls[0][0]).aliases).toContainEqual({

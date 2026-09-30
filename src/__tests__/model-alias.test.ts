@@ -114,7 +114,7 @@ describe('user config loading', () => {
 });
 
 describe('configured alias resolution', () => {
-  it.each([['sol', 'gpt-6-sol', 'ultra'], ['luna', 'gpt-6-luna', 'max']])('routes %s through Codex without fixing the default effort', (name, model, effort) => {
+  it.each([['sol', 'gpt-6.1-sol', 'ultra'], ['luna', 'gpt-6-luna', 'max']])('routes %s through Codex without fixing the default effort', (name, model, effort) => {
     const cmd = command(name);
     expect(cmd).toMatchObject({ agent: 'codex', resolvedModel: model });
     expect(cmd.args[cmd.args.indexOf('--model') + 1]).toBe(model);
@@ -130,7 +130,7 @@ describe('configured alias resolution', () => {
     expect(() => command('luna', 'ultra')).toThrow('Codex reasoning_effort for gpt-6-luna supports only');
   });
 
-  it.each([['gpt-6-sol', 'ultra'], ['gpt-6-luna', 'max']])('resolves an alias targeting %s with %s effort', (model, effort) => {
+  it.each([['gpt-6.1-sol', 'max'], ['gpt-6.1-sol', 'ultra'], ['gpt-6-sol', 'ultra'], ['gpt-6-luna', 'max']])('resolves an alias targeting %s with %s effort', (model, effort) => {
     configure({ coding: { model, reasoning_effort: effort } });
     const cmd = command('coding');
     expect(cmd).toMatchObject({ agent: 'codex', resolvedModel: model });

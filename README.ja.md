@@ -25,7 +25,7 @@ Cursorなどのエディタが、複雑な手順を伴う編集や操作に苦�
 - Pi を非対話 JSON モードで実行し、無人実行向けにツール承認を有効化
 - 複数のAIモデルのサポート：
     - Claude (sonnet, sonnet[1m], opus, opusplan, fable, haiku)
-    - Codex (gpt-6-astra, gpt-6-sol, gpt-6-luna, gpt-5.4, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-5.5, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2)
+    - Codex (gpt-6-astra, gpt-6.1-sol, gpt-6-sol, gpt-6-luna, gpt-5.4, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-5.5, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2)
     - Gemini (gemini-3.8-flash-high/medium/low, gemini-3.7-flash-high/medium/low, gemini-3.6-flash-high/medium/low, gemini-3.1-pro-high/low)
     - Grok (`grok`, `grok-4.6`, `grok-4.5`)
     - OpenCode (`opencode` と `oc-<provider/model>` ラッパー。例: `oc-openai/gpt-5.4`)
@@ -244,7 +244,7 @@ OpenCode のモデル指定は次の 2 つを受け付けます。
 
 `ai-cli models` は `opencode models` を実行し、`opencode` 配列に既定の `opencode` と、`oc-openai/gpt-6-astra` などの取得したモデル名を返します。そのまま `run` に渡せます。取得状況とエラーは `dynamicModelBackends.opencode.discovery` で確認できます。
 
-Codex のモデル指定では、公開デフォルトモデルとして `gpt-5.4` を使用します。新しいSolは `gpt-6-sol`、Lunaは `gpt-6-luna` で指定します。どちらも `low`、`medium`、`high`、`xhigh`、`max` の推論強度に対応し、Solは `ultra` にも対応します。実行例: `ai-cli run --cwd "$PWD" --model gpt-6-sol --reasoning-effort ultra --prompt "このプロジェクトをレビューして"`。
+Codex のモデル指定では、公開デフォルトモデルとして `gpt-5.4` を使用します。最新のSolは `gpt-6.1-sol`、従来のSolは `gpt-6-sol`、Lunaは `gpt-6-luna` で指定します。いずれも `low`、`medium`、`high`、`xhigh`、`max` の推論強度に対応し、両SolモデルはCodex CLI経由で `ultra` にも対応します。推論強度を省略するとCLIの既定値を使います。実行例: `ai-cli run --cwd "$PWD" --model gpt-6.1-sol --reasoning-effort ultra --prompt "このプロジェクトをレビューして"`。
 
 `doctor` は CLI バイナリの利用可否と path 解決だけを確認します。JSON 出力には `checks` ブロックが含まれ、ログイン状態と利用規約同意は未確認として示されます。
 
@@ -296,7 +296,7 @@ MCP でのキャンセル中は、ツールの子孫プロセスが停止する�
 
 ## ユーザー共通のモデルエイリアス
 
-組み込みの`sol`は`gpt-6-sol`、`luna`は`gpt-6-luna`を選択します。推論強度は固定せず、`--reasoning-effort`を省略するとCodex CLIの既定値を使います。例: `ai-cli run --cwd "$PWD" --model sol --prompt "このプロジェクトをレビューして"`。同名のユーザーエイリアスがあればそちらを優先し、`ai-cli alias rm sol`で上書きを削除すると組み込みの指定先へ戻ります。
+組み込みの`sol`は`gpt-6.1-sol`、`luna`は`gpt-6-luna`を選択します。推論強度は固定せず、`--reasoning-effort`を省略するとCodex CLIの既定値を使います。例: `ai-cli run --cwd "$PWD" --model sol --prompt "このプロジェクトをレビューして"`。同名のユーザーエイリアスがあればそちらを優先し、`ai-cli alias rm sol`で上書きを削除すると組み込みの指定先へ戻ります。
 
 モデルと既定の推論強度を名前付きで保存し、全プロジェクトで利用できます。CLI と MCP は同じユーザー設定を使います。
 
@@ -419,7 +419,7 @@ Claude CLI、Codex CLI、Antigravity CLI（Gemini）、OpenCode、または Grok
     - **Ultra エイリアス（組み込みの既定値。ユーザー設定で上書き可能）:** `claude-ultra` (`opus`、自動的に max effort に設定。Fable は選択しません), `codex-ultra` (`gpt-6-astra`、自動的に ultra reasoning に設定), `gemini-ultra`
     - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `fable`, `haiku`
       - `fable` は Claude Code の最新 Fable モデルを明示的に選択します。Fable には別料金の usage credits が必要な場合があり、組み込みの `claude-ultra` の既定値からは選択されません。
-    - Codex: `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-5.4`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
+    - Codex: `gpt-6-astra`, `gpt-6.1-sol`, `gpt-6-sol`, `gpt-6-luna`, `gpt-5.4`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
     - Gemini: `gemini-3.8-flash-high`, `gemini-3.8-flash-medium`, `gemini-3.8-flash-low`, Gemini 3.7/3.6 Flashの各推論強度, `gemini-3.1-pro-high`, `gemini-3.1-pro-low`
     - Grok: `grok`（設定済みのデフォルト）、`grok-4.6`、`grok-4.5`、その他のネイティブ `grok-*` 名
     - OpenCode: `opencode`（設定済みのデフォルトモデル）および `oc-openai/gpt-5.4` のような明示ラッパー

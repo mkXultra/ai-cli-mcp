@@ -422,7 +422,7 @@ describe('cli-builder', () => {
         expect(cmd.args).toContain('gpt-5.3-codex');
       });
 
-      it.each(['gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'])(
+      it.each(['gpt-6-astra', 'gpt-6.1-sol', 'gpt-6-sol', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'])(
         'should build codex command for %s',
         (model) => {
           const cmd = buildCliCommand({
@@ -440,6 +440,7 @@ describe('cli-builder', () => {
       );
 
       it.each([
+        ...['low', 'medium', 'high', 'xhigh', 'max', 'ultra'].map(effort => ['gpt-6.1-sol', effort]),
         ...['low', 'medium', 'high', 'xhigh', 'max', 'ultra'].map(effort => ['gpt-6-sol', effort]),
         ...['low', 'medium', 'high', 'xhigh', 'max'].map(effort => ['gpt-6-luna', effort]),
       ])('passes %s with %s effort to Codex for new and resumed sessions', (model, effort) => {
