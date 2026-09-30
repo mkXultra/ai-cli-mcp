@@ -25,7 +25,7 @@ This MCP server provides tools that can be used by LLMs to interact with AI CLI 
 - Execute Grok Build CLI headlessly with `streaming-messages-json`, automatic tool approval, and automatic updates disabled
 - Execute OpenCode in non-interactive JSON mode (using `opencode run --format json --dir <workFolder> <prompt>`)
 - Execute Pi in non-interactive JSON mode with tool approval enabled for unattended runs
-- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, fable, haiku), Codex (gpt-6-astra, gpt-6-sol, gpt-6-luna, gpt-5.4, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-5.5, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2), Gemini (gemini-3.8-flash-high/medium/low, gemini-3.7-flash-high/medium/low, gemini-3.6-flash-high/medium/low, gemini-3.1-pro-high/low), Grok (`grok`, `grok-4.6`, `grok-4.5`), OpenCode (`opencode` plus `oc-<provider/model>`), and Pi (`pi` plus `pi-<provider/model>`)
+- Support multiple AI models: Claude (sonnet, sonnet[1m], opus, opusplan, fable, haiku), Codex (gpt-6-astra, gpt-6.1-sol, gpt-6-sol, gpt-6-luna, gpt-5.4, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-5.5, gpt-5.4-mini, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.2), Gemini (gemini-3.8-flash-high/medium/low, gemini-3.7-flash-high/medium/low, gemini-3.6-flash-high/medium/low, gemini-3.1-pro-high/low), Grok (`grok`, `grok-4.6`, `grok-4.5`), OpenCode (`opencode` plus `oc-<provider/model>`), and Pi (`pi` plus `pi-<provider/model>`)
 - Manage background processes with PID tracking
 - Parse and return structured outputs from both tools
 
@@ -240,7 +240,7 @@ OpenCode model selection accepts either:
 
 `ai-cli models` runs `opencode models` and returns `opencode` plus discovered names such as `oc-openai/gpt-6-astra` in the `opencode` array. Each name can be passed directly to `run`. Discovery status and errors are available in `dynamicModelBackends.opencode.discovery`.
 
-Codex model selection uses `gpt-5.4` as the default advertised model. Select `gpt-6-sol` for the new Sol model or `gpt-6-luna` for the new Luna model. Both accept `low`, `medium`, `high`, `xhigh`, and `max` reasoning; Sol also accepts `ultra`. For example: `ai-cli run --cwd "$PWD" --model gpt-6-sol --reasoning-effort ultra --prompt "Review this project"`.
+Codex model selection uses `gpt-5.4` as the default advertised model. Select `gpt-6.1-sol` for the latest Sol model, `gpt-6-sol` for the previous Sol model, or `gpt-6-luna` for Luna. All three accept `low`, `medium`, `high`, `xhigh`, and `max` reasoning; both Sol models also accept `ultra` through Codex CLI. Omitting effort uses the CLI default. For example: `ai-cli run --cwd "$PWD" --model gpt-6.1-sol --reasoning-effort ultra --prompt "Review this project"`.
 
 `doctor` checks only binary availability and path resolution. Its JSON output includes a `checks` block that marks login state and terms acceptance as unchecked.
 
@@ -296,7 +296,7 @@ Save a model and its default reasoning effort under a name you can use across pr
 
 ### Manage and use aliases from the CLI
 
-The built-in aliases `sol` and `luna` select `gpt-6-sol` and `gpt-6-luna`. They do not set a reasoning effort: omit `--reasoning-effort` to use the Codex CLI default, or specify it for a run. For example, `ai-cli run --cwd "$PWD" --model sol --prompt "Review this project"`. User aliases with the same names override these defaults; removing the user override with `ai-cli alias rm sol` restores the built-in target.
+The built-in aliases `sol` and `luna` select `gpt-6.1-sol` and `gpt-6-luna`. They do not set a reasoning effort: omit `--reasoning-effort` to use the Codex CLI default, or specify it for a run. For example, `ai-cli run --cwd "$PWD" --model sol --prompt "Review this project"`. User aliases with the same names override these defaults; removing the user override with `ai-cli alias rm sol` restores the built-in target.
 
 ```bash
 ai-cli alias add codex-coding gpt-5.6-terra --effort xhigh
@@ -415,12 +415,12 @@ Executes a prompt using Claude CLI, Codex CLI, Antigravity CLI (Gemini), OpenCod
 - **Ultra Aliases (built-in defaults; user config can override):** `claude-ultra` (`opus`, defaults to max effort and does not select Fable), `codex-ultra` (`gpt-6-astra`, defaults to ultra reasoning), `gemini-ultra`
 - Claude: `sonnet`, `sonnet[1m]`, `opus`, `opusplan`, `fable`, `haiku`
   - `fable` explicitly selects Claude Code's latest Fable model. Fable may require separately billed usage credits and is not selected by the built-in `claude-ultra` default.
-- Codex: `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-5.4`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
+- Codex: `gpt-6-astra`, `gpt-6.1-sol`, `gpt-6-sol`, `gpt-6-luna`, `gpt-5.4`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2`
 - Gemini: `gemini-3.8-flash-high`, `gemini-3.8-flash-medium`, `gemini-3.8-flash-low`, Gemini 3.7/3.6 Flash variants, `gemini-3.1-pro-high`, `gemini-3.1-pro-low`
 - Grok: `grok` for its configured default, `grok-4.6`, `grok-4.5`, and other native `grok-*` names
 - OpenCode: `opencode` for the configured default backend model, plus explicit wrappers like `oc-openai/gpt-5.4`
 - Pi: `pi` for its configured default model, plus explicit wrappers like `pi-openai-codex/gpt-6-astra`
-- `reasoning_effort` (string, optional): Reasoning control for Claude, Codex, Grok, and Pi. Pi maps `off|minimal|low|medium|high|xhigh|max` to `--thinking`. Grok uses `--reasoning-effort`: `grok-4.6` supports low/medium/high/xhigh; `grok-4.5`, the `grok` configured default, and other native Grok names accept low/medium/high. Omit effort to use the CLI default; max/ultra are rejected for Grok. Claude uses `--effort` (allowed: "low", "medium", "high", "xhigh", "max"). Codex uses `model_reasoning_effort` (base levels: "low", "medium", "high", "xhigh"; GPT-6 Astra/Sol and GPT-5.6 Sol/Terra also support "max" and "ultra", while GPT-6 Luna and GPT-5.6 Luna support "max"). Antigravity accepts `--effort low|medium|high`, which must match the model name suffix when present. OpenCode does not support `reasoning_effort`.
+- `reasoning_effort` (string, optional): Reasoning control for Claude, Codex, Grok, and Pi. Pi maps `off|minimal|low|medium|high|xhigh|max` to `--thinking`. Grok uses `--reasoning-effort`: `grok-4.6` supports low/medium/high/xhigh; `grok-4.5`, the `grok` configured default, and other native Grok names accept low/medium/high. Omit effort to use the CLI default; max/ultra are rejected for Grok. Claude uses `--effort` (allowed: "low", "medium", "high", "xhigh", "max"). Codex uses `model_reasoning_effort` (base levels: "low", "medium", "high", "xhigh"; GPT-6.1 Sol, GPT-6 Astra/Sol, and GPT-5.6 Sol/Terra also support "max" and "ultra", while GPT-6 Luna and GPT-5.6 Luna support "max"). Antigravity accepts `--effort low|medium|high`, which must match the model name suffix when present. OpenCode does not support `reasoning_effort`.
 - `session_id` (string, optional): Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, OpenCode, Grok, and Pi. Grok resumes via `--resume`; OpenCode and Pi resume in place via `--session` and may also be combined with explicit model selection.
 
 ### `wait`

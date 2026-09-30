@@ -4,6 +4,7 @@ import { getReasoningEffort, resolveModelSelection, type Agent } from './model-s
 export const CLAUDE_MODELS = ['sonnet', 'sonnet[1m]', 'opus', 'opusplan', 'fable', 'haiku'] as const;
 export const CODEX_MODELS = [
   'gpt-6-astra',
+  'gpt-6.1-sol',
   'gpt-6-sol',
   'gpt-6-luna',
   'gpt-5.4',
@@ -51,7 +52,7 @@ export const MODEL_ALIAS_DETAILS: readonly ModelAliasDetails[] = [
   { name: 'claude-ultra', resolvesTo: 'opus', agent: 'claude', defaultReasoningEffort: 'max' },
   { name: 'codex-ultra', resolvesTo: 'gpt-6-astra', agent: 'codex', defaultReasoningEffort: 'ultra' },
   { name: 'gemini-ultra', resolvesTo: 'gemini-3.8-flash-high', agent: 'gemini' },
-  { name: 'sol', resolvesTo: 'gpt-6-sol', agent: 'codex' },
+  { name: 'sol', resolvesTo: 'gpt-6.1-sol', agent: 'codex' },
   { name: 'luna', resolvesTo: 'gpt-6-luna', agent: 'codex' },
 ] as const;
 

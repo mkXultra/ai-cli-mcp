@@ -74,6 +74,8 @@ describe('MCP Contract Tests', () => {
     expect(runTool.inputSchema.properties.model.description).toContain('oc-<provider/model>');
     expect(runTool.inputSchema.properties.model.description).toContain('auto ultra reasoning');
     expect(runTool.inputSchema.properties.model.description).toContain('gpt-6-astra');
+    expect(runTool.inputSchema.properties.model.description).toContain('gpt-6.1-sol');
+    expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('GPT-6.1 Sol');
     expect(runTool.inputSchema.properties.model.description).toContain('gpt-6-sol');
     expect(runTool.inputSchema.properties.model.description).toContain('gpt-6-luna');
     expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('"ultra"');
@@ -121,7 +123,7 @@ describe('MCP Contract Tests', () => {
 
     expect(modelsData.aliases).toEqual(expect.any(Array));
     expect(modelsData.aliases).toEqual(expect.arrayContaining([
-      { name: 'sol', resolvesTo: 'gpt-6-sol', agent: 'codex' },
+      { name: 'sol', resolvesTo: 'gpt-6.1-sol', agent: 'codex' },
       { name: 'luna', resolvesTo: 'gpt-6-luna', agent: 'codex' },
     ]));
     expect(modelsData.aliases).toEqual(
@@ -145,6 +147,7 @@ describe('MCP Contract Tests', () => {
     expect(modelsData.claude).toContain('fable');
     expect(modelsData.codex).toEqual([
       'gpt-6-astra',
+      'gpt-6.1-sol',
       'gpt-6-sol',
       'gpt-6-luna',
       'gpt-5.4',
