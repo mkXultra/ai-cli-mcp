@@ -73,9 +73,22 @@ describe('MCP Contract Tests', () => {
     expect(runTool.inputSchema.properties.model.description).toContain('opencode');
     expect(runTool.inputSchema.properties.model.description).toContain('oc-<provider/model>');
     expect(runTool.inputSchema.properties.model.description).toContain('auto ultra reasoning');
+    expect(runTool.inputSchema.properties.model.description).toContain('gpt-6.2-astra');
+    expect(runTool.inputSchema.properties.model.description).toContain('"astra" (gpt-6.2-astra)');
+    expect(runTool.inputSchema.properties.model.description).toContain('gpt-6.2-sol');
+    expect(runTool.inputSchema.properties.model.description).toContain('"sol" (gpt-6.2-sol)');
+    expect(runTool.inputSchema.properties.model.description).toContain('gpt-6.1-terra');
+    expect(runTool.inputSchema.properties.model.description).toContain('"codex-ultra" (gpt-6.2-astra; auto ultra reasoning)');
+    expect(runTool.inputSchema.properties.model.description).not.toContain('"sol" (gpt-6.2-sol; auto');
+    expect(runTool.inputSchema.properties.model.description).not.toContain('"astra" (gpt-6.2-astra; auto');
+    expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('all Codex models accept "low", "medium", "high", and "xhigh"');
+    expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('GPT-6.2 Astra/Sol and GPT-6.1 Terra');
+    expect(runTool.inputSchema.properties.reasoning_effort.description).not.toContain('GPT-6.2 Astra/Sol/Terra');
+    expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('GPT-6.1 Sol');
+    expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('GPT-6 Luna');
+    expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('built-in sol and astra aliases leave effort unset');
     expect(runTool.inputSchema.properties.model.description).toContain('gpt-6-astra');
     expect(runTool.inputSchema.properties.model.description).toContain('gpt-6.1-sol');
-    expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('GPT-6.1 Sol');
     expect(runTool.inputSchema.properties.model.description).toContain('gpt-6-sol');
     expect(runTool.inputSchema.properties.model.description).toContain('gpt-6-luna');
     expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('"ultra"');
@@ -123,7 +136,8 @@ describe('MCP Contract Tests', () => {
 
     expect(modelsData.aliases).toEqual(expect.any(Array));
     expect(modelsData.aliases).toEqual(expect.arrayContaining([
-      { name: 'sol', resolvesTo: 'gpt-6.1-sol', agent: 'codex' },
+      { name: 'sol', resolvesTo: 'gpt-6.2-sol', agent: 'codex' },
+      { name: 'astra', resolvesTo: 'gpt-6.2-astra', agent: 'codex' },
       { name: 'luna', resolvesTo: 'gpt-6-luna', agent: 'codex' },
     ]));
     expect(modelsData.aliases).toEqual(
@@ -136,7 +150,7 @@ describe('MCP Contract Tests', () => {
         }),
         expect.objectContaining({
           name: 'codex-ultra',
-          resolvesTo: 'gpt-6-astra',
+          resolvesTo: 'gpt-6.2-astra',
           agent: 'codex',
           defaultReasoningEffort: 'ultra',
         }),
@@ -146,6 +160,9 @@ describe('MCP Contract Tests', () => {
     expect(modelsData).not.toHaveProperty('forge');
     expect(modelsData.claude).toContain('fable');
     expect(modelsData.codex).toEqual([
+      'gpt-6.2-astra',
+      'gpt-6.2-sol',
+      'gpt-6.1-terra',
       'gpt-6-astra',
       'gpt-6.1-sol',
       'gpt-6-sol',

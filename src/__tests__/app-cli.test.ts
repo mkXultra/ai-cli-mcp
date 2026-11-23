@@ -303,7 +303,8 @@ describe('ai-cli app', () => {
     expect(exitCode).toBe(0);
     expect(payload.aliases).toEqual(expect.any(Array));
     expect(payload.aliases).toEqual(expect.arrayContaining([
-      { name: 'sol', resolvesTo: 'gpt-6.1-sol', agent: 'codex' },
+      { name: 'sol', resolvesTo: 'gpt-6.2-sol', agent: 'codex' },
+      { name: 'astra', resolvesTo: 'gpt-6.2-astra', agent: 'codex' },
       { name: 'luna', resolvesTo: 'gpt-6-luna', agent: 'codex' },
     ]));
     expect(payload.aliases).toEqual(
@@ -316,7 +317,7 @@ describe('ai-cli app', () => {
         }),
         expect.objectContaining({
           name: 'codex-ultra',
-          resolvesTo: 'gpt-6-astra',
+          resolvesTo: 'gpt-6.2-astra',
           agent: 'codex',
           defaultReasoningEffort: 'ultra',
         }),
@@ -325,6 +326,10 @@ describe('ai-cli app', () => {
     expect(payload.claude).toContain('sonnet');
     expect(payload.claude).toContain('fable');
     expect(payload.codex).not.toContain('codex');
+    expect(payload.codex.slice(0, 3)).toEqual(['gpt-6.2-astra', 'gpt-6.2-sol', 'gpt-6.1-terra']);
+    expect(payload.codex).toContain('gpt-6.2-astra');
+    expect(payload.codex).toContain('gpt-6.2-sol');
+    expect(payload.codex).toContain('gpt-6.1-terra');
     expect(payload.codex).toContain('gpt-6-astra');
     expect(payload.codex).toContain('gpt-6.1-sol');
     expect(payload.codex).toContain('gpt-6-sol');
@@ -424,12 +429,19 @@ describe('ai-cli app', () => {
     expect(exitCode).toBe(0);
     expect(stdout).toHaveBeenCalledWith(RUN_HELP_TEXT);
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('claude-ultra'));
-    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('gpt-6-astra'));
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('gpt-6.2-astra'));
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('gpt-6.2-sol'));
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('gpt-6.1-terra'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('gemini-3.1-pro-high'));
     expect(stdout).not.toHaveBeenCalledWith(expect.stringContaining('forge'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('opencode'));
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('oc-openai/gpt-5.4'));
     expect(stderr).not.toHaveBeenCalled();
+  });
+
+  it('lists the new Codex aliases in run help model examples', () => {
+    expect(RUN_HELP_TEXT).toContain('--model <model>');
+    expect(RUN_HELP_TEXT).toContain('sol, astra, codex-ultra');
   });
 
   it('prints detailed help for result --help', async () => {
