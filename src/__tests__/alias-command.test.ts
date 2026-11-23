@@ -40,10 +40,14 @@ describe('ai-cli alias commands', () => {
     const payload = JSON.parse(result.stdout.mock.calls[0][0]);
     expect(Object.keys(payload).sort()).toEqual(['aliases', 'configPath']);
     expect(payload.configPath).toBe(join(root, 'xdg', 'ai-cli', 'config.json'));
-    expect(payload.aliases.map((alias: any) => alias.name)).toEqual(['claude-ultra', 'codex-ultra', 'gemini-ultra', 'sol', 'luna']);
+    expect(payload.aliases.map((alias: any) => alias.name)).toEqual(['claude-ultra', 'codex-ultra', 'gemini-ultra', 'sol', 'astra', 'luna']);
     expect(payload.aliases).toContainEqual({
-      name: 'codex-ultra', resolvesTo: 'gpt-6-astra', agent: 'codex', defaultReasoningEffort: 'ultra',
+      name: 'codex-ultra', resolvesTo: 'gpt-6.2-astra', agent: 'codex', defaultReasoningEffort: 'ultra',
     });
+    expect(payload.aliases).toContainEqual({ name: 'sol', resolvesTo: 'gpt-6.2-sol', agent: 'codex' });
+    expect(payload.aliases).toContainEqual({ name: 'astra', resolvesTo: 'gpt-6.2-astra', agent: 'codex' });
+    expect(payload.aliases.find((alias: any) => alias.name === 'sol')).not.toHaveProperty('defaultReasoningEffort');
+    expect(payload.aliases.find((alias: any) => alias.name === 'astra')).not.toHaveProperty('defaultReasoningEffort');
     expect(existsSync(join(root, 'xdg'))).toBe(false);
   });
 
@@ -55,7 +59,7 @@ describe('ai-cli alias commands', () => {
     expect(result.code).toBe(0);
     const payload = JSON.parse(result.stdout.mock.calls[0][0]);
     expect(payload.configPath).toBe(configPath);
-    expect(payload.aliases).toHaveLength(6);
+    expect(payload.aliases).toHaveLength(7);
     expect(payload.aliases).toContainEqual({
       name: 'coding', resolvesTo: 'gpt-5.6-terra', agent: 'codex', defaultReasoningEffort: 'xhigh',
     });
@@ -109,7 +113,7 @@ describe('ai-cli alias commands', () => {
     expect(config()).toEqual({ model_aliases: { review: { model: 'opus' } } });
   });
 
-  it.each([['sol', 'gpt-6.1-sol'], ['luna', 'gpt-6-luna']])('overrides %s and restores its built-in default on removal', async (name, model) => {
+  it.each([['sol', 'gpt-6.2-sol'], ['astra', 'gpt-6.2-astra'], ['luna', 'gpt-6-luna']])('overrides %s and restores its built-in default on removal', async (name, model) => {
     await cli('add', name, 'gpt-5.6-terra', '--effort', 'xhigh');
     const listed = await cli('list');
     expect(JSON.parse(listed.stdout.mock.calls[0][0]).aliases).toContainEqual({
@@ -127,7 +131,7 @@ describe('ai-cli alias commands', () => {
     expect(getModelAliases().find((a) => a.name === 'codex-ultra')?.resolvesTo).toBe('gpt-5.6-luna');
     const result = await cli('rm', 'codex-ultra');
     expect(JSON.parse(result.stdout.mock.calls[0][0]).restoredDefault).toEqual({
-      name: 'codex-ultra', resolvesTo: 'gpt-6-astra', agent: 'codex', defaultReasoningEffort: 'ultra',
+      name: 'codex-ultra', resolvesTo: 'gpt-6.2-astra', agent: 'codex', defaultReasoningEffort: 'ultra',
     });
     expect(config()).toEqual({ model_aliases: {} });
     const original = readFileSync(configPath, 'utf8');

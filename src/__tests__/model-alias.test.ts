@@ -114,7 +114,7 @@ describe('user config loading', () => {
 });
 
 describe('configured alias resolution', () => {
-  it.each([['sol', 'gpt-6.1-sol', 'ultra'], ['luna', 'gpt-6-luna', 'max']])('routes %s through Codex without fixing the default effort', (name, model, effort) => {
+  it.each([['sol', 'gpt-6.2-sol', 'ultra'], ['astra', 'gpt-6.2-astra', 'ultra'], ['luna', 'gpt-6-luna', 'max']])('routes %s through Codex without fixing the default effort', (name, model, effort) => {
     const cmd = command(name);
     expect(cmd).toMatchObject({ agent: 'codex', resolvedModel: model });
     expect(cmd.args[cmd.args.indexOf('--model') + 1]).toBe(model);
@@ -130,7 +130,7 @@ describe('configured alias resolution', () => {
     expect(() => command('luna', 'ultra')).toThrow('Codex reasoning_effort for gpt-6-luna supports only');
   });
 
-  it.each([['gpt-6.1-sol', 'max'], ['gpt-6.1-sol', 'ultra'], ['gpt-6-sol', 'ultra'], ['gpt-6-luna', 'max']])('resolves an alias targeting %s with %s effort', (model, effort) => {
+  it.each([['gpt-6.2-astra', 'ultra'], ['gpt-6.2-sol', 'max'], ['gpt-6.1-terra', 'xhigh'], ['gpt-6.1-sol', 'max'], ['gpt-6.1-sol', 'ultra'], ['gpt-6-sol', 'ultra'], ['gpt-6-luna', 'max']])('resolves an alias targeting %s with %s effort', (model, effort) => {
     configure({ coding: { model, reasoning_effort: effort } });
     const cmd = command('coding');
     expect(cmd).toMatchObject({ agent: 'codex', resolvedModel: model });
@@ -143,7 +143,10 @@ describe('configured alias resolution', () => {
 
   it('keeps built-in aliases and literal models working when no aliases are configured', () => {
     expect(getModelAliases()).toEqual(MODEL_ALIAS_DETAILS);
-    expect(resolveModelAlias('codex-ultra')).toBe('gpt-6-astra');
+    expect(resolveModelAlias('codex-ultra')).toBe('gpt-6.2-astra');
+    expect(resolveModelAlias('sol')).toBe('gpt-6.2-sol');
+    expect(resolveModelAlias('astra')).toBe('gpt-6.2-astra');
+    expect(resolveModelAlias('luna')).toBe('gpt-6-luna');
     expect(command('codex-ultra').args).toContain('model_reasoning_effort=ultra');
     expect(resolveModelAlias('sonnet')).toBe('sonnet');
     expect(resolveModelAlias('')).toBe('');
@@ -160,6 +163,24 @@ describe('configured alias resolution', () => {
     expect(command('codex-coding', 'low').args).toContain('model_reasoning_effort=low');
     expect(command('codex-coding', 'low').args).not.toContain('model_reasoning_effort=xhigh');
     expect(resolveModelAlias('Codex-coding')).toBe('Codex-coding');
+  });
+
+  it.each(['sol', 'astra'])('%s has no default effort and accepts every Codex effort', (name) => {
+    expect(getModelAliases().find((alias) => alias.name === name)).not.toHaveProperty('defaultReasoningEffort');
+    expect(command(name).args.some(arg => arg.startsWith('model_reasoning_effort='))).toBe(false);
+    for (const effort of ['low', 'medium', 'high', 'xhigh', 'max', 'ultra']) {
+      expect(command(name, effort).args).toContain(`model_reasoning_effort=${effort}`);
+    }
+  });
+
+  it('restores the astra built-in target and no default effort when its override is removed', () => {
+    configure({ astra: { model: 'gpt-5.6-terra', reasoning_effort: 'xhigh' } });
+    expect(command('astra').resolvedModel).toBe('gpt-5.6-terra');
+    expect(command('astra').args).toContain('model_reasoning_effort=xhigh');
+    configure({});
+    expect(getModelAliases()).toContainEqual({ name: 'astra', resolvesTo: 'gpt-6.2-astra', agent: 'codex' });
+    expect(command('astra').resolvedModel).toBe('gpt-6.2-astra');
+    expect(command('astra').args.some(arg => arg.startsWith('model_reasoning_effort='))).toBe(false);
   });
 
   it('replaces the entire built-in alias definition, including its default effort', () => {

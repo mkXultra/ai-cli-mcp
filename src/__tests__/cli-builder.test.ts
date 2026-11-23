@@ -49,8 +49,8 @@ describe('cli-builder', () => {
       expect(resolveModelAlias('claude-ultra')).toBe('opus');
     });
 
-    it('should resolve codex-ultra to gpt-6-astra', () => {
-      expect(resolveModelAlias('codex-ultra')).toBe('gpt-6-astra');
+    it('should resolve codex-ultra to gpt-6.2-astra', () => {
+      expect(resolveModelAlias('codex-ultra')).toBe('gpt-6.2-astra');
     });
 
     it('should resolve gemini-ultra to gemini-3.8-flash-high', () => {
@@ -92,6 +92,16 @@ describe('cli-builder', () => {
       expect(getReasoningEffort('gpt-5.2', 'xhigh')).toBe('xhigh');
       expect(getReasoningEffort('gpt-6-astra', 'max')).toBe('max');
       expect(getReasoningEffort('gpt-6-astra', 'ultra')).toBe('ultra');
+      expect(getReasoningEffort('gpt-6.2-astra', 'low')).toBe('low');
+      expect(getReasoningEffort('gpt-6.2-astra', 'medium')).toBe('medium');
+      expect(getReasoningEffort('gpt-6.2-astra', 'high')).toBe('high');
+      expect(getReasoningEffort('gpt-6.2-astra', 'xhigh')).toBe('xhigh');
+      expect(getReasoningEffort('gpt-6.2-astra', 'max')).toBe('max');
+      expect(getReasoningEffort('gpt-6.2-astra', 'ultra')).toBe('ultra');
+      expect(getReasoningEffort('gpt-6.2-sol', 'max')).toBe('max');
+      expect(getReasoningEffort('gpt-6.2-sol', 'ultra')).toBe('ultra');
+      expect(getReasoningEffort('gpt-6.1-terra', 'max')).toBe('max');
+      expect(getReasoningEffort('gpt-6.1-terra', 'ultra')).toBe('ultra');
       expect(getReasoningEffort('gpt-5.6-sol', 'max')).toBe('max');
       expect(getReasoningEffort('gpt-5.6-sol', 'ultra')).toBe('ultra');
       expect(getReasoningEffort('gpt-5.6-terra', 'ultra')).toBe('ultra');
@@ -422,7 +432,7 @@ describe('cli-builder', () => {
         expect(cmd.args).toContain('gpt-5.3-codex');
       });
 
-      it.each(['gpt-6-astra', 'gpt-6.1-sol', 'gpt-6-sol', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'])(
+      it.each(['gpt-6.2-astra', 'gpt-6.2-sol', 'gpt-6.1-terra', 'gpt-6-astra', 'gpt-6.1-sol', 'gpt-6-sol', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'])(
         'should build codex command for %s',
         (model) => {
           const cmd = buildCliCommand({
@@ -440,6 +450,9 @@ describe('cli-builder', () => {
       );
 
       it.each([
+        ...['low', 'medium', 'high', 'xhigh', 'max', 'ultra'].map(effort => ['gpt-6.2-astra', effort]),
+        ...['low', 'medium', 'high', 'xhigh', 'max', 'ultra'].map(effort => ['gpt-6.2-sol', effort]),
+        ...['low', 'medium', 'high', 'xhigh', 'max', 'ultra'].map(effort => ['gpt-6.1-terra', effort]),
         ...['low', 'medium', 'high', 'xhigh', 'max', 'ultra'].map(effort => ['gpt-6.1-sol', effort]),
         ...['low', 'medium', 'high', 'xhigh', 'max', 'ultra'].map(effort => ['gpt-6-sol', effort]),
         ...['low', 'medium', 'high', 'xhigh', 'max'].map(effort => ['gpt-6-luna', effort]),
@@ -492,8 +505,8 @@ describe('cli-builder', () => {
         });
 
         expect(cmd.agent).toBe('codex');
-        expect(cmd.resolvedModel).toBe('gpt-6-astra');
-        expect(cmd.args[cmd.args.indexOf('--model') + 1]).toBe('gpt-6-astra');
+        expect(cmd.resolvedModel).toBe('gpt-6.2-astra');
+        expect(cmd.args[cmd.args.indexOf('--model') + 1]).toBe('gpt-6.2-astra');
         expect(cmd.args).toContain('-c');
         expect(cmd.args).toContain('model_reasoning_effort=ultra');
       });
@@ -510,6 +523,32 @@ describe('cli-builder', () => {
         expect(cmd.args).toContain('model_reasoning_effort=low');
         expect(cmd.args).not.toContain('model_reasoning_effort=ultra');
       });
+
+      it.each([['sol', 'gpt-6.2-sol'], ['astra', 'gpt-6.2-astra']])(
+        'should build the %s built-in without a default effort',
+        (alias, model) => {
+          const cmd = buildCliCommand({
+            prompt: 'test',
+            workFolder: '/tmp',
+            model: alias,
+            cliPaths: DEFAULT_CLI_PATHS,
+          });
+
+          expect(cmd.agent).toBe('codex');
+          expect(cmd.resolvedModel).toBe(model);
+          expect(cmd.args[cmd.args.indexOf('--model') + 1]).toBe(model);
+          expect(cmd.args.some(arg => arg.startsWith('model_reasoning_effort='))).toBe(false);
+
+          const explicit = buildCliCommand({
+            prompt: 'test',
+            workFolder: '/tmp',
+            model: alias,
+            reasoning_effort: 'ultra',
+            cliPaths: DEFAULT_CLI_PATHS,
+          });
+          expect(explicit.args).toContain('model_reasoning_effort=ultra');
+        }
+      );
 
       it('should reject max reasoning_effort for codex', () => {
         expect(() =>

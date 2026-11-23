@@ -33,7 +33,7 @@ Options:
   --cwd <path>                 Working directory
   --prompt <text>              Prompt text
   --prompt-file <path>         Path to a prompt file
-  --model <model>              Model name or alias (e.g. sonnet, fable, claude-ultra, gpt-6-astra, codex-ultra, gemini-3.1-pro-high, gemini-ultra, grok-4.6, opencode, oc-openai/gpt-5.4, pi, pi-openai-codex/gpt-6-astra)
+  --model <model>              Model name or alias (e.g. sonnet, fable, claude-ultra, sol, astra, codex-ultra, gpt-6.2-astra, gpt-6.2-sol, gpt-6.1-terra, gemini-3.1-pro-high, gemini-ultra, grok-4.6, opencode, oc-openai/gpt-5.4, pi, pi-openai-codex/gpt-6-astra)
   --session-id <id>            Resume a previous session, including Grok, OpenCode, and Pi in-place resumes
   --reasoning-effort <level>   Reasoning level for Claude/Codex/Grok/Pi; Pi=off|minimal|low|medium|high|xhigh|max; unsupported for OpenCode
   --help, -h                   Show this help message
