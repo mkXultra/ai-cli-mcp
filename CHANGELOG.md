@@ -1,3 +1,10 @@
+# [3.2.0](https://github.com/mkXultra/ai-cli-mcp/compare/v3.1.0...v3.2.0) (2026-11-23)
+
+
+### Features
+
+* support GPT-6.2 models and add astra alias ([a0b4ae7](https://github.com/mkXultra/ai-cli-mcp/commit/a0b4ae750924e26a19bb2555639a420f754e1d71))
+
 # [3.1.0](https://github.com/mkXultra/ai-cli-mcp/compare/v3.0.0...v3.1.0) (2026-09-30)
 
 
