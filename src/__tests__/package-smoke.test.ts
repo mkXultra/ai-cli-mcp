@@ -16,6 +16,16 @@ const expectedPackageFiles = [
   'dist/app/mcp.js',
   'dist/bin/ai-cli-mcp.js',
   'dist/bin/ai-cli.js',
+  'dist/bin/eval-engine.js',
+  'dist/eval-engine/cli.js',
+  'dist/eval-engine/config.js',
+  'dist/eval-engine/engine.js',
+  'dist/eval-engine/provider.js',
+  'dist/eval-engine/selection.js',
+  'docs/eval-engine.md',
+  'examples/eval-engine/bench.yaml',
+  'examples/eval-engine/question.yaml',
+  'examples/eval-engine/tasks/parse-expression.md',
   'dist/cli-builder.js',
   'dist/cli-parse.js',
   'dist/cli-process-service.js',
@@ -95,6 +105,7 @@ describe('npm package smoke', () => {
   it('keeps published bin entrypoints executable through node shebangs', () => {
     expect(readFileSync('dist/bin/ai-cli.js', 'utf8').startsWith('#!/usr/bin/env node')).toBe(true);
     expect(readFileSync('dist/bin/ai-cli-mcp.js', 'utf8').startsWith('#!/usr/bin/env node')).toBe(true);
+    expect(readFileSync('dist/bin/eval-engine.js', 'utf8').startsWith('#!/usr/bin/env node')).toBe(true);
   });
 
   it('keeps the MCP registry manifest version aligned with the npm package', () => {

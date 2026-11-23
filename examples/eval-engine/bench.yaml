@@ -1,0 +1,8 @@
+version: 1
+tasks:
+  - id: cancel-pending
+    instructions: Cancel all pending asynchronous requests when the user closes the dialog.
+    expected_models: [model_a]
+  - id: parse-expression
+    instructions_file: tasks/parse-expression.md
+    expected_models: [model_b]

@@ -1,0 +1,14 @@
+# Synthetic profiles for checking the engine; not claims about real model ability.
+version: 1
+models: [model_a, model_b]
+questions:
+  cancellation:
+    text: Does the task explicitly require cancelling pending asynchronous work?
+    models:
+      model_a: true
+      model_b: false
+  syntax_parsing:
+    text: Does the task explicitly require parsing textual syntax into a structured representation?
+    models:
+      model_a: false
+      model_b: true

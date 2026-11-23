@@ -161,6 +161,12 @@ npx -y --package ai-cli-mcp@latest ai-cli run --cwd "$PWD" --model sonnet --prom
 npx -y --package ai-cli-mcp@latest ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --prompt "hello from OpenCode"
 ```
 
+## Model selection experiments
+
+The separate [`eval-engine` CLI](docs/eval-engine.md) loads question and benchmark
+YAML, batches feature questions through Jev, caches answers, and reports where
+model selection disagrees with imported labels. Examples: `examples/eval-engine/`.
+
 ## Important First-Time Setup
 
 Forge CLI support has been removed. `models` and `doctor` no longer include Forge, and `model: "forge"` is rejected. In your user configuration, remove aliases targeting `forge` or change their targets to supported models. `FORGE_CLI_NAME` is no longer used.

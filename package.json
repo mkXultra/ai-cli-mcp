@@ -8,11 +8,15 @@
   "main": "dist/server.js",
   "bin": {
     "ai-cli": "dist/bin/ai-cli.js",
-    "ai-cli-mcp": "dist/bin/ai-cli-mcp.js"
+    "ai-cli-mcp": "dist/bin/ai-cli-mcp.js",
+    "eval-engine": "dist/bin/eval-engine.js"
   },
   "files": [
     "dist/app",
     "dist/bin",
+    "dist/eval-engine",
+    "docs/eval-engine.md",
+    "examples/eval-engine",
     "dist/cli-builder.js",
     "dist/cli-parse.js",
     "dist/cli-process-service.js",
@@ -52,11 +56,13 @@
     "test:watch": "vitest --watch",
     "cli.run": "tsx src/cli.ts",
     "cli.run.parse": "tsx src/cli-parse.ts",
+    "eval-engine": "tsx src/bin/eval-engine.ts",
     "prepare": "husky"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "cross-spawn": "^7.0.6",
+    "yaml": "^2.9.1",
     "zod": "^3.24.4"
   },
   "engines": {

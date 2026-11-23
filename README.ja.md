@@ -165,6 +165,12 @@ npx -y --package ai-cli-mcp@latest ai-cli run --cwd "$PWD" --model sonnet --prom
 npx -y --package ai-cli-mcp@latest ai-cli run --cwd "$PWD" --model oc-openai/gpt-5.4 --prompt "OpenCode で hello"
 ```
 
+## モデル選択の検証
+
+[`eval-engine` CLI](docs/eval-engine.md)で質問・ベンチのYAMLを読み込み、Jevへの一括問い合わせ、
+回答キャッシュ、モデル選択の失敗箇所のレポートを実行できます。1問からベンチを追加でき、
+質問YAMLだけを変更する改善ループに使えます。例は`examples/eval-engine/`にあります。
+
 ## 重要な初回セットアップ
 
 Forge CLIのサポートは終了しました。`models`・`doctor`からForgeを除外し、`model: "forge"`はエラーになります。ユーザー設定にある`forge`を指定するエイリアスを削除するか、指定先を対応モデルへ変更してください。`FORGE_CLI_NAME`は使用しません。

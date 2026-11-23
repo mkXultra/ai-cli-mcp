@@ -21,6 +21,9 @@ comparison-repo/
 # Coverage reports
 coverage/
 
+# Evaluation answers and task snapshots
+.eval-engine/
+
 # IDE
 .vscode/
 .idea/

@@ -1,0 +1,567 @@
+version: 1
+models: [astra, terra, luna]
+questions:
+  parses_new_language_syntax:
+    text: Must the implementation accept a programming- or query-language syntax form that the project previously did not parse?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  inflight_lifecycle_control:
+    text: Does the task specify what must happen to work already in flight when cancellation, failure, disconnect, or close occurs?
+    models:
+      astra: true
+      terra: null
+      luna: null
+  multiple_public_entry_points:
+    text: Must the same capability be exposed through at least two distinct public entry points or user-facing wrappers?
+    models:
+      astra: true
+      terra: null
+      luna: null
+  exact_error_contract:
+    text: Does the task prescribe an exact error class or name, status code, or required error-message text?
+    models:
+      astra: true
+      terra: null
+      luna: null
+  partial_existing_data_update:
+    text: Does the task require updating selected parts of existing data rather than only producing a separate result?
+    models:
+      astra: true
+      terra: null
+      luna: null
+  explicit_precedence_rule:
+    text: Does the task state an explicit rule for which competing input, configuration, scope, or result takes precedence?
+    models:
+      astra: true
+      terra: null
+      luna: null
+  cross_event_state:
+    text: Does the task require state from one call or event to affect a later separate call, event, or request?
+    models:
+      astra: true
+      terra: null
+      luna: null
+  indexed_collection_selection:
+    text: Does the task require interpreting numeric indexes or ranges to select elements from a collection?
+    models:
+      astra: true
+      terra: null
+      luna: null
+  multi_source_hash_routing_policy:
+    text: Does the task require constructing a consistent-hash routing policy from multiple request attributes with precedence, deduplication, and disable semantics?
+    models:
+      astra: false
+      terra: false
+      luna: true
+  duration_feature_extraction:
+    text: Does the task require a tabular-data transformer that decomposes duration values into configurable numeric components and optional scaled features?
+    models:
+      astra: true
+      terra: false
+      luna: false
+  persisted_query_state_restoration:
+    text: Does the task require restoring persisted query results while independently preserving data freshness, error state, counters, timestamps, and pagination metadata?
+    models:
+      astra: null
+      terra: true
+      luna: true
+  dead_letter_queue_semantics:
+    text: Does the task require expired, rejected, or overflowed queued messages to be routed through dead-letter exchanges with accumulated death metadata?
+    models:
+      astra: true
+      terra: false
+      luna: false
+  shared_control_active_target:
+    text: Does the task require one shared user-interface control container to track and act on whichever of several editable targets was most recently active?
+    models:
+      astra: true
+      terra: false
+      luna: false
+  concurrent_request_coalescing:
+    text: Does the task require concurrent calls with the same input to share one in-flight execution while all callers receive or replay its result?
+    models:
+      astra: true
+      terra: null
+      luna: true
+  keyset_pagination_cursor:
+    text: Does the task require an opaque cursor for keyset pagination that encodes sort values and validates the requested ordering?
+    models:
+      astra: true
+      terra: false
+      luna: false
+  html_document_data_mapping:
+    text: Does the task require parsing HTML documents into a normalized map or node representation and serializing that representation back to HTML?
+    models:
+      astra: true
+      terra: false
+      luna: false
+  sql_grouping_and_window_builders:
+    text: Does the task require typed query-builder APIs for advanced SQL grouping constructs and window-frame extent clauses?
+    models:
+      astra: true
+      terra: true
+      luna: null
+  structured_runtime_error_recovery:
+    text: Does the task require adding language-level try, catch, throw, finally, and retry behavior for recoverable runtime errors?
+    models:
+      astra: true
+      terra: null
+      luna: null
+  file_watch_daemon_lifecycle:
+    text: Does the task require a background file-watching service with start, stop, status, persistent state, logs, and a single-cycle mode?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  appended_view_follow_state:
+    text: Does the task require append-only view widgets to preserve a user's scrolled position and expose whether they are following the end?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  configurable_test_bailout:
+    text: Does the task require a test runner to abort after a configurable failure threshold and suppress subsequent result emissions across reporters and clients?
+    models:
+      astra: false
+      terra: false
+      luna: true
+  dependency_aware_analysis_cache:
+    text: Does the task require a persistent source-analysis cache that reuses unchanged results and invalidates files through transitive dependencies?
+    models:
+      astra: null
+      terra: true
+      luna: true
+  shorthand_component_roundtrip:
+    text: Does the task require bidirectional expansion and compression between shorthand declarations and their component properties with round-trip equivalence?
+    models:
+      astra: true
+      terra: true
+      luna: null
+  static_grammar_conflict_analysis:
+    text: Does the task require static detection and reporting of first/first, first/follow, or unreachable conflicts in a grammar definition?
+    models:
+      astra: false
+      terra: true
+      luna: false
+  coordinated_module_memory_snapshots:
+    text: Does the task require coordinated full and incremental memory snapshots across multiple runtime modules, including restore, comparison, and serialization?
+    models:
+      astra: false
+      terra: true
+      luna: true
+  asynchronous_search_resolver_control:
+    text: Does the task require an interactive search or autocomplete resolver to debounce asynchronous fetches, cancel stale requests, and cache results?
+    models:
+      astra: true
+      terra: false
+      luna: false
+  language_exception_control_flow:
+    text: Does the task require changing a programming-language parser and evaluator so user programs can use try/catch/finally, throw values, and retry a caught block?
+    models:
+      astra: true
+      terra: false
+      luna: false
+  rolling_statistical_window_operations:
+    text: Does the task require adding rolling minimum, maximum, median, or quantile operations across expression and series APIs with backend delegation?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  iterable_result_collection_combinators:
+    text: Does the task require iterable or async-iterable support plus sequence, traverse, zip, or filtering combinators for optional, result, and task values?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  multiplexed_logical_channels:
+    text: Does the task require multiple independent bidirectional logical channels over one underlying byte stream, including per-channel flow control and half-close?
+    models:
+      astra: true
+      terra: false
+      luna: false
+  structure_sensitive_selector_safety:
+    text: Does the task require an optimizer to preserve selector matching when structural rewrites could change ancestor, sibling, or anchored relationships?
+    models:
+      astra: true
+      terra: null
+      luna: null
+  multicolumn_math_array_cells:
+    text: Does the task require a mathematical array or matrix cell to span multiple columns with alignment and rendering rules?
+    models:
+      astra: true
+      terra: false
+      luna: false
+  residual_template_source_reconstruction:
+    text: Does the task require reconstructing user-facing template-string syntax from a lowered internal representation in residual or partially evaluated source?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  json_schema_reference_dependencies:
+    text: Does the task require local recursive JSON Schema references together with dependent properties, dependent schemas, and conditional schema branches?
+    models:
+      astra: true
+      terra: null
+      luna: null
+  module_loader_cache_controls:
+    text: Does the task require deterministic module resolution with canonical cache keys, cycle detection, cache inspection/reset, and command-line path or debug controls?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  annotated_array_merge_strategies:
+    text: Does the task require configurable append or key-based merge strategies for arrays, selected by metadata annotations or command-line overrides?
+    models:
+      astra: false
+      terra: false
+      luna: true
+  deferred_entity_mutation_buffer:
+    text: Does the task require buffering entity mutations during query iteration and flushing them in order while reads reflect pending changes?
+    models:
+      astra: true
+      terra: true
+      luna: false
+  state_owned_lifecycle_data:
+    text: Does the task require hierarchical state-machine states to own scoped data that initializes on entry, disappears on exit, and restores with history?
+    models:
+      astra: null
+      terra: true
+      luna: null
+  table_representation_converters:
+    text: Does the task require bidirectional in-place conversion among header tables, inline tables, and dotted-key assignments while preserving comments?
+    models:
+      astra: true
+      terra: false
+      luna: false
+  persisted_feature_input_schema:
+    text: Does the task require persisting a selected feature schema after training and enforcing column selection, aliases, and validation during prediction?
+    models:
+      astra: false
+      terra: true
+      luna: false
+  single_active_consumer_priority:
+    text: Does the task require queue consumers to elect one active consumer by priority, promote standbys, and record cancellation or lifecycle events?
+    models:
+      astra: true
+      terra: true
+      luna: false
+  relation_pair_change_tracking:
+    text: Does the task require change tracking at the level of individual relation-target pairs, including wildcard targets and cancelling opposite events?
+    models:
+      astra: null
+      terra: null
+      luna: true
+  typed_server_sent_event_endpoints:
+    text: Does the task require typed HTTP endpoints whose handlers and clients stream discriminated events using Server-Sent Events wire formatting?
+    models:
+      astra: true
+      terra: false
+      luna: false
+  recursive_schema_self_reference:
+    text: Does the task require a public recursive-schema placeholder and sync or async wrappers that preserve self-referential input and output types?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  duplicate_inflight_stream_replay:
+    text: Does the task require duplicate concurrent invocations of a callable wrapper to join one active execution and replay streamed chunks to later joiners?
+    models:
+      astra: true
+      terra: false
+      luna: true
+  grouping_sets_and_frame_extents:
+    text: Does the task require typed SQL query-builder APIs for GROUP BY CUBE, ROLLUP, and GROUPING SETS constructs?
+    models:
+      astra: true
+      terra: true
+      luna: false
+  deterministic_cookie_policy_store:
+    text: Does the task require a deterministic HTTP cookie store with domain, path, secure-prefix, expiry, ordering, and capacity-eviction rules?
+    models:
+      astra: true
+      terra: true
+      luna: false
+  conditional_recursive_schema_resolution:
+    text: Does the task require a runtime schema parser to resolve local definition references recursively inside conditional and dependency schema keywords?
+    models:
+      astra: true
+      terra: null
+      luna: null
+  state_machine_callback_data_scopes:
+    text: Does the task require state-machine lifecycle callbacks to receive per-state data scopes that initialize on entry and are removed on exit?
+    models:
+      astra: null
+      terra: true
+      luna: null
+  observed_relation_pair_modifiers:
+    text: Does the task require reusable query-modifier factories that accept relation-target pairs, report per-target additions or removals, and cancel opposite events within one observation window?
+    models:
+      astra: null
+      terra: null
+      luna: true
+  query_observer_snapshot_metadata:
+    text: Does the task require a persisted query-observer snapshot to restore result data separately from freshness, error, pagination, and refetch metadata?
+    models:
+      astra: false
+      terra: true
+      luna: true
+  import_graph_static_analysis_cache:
+    text: Does the task require a persistent static-analysis cache to reanalyze every module that transitively imports a changed module, while maintaining checksum and backup files for the cache?
+    models:
+      astra: false
+      terra: true
+      luna: true
+  css_shorthand_declaration_roundtrip:
+    text: Does the task require CSS-style shorthand declarations to expand into component properties and recompress with equivalent cascade values?
+    models:
+      astra: true
+      terra: true
+      luna: false
+  conditional_dependency_json_schema_runtime:
+    text: Does the task require consuming JSON Schema documents as input and validating data through local recursive references nested inside conditional and dependent-schema keywords?
+    models:
+      astra: true
+      terra: false
+      luna: false
+  lifecycle_callback_scoped_state_data:
+    text: Does the task require hierarchical state-machine entry and exit callbacks to receive data owned by the active state and restored through history transitions?
+    models:
+      astra: false
+      terra: true
+      luna: false
+  stylesheet_optimizer_selector_topology:
+    text: Does the task require a stylesheet optimizer to reject structural rewrites when ancestor, sibling, or anchored selector relationships would change?
+    models:
+      astra: true
+      terra: false
+      luna: false
+  relation_target_observation_deltas:
+    text: Does the task require cached relation-pair query modifiers to remain reusable across world resets, create distinct queries per target, and report non-first additions or non-last removals for the selected target?
+    models:
+      astra: false
+      terra: false
+      luna: true
+  recursive_agent_delegation_runtime:
+    text: Does the task require an agent chat runtime to execute recursively delegated tool calls, feed each child run back as a matching tool result, and detect unknown, failed, or circular delegation?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  duration_history_test_sharding:
+    text: Does the task require a test runner to balance shards from recorded per-test durations while preserving deterministic assignment and timing history?
+    models:
+      astra: true
+      terra: true
+      luna: false
+  streaming_json_array_iteration:
+    text: Does the task require an HTTP response API to incrementally decode one ordinary application-JSON top-level array from its byte stream and asynchronously yield each array value without multipart framing?
+    models:
+      astra: true
+      terra: true
+      luna: false
+  workflow_reference_pinning_lint:
+    text: Does the task require a workflow linter to validate that external action references are pinned to immutable revisions and report configurable violations?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  deterministic_multikey_file_sorting:
+    text: Does the task require a file-search CLI to accept repeatable ordered sort keys plus grouping, reverse, natural, missing-value, and seeded-random controls before applying result limits?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  explicit_resource_management_syntax:
+    text: Does the task require a JavaScript-family parser to accept explicit resource-management declarations, including their asynchronous form and placement rules?
+    models:
+      astra: false
+      terra: true
+      luna: true
+  atomic_selector_snapshot_consistency:
+    text: Does the task require selectors to track exact object leaves, map keys, set membership, and array indexes, expose a dependency graph, and reevaluate once per atomic action?
+    models:
+      astra: true
+      terra: false
+      luna: false
+  authenticated_stream_encryption_pipeline:
+    text: Does the task require streaming authenticated encryption for dump data, with key derivation, nonce framing, and verified decryption before restore?
+    models:
+      astra: true
+      terra: false
+      luna: false
+  lazy_recursive_attribute_schema:
+    text: Does the task require lazily resolved recursive attribute schemas that retain validation, parsing, formatting, and exported-schema behavior?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  terminal_key_press_phase_protocol:
+    text: Does the task require a terminal input protocol to distinguish key press, repeat, and release phases while retaining compatibility with ordinary key events?
+    models:
+      astra: true
+      terra: false
+      luna: false
+  multipart_http_response_decoder:
+    text: Does the task require an HTTP client response API to parse multipart bodies incrementally, including boundaries, headers, and per-part payloads?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  per_launcher_test_report_files:
+    text: Does the task require a test runner's report-file path to expand launcher, date, and timestamp templates and route each browser's TAP or XML results into its own sanitized file?
+    models:
+      astra: true
+      terra: true
+      luna: false
+  validated_error_accumulation:
+    text: Does the task require a validated-result container whose applicative or traversal operations accumulate multiple errors instead of stopping at the first?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  bounded_memory_graph_analysis_spill:
+    text: Does the task require a multi-file analysis CLI to enforce a maximum number of in-memory file records by spilling nonempty intermediates to a chosen directory while preserving byte-identical formatted output?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  entity_state_snapshot_rollback:
+    text: Does the task require registry-guided snapshots of entity traits and relation targets, exact world rollback preserving entity IDs, and deterministic diffs between entity or world snapshots?
+    models:
+      astra: false
+      terra: true
+      luna: true
+  baseline_drift_detection_engine:
+    text: Does the task require comparing current observations with stored baselines under configurable drift policies and producing stable machine-readable findings?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  policy_violation_alert_dispatch:
+    text: Does the task require a target-health tracker to emit down, recovered, degraded, healthy, and certificate-expiry events from consecutive-check thresholds with cooldown suppression?
+    models:
+      astra: true
+      terra: false
+      luna: false
+  entity_query_value_predicates:
+    text: Does the task require entity queries to evaluate a user-supplied Boolean callback over ordered component-data dependencies, reevaluate it after component writes, and track transitions of that predicate's truth value?
+    models:
+      astra: true
+      terra: false
+      luna: false
+  structured_lint_suppression_directives:
+    text: Does the task require a source-code security linter to parse structured inline suppression directives with rule selection, validation, and precedence?
+    models:
+      astra: false
+      terra: true
+      luna: false
+  composite_entity_trait_views:
+    text: Does the task require entity traits to be composed into reusable typed aspects whose reads, writes, and query matching span multiple components?
+    models:
+      astra: true
+      terra: true
+      luna: false
+  worktree_three_way_merge_conflicts:
+    text: Does the task require a version-control worktree to perform three-way merges, materialize conflict markers and staged index entries, and complete merge commits?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  resilient_publish_retry_audit:
+    text: Does the task require artifact publishers to retry only transient failures with bounded backoff while recording every publish attempt deterministically?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  graphql_incremental_transport_assembly:
+    text: Does the task require GraphQL deferred or streamed payloads from HTTP and WebSocket transports to be merged by path into accumulated results?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  unified_manifest_document_order:
+    text: Does the task require several package-rendering commands to emit one reproducibly ordered manifest stream that also includes lifecycle hooks?
+    models:
+      astra: true
+      terra: false
+      luna: true
+  conditional_sibling_attribute_requirements:
+    text: Does the task require schema attributes to become required for specified sibling discriminator values across writes, updates, validation, and schema export?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  xml_structural_diff_patch_merge:
+    text: Does the task require XML documents to support structural diff generation, reversible patch application, and conflict-aware three-way merging?
+    models:
+      astra: false
+      terra: true
+      luna: false
+  rule_evaluation_profile_statistics:
+    text: Does the task require opt-in profiling of rule evaluation entries and successes with aggregation, filtering, comparison, and deterministic summaries?
+    models:
+      astra: true
+      terra: false
+      luna: false
+  session_bundle_record_validate_replay:
+    text: Does the task require interactive code sessions to be recorded with outputs into a validated archive and later replayed with controlled history behavior?
+    models:
+      astra: true
+      terra: true
+      luna: false
+  partial_structure_recovery:
+    text: Does the task require attrs, dataclass, or typed-dictionary structuring to return a partial object together with successful-field sets, failed-field sets, and a per-field error map?
+    models:
+      astra: true
+      terra: true
+      luna: false
+  serialized_error_stack_roundtrip:
+    text: Does the task require serialization and deserialization of error objects to preserve stack information together with nested causes or custom properties?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  terminal_ansi_reset_preservation:
+    text: Does the task require terminal styling transformations to preserve or reapply nested ANSI state correctly across reset control sequences?
+    models:
+      astra: false
+      terra: true
+      luna: true
+  grouped_test_barrier_scheduler:
+    text: Does the task require mobile test cases to synchronize in named groups through reusable barriers with timeout, cleanup, and failure propagation?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  spatial_shape_index_serialization:
+    text: Does the task require a spatial shape index to support deterministic serialization and reconstruction while preserving query behavior and shape identity?
+    models:
+      astra: true
+      terra: true
+      luna: true
+  interprocedural_taint_analysis:
+    text: Does the task require a security analyzer to propagate taint across function boundaries from configurable sources to sinks and report sanitized paths correctly?
+    models:
+      astra: true
+      terra: false
+      luna: true
+  grid_box_layout_engine:
+    text: Must a React-style terminal renderer extend its style object with display grid, space-separated row and column templates using numeric, fractional, auto, or minmax tracks, and explicit child row or column ranges?
+    models:
+      astra: false
+      terra: true
+      luna: true
+  incremental_security_scan_cache:
+    text: Does the task require a source-security scanner CLI to cache per-file findings keyed by enabled checks and profiles, with warm, clear, inspect, prune, import, export, and force-rescan controls?
+    models:
+      astra: true
+      terra: true
+      luna: false
+  transactional_import_resume_checkpoints:
+    text: Does the task require database bulk imports to use nested checkpoint handles that restore tables, columns, indexes, and triggers, then commit only after persistent SQL invariants validate?
+    models:
+      astra: true
+      terra: true
+      luna: false
